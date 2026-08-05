@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>Jellyfin.Plugin.MetadataSync.Tests</RootNamespace>
+    <AssemblyName>Jellyfin.Plugin.MetadataSync.Tests</AssemblyName>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <IsPackable>false</IsPackable>
+    <!-- The suite targets the same runtime as the plugin. Rolling forward lets it
+         also run on a machine that carries only a newer major runtime, instead of
+         reporting a missing framework as if the tests had failed. -->
+    <RollForward>Major</RollForward>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <!-- The plugin excludes the server assemblies from its own runtime output,
+       because the server supplies them. A test host has no server, so the suite
+       takes the same two packages at the same versions with their runtime
+       assets, and nothing else from the server. -->
+  <ItemGroup>
+    <PackageReference Include="Jellyfin.Controller" Version="10.9.11" />
+    <PackageReference Include="Jellyfin.Model" Version="10.9.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Jellyfin.Plugin.MetadataSync\Jellyfin.Plugin.MetadataSync.csproj" />
+  </ItemGroup>
+
+  <!-- The manifest is the thing under test in ManifestTests, so it is copied to
+       the output rather than located by walking up from the test binary. -->
+  <ItemGroup>
+    <None Include="..\build.yaml" Link="build.yaml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
