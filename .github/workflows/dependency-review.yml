@@ -13,10 +13,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # No `name:` on this job: the "Protect main" ruleset's required status check
-  # matches the literal check-run name, which defaults to the job id
-  # ("dependency-review") when no `name:` is set. Overriding it here would
-  # rename the check run and silently break the required-status-check gate.
+  # No `name:` on this job. A required status check is matched by the literal
+  # check-run name, which defaults to the job id ("dependency-review") when no
+  # `name:` is set, so setting one would rename the check run. This job is not
+  # in this repository's required set today, so the rename would break nothing
+  # yet; keeping the name stable is what lets it be added without a second edit.
+  # The required set is printed rather than restated here:
+  #   gh api repos/iderex/jellyfin-plugin-metadata-sync/rulesets/20464851 --jq '[.rules[] | select(.type=="required_status_checks") | .parameters.required_status_checks[].context]'
   dependency-review:
     runs-on: ubuntu-latest
     timeout-minutes: 10
