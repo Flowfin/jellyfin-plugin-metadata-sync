@@ -15,6 +15,6 @@ public class GateProofTests
     [Fact]
     public void TheRequiredTestCheckCanGoRed()
     {
-        Assert.True(false, "Deliberate failure. If this is green the check is not running the suite.");
+        Assert.Fail("Deliberate failure. If this is green the check is not running the suite.");
     }
 }
