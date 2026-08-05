@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <RootNamespace>Jellyfin.Plugin.Template</RootNamespace>
+    <RootNamespace>Jellyfin.Plugin.MetadataSync</RootNamespace>
+    <AssemblyName>Jellyfin.Plugin.MetadataSync</AssemblyName>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
