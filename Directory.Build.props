@@ -4,4 +4,22 @@
         <AssemblyVersion>0.0.0.0</AssemblyVersion>
         <FileVersion>0.0.0.0</FileVersion>
     </PropertyGroup>
+
+    <!-- Locked restore, for every project and every route. Without it a restore
+         resolves the newest matching version of every transitive package, so a
+         pull request is reviewed against a graph that moves underneath it and a
+         compromised transitive release lands with no diff.
+
+         The shared build and test workflows run a plain `dotnet restore`, and
+         this repository cannot pass a flag to them, so the property carries the
+         locked mode instead and both routes behave the same.
+
+         The cost, stated rather than discovered: changing a package version now
+         fails the restore until the lock file is regenerated, with
+         `dotnet restore /p:RestoreForceEvaluate=true`. That is the guard
+         working. -->
+    <PropertyGroup>
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+        <RestoreLockedMode>true</RestoreLockedMode>
+    </PropertyGroup>
 </Project>
