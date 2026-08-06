@@ -14,16 +14,25 @@ stays explained when somebody asks about it later.
 
 Compared on 2026-08-06.
 
-The target was read at commit `54873c4920a88812f65f3a7884c5830e2ce31fb5`, which
-was `main` on that date:
+The target was read at commit `54873c4920a88812f65f3a7884c5830e2ce31fb5`. That
+commit was `main` when the comparison was made and it has already stopped being
+`main`, so the command that reproduces what was read names the commit and not the
+branch:
+
+    gh api repos/iderex/jellyfin-plugin-sso/commits/54873c4920a88812f65f3a7884c5830e2ce31fb5 --jq '.commit.committer.date'
+    2026-08-06T14:13:06Z
+
+Where `main` has moved on since, this is what to compare that commit against:
 
     gh api repos/iderex/jellyfin-plugin-sso/commits/main --jq '.sha'
 
 This repository was read at commit `7e9b50346a0379d883956d302422fbc01ec1e606`.
 
-The workflow lists both tables are built from:
+The workflow lists both tables are built from. The first is pinned to the commit
+above, so it prints what the table was built from rather than what is on the
+target today:
 
-    gh api repos/iderex/jellyfin-plugin-sso/contents/.github/workflows --jq '.[].name'
+    gh api 'repos/iderex/jellyfin-plugin-sso/contents/.github/workflows?ref=54873c4920a88812f65f3a7884c5830e2ce31fb5' --jq '.[].name'
     git ls-files .github/workflows
 
 ## The required sets are printed, not restated
@@ -59,7 +68,7 @@ out.
 | `nightly-betas.yml` | Not adopted yet | A nightly beta channel presumes a decided set of published server lines. Decision 4 in #1 fixes how many there are, and the shape of this workflow follows that answer. |
 | `opengrep.yml` (Repo Invariant Lint) | Not adopted yet | Adopted by #79, which also seeds the invariants from this plan rather than copying the target's. |
 | `pr-hygiene.yml` (PR Hygiene) | Not adopted yet | Adopted by #78. This plan is made of many small issues, so a change that lands without naming its issue detaches the work from the reasoning that produced it. |
-| `prettier.yml` (Prettier Lint) | Not adopted yet, and this row was written wrong once | See the correction below. This repository has seven files inside the target's glob, so the formatter has something to format here today. |
+| `prettier.yml` (Prettier Lint) | Not adopted yet, and this row was written wrong once | See the correction below. This repository has files inside the target's glob, so the formatter has something to format here today. The count is printed there rather than here. |
 | `publish-beta.yml` | Not adopted yet | A beta channel, waiting on the same decision 4 in #1 as the nightly one. |
 | `publish-jf12-beta.yml` | Not adopted yet | A per-generation beta channel. Same condition: decision 4 in #1 fixes how many generations are published. |
 | `publish-jf12-stable.yml` | Not adopted yet | A per-generation stable channel. Same condition as the row above. |
@@ -83,10 +92,15 @@ The target lints `**/*.{js,html,md,css,scss}`:
 
     gh api repos/iderex/jellyfin-plugin-sso/contents/.github/workflows/prettier.yml --jq '.content' | base64 -d | grep prettier_options
 
-This repository has seven tracked files inside that glob:
+This repository has eight tracked files inside that glob:
 
     git ls-files | grep -Eic '\.(js|html|md|css|scss)$'
-    7
+    8
+
+That number includes this document, which is the reason it was first written
+here as seven: the count was taken before the file holding it was added, which is
+a measurement of the tree the writer had rather than the tree the reader gets.
+Run it against the commit under review.
 
 So the condition the row named as unmet is already met, and the honest state of
 this row is that the formatter is not adopted yet and has no issue on this board
