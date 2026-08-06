@@ -5,9 +5,18 @@ on:
     types:
       - rebase-command
 
+# Deny at the workflow level so the job below has to name what it takes.
+permissions: {}
+
 jobs:
   call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/command-rebase.yaml@master
+    # The rebase step reads the pull request and pushes the rebased head with
+    # the job's own token. The two reaction steps use the token handed to them
+    # as a secret instead, so they add nothing here.
+    permissions:
+      contents: write
+      pull-requests: read
+    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/command-rebase.yaml@eb99033a7ff644881b014bc0b4169916c854a68b # jellyfin-meta-plugins master, 2026-07-29
     with:
       rebase-head: ${{ github.event.client_payload.pull_request.head.label }}
       repository-full-name: ${{ github.event.client_payload.github.payload.repository.full_name }}

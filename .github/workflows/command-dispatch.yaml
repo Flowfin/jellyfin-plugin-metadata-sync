@@ -6,8 +6,15 @@ on:
     types:
       - created
 
+# Deny at the workflow level so the job below has to name what it takes.
+permissions: {}
+
 jobs:
   call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/command-dispatch.yaml@master
+    # The called workflow runs one step, and that step reads and writes through
+    # the token handed to it as a secret rather than through the job's own. So
+    # the job needs nothing, and this says so rather than leaving the default.
+    permissions: {}
+    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/command-dispatch.yaml@eb99033a7ff644881b014bc0b4169916c854a68b # jellyfin-meta-plugins master, 2026-07-29
     secrets:
       token: .
