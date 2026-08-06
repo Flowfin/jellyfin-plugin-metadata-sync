@@ -19,7 +19,7 @@
          nowhere near the edit that caused it. Nested, the text is passed as a
          value and never re-read as MSBuild syntax. -->
     <PropertyGroup>
-        <Version>0.0.0.0</Version>
+        <Version>$([System.Text.RegularExpressions.Regex]::Replace($([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)build.yaml')), '(?s)^.*?[\r\n]version:[ \t]*"([^"]*)".*$', '$1'))</Version>
         <AssemblyVersion>$(Version)</AssemblyVersion>
         <FileVersion>$(Version)</FileVersion>
     </PropertyGroup>
