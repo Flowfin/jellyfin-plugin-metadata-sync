@@ -160,6 +160,11 @@ public class ManifestTests
         // field. It is a file that was not read, was not the manifest, or was
         // not parsed, and saying so is what keeps the next reader from
         // editing build.yaml to add a field that is already there.
+        if (!lines.Any(l => Regex.IsMatch(l, "^[A-Za-z][A-Za-z0-9_-]*:")))
+        {
+            return (null, "build.yaml parsed as no field at all, so it was not read as the manifest. Looking for '" + name + "'.");
+        }
+
         return (null, "build.yaml declares no quoted '" + name + "' field.");
     }
 
