@@ -49,4 +49,14 @@
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- This project file is what HeadlessPolicyTests reads, so the suite can
+       refuse a dependency that would need a display, a running server or the
+       network. Reading the resolved package graph instead would answer a
+       different question, because a transitive package is not a decision
+       anybody made here. -->
+  <ItemGroup>
+    <None Include="Jellyfin.Plugin.MetadataSync.Tests.csproj"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
