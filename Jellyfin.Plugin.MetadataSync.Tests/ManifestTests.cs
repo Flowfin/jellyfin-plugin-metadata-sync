@@ -77,16 +77,95 @@ public class ManifestTests
         Assert.NotEqual("jellyfin", ManifestField("owner"), StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// The same manifest, once with the line endings a Linux checkout has and
+    /// once with the ones a default Windows clone produces. The escapes are
+    /// written out rather than taken from a file, because a fixture whose
+    /// subject is a carriage return cannot be stored as one: nothing in this
+    /// repository keeps a tracked file at CRLF, and an editor or a checkout
+    /// would silently delete the byte the fixture exists to carry.
+    /// </summary>
+    private const string LfManifest = "name: \"Metadata Sync\"\nversion: \"1.2.3.4\"\nframework: \"net9.0\"\n";
+
+    private const string CrlfManifest = "name: \"Metadata Sync\"\r\nversion: \"1.2.3.4\"\r\nframework: \"net9.0\"\r\n";
+
+    /// <summary>
+    /// The four tests above read the manifest through <see cref="FieldIn"/>,
+    /// and this is the case that made every one of them fail on a Windows
+    /// checkout while passing on the runner. The read is held to giving the
+    /// same answer for both line endings, so the suite's verdict does not
+    /// depend on the reader's `core.autocrlf`.
+    /// </summary>
+    [Fact]
+    public void AFieldReadsTheSameWhicheverLineEndingTheManifestHas()
+    {
+        Assert.Equal("1.2.3.4", FieldIn(CrlfManifest, "version").Value);
+        Assert.Equal(FieldIn(LfManifest, "version").Value, FieldIn(CrlfManifest, "version").Value);
+        Assert.Null(FieldIn(CrlfManifest, "version").Failure);
+    }
+
+    /// <summary>
+    /// A manifest that parses and simply has no such field, and a text that is
+    /// not the manifest at all, are different failures. They were one message
+    /// before this, so a read that could not see the file reported the file as
+    /// incomplete, and the failure pointed away from its own cause.
+    /// </summary>
+    [Fact]
+    public void AMissingFieldAndAnUnreadableManifestAreDifferentFailures()
+    {
+        var missing = FieldIn(LfManifest, "owner").Failure;
+        var unreadable = FieldIn(string.Empty, "owner").Failure;
+
+        Assert.NotNull(missing);
+        Assert.Contains("declares no quoted 'owner' field", missing, StringComparison.Ordinal);
+
+        Assert.NotNull(unreadable);
+        Assert.DoesNotContain("declares no quoted", unreadable, StringComparison.Ordinal);
+        Assert.Contains("no field at all", unreadable, StringComparison.Ordinal);
+    }
+
     private static string ManifestField(string name)
     {
         var manifest = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "build.yaml"));
-        var match = Regex.Match(
-            manifest,
-            "^" + Regex.Escape(name) + ":[ \t]*\"([^\"]*)\"[ \t]*$",
-            RegexOptions.Multiline);
+        var read = FieldIn(manifest, name);
 
-        Assert.True(match.Success, "build.yaml declares no quoted '" + name + "' field.");
-        return match.Groups[1].Value;
+        Assert.True(read.Failure is null, read.Failure);
+        return read.Value!;
+    }
+
+    /// <summary>
+    /// Reads one quoted scalar field out of the manifest text. The text is
+    /// split into lines rather than matched whole under
+    /// <see cref="RegexOptions.Multiline"/>, because in .NET a multiline `$`
+    /// matches the position before a `\n` and leaves a `\r` sitting in front
+    /// of it, so a trailing anchor never matches on a CRLF file. Splitting
+    /// makes the carriage return part of the line, where it is trimmed once
+    /// and by name.
+    /// </summary>
+    /// <param name="manifest">The manifest text, with either line ending.</param>
+    /// <param name="name">The field to read.</param>
+    /// <returns>The value, or the reason it could not be read.</returns>
+    private static (string? Value, string? Failure) FieldIn(string manifest, string name)
+    {
+        var lines = manifest.Split('\n').Select(l => l.TrimEnd('\r')).ToList();
+        var field = new Regex("^" + Regex.Escape(name) + ":[ \t]*\"([^\"]*)\"[ \t]*$");
+
+        var match = lines.Select(l => field.Match(l)).FirstOrDefault(m => m.Success);
+        if (match is not null)
+        {
+            return (match.Groups[1].Value, null);
+        }
+
+        // A text carrying no key line at all is not a manifest missing one
+        // field. It is a file that was not read, was not the manifest, or was
+        // not parsed, and saying so is what keeps the next reader from
+        // editing build.yaml to add a field that is already there.
+        if (!lines.Any(l => Regex.IsMatch(l, "^[A-Za-z][A-Za-z0-9_-]*:")))
+        {
+            return (null, "build.yaml parsed as no field at all, so it was not read as the manifest. Looking for '" + name + "'.");
+        }
+
+        return (null, "build.yaml declares no quoted '" + name + "' field.");
     }
 
     private static XDocument PluginProject()
