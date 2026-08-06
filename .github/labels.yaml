@@ -1,0 +1,102 @@
+# Every label this board uses, and the authority for which labels exist on it.
+# The sync deletes any label not named here, so a label added by hand and not
+# added to this file is removed on the next run. Seeded from the board's own
+# label set, not from the upstream file, so nothing this plan depends on can
+# be dropped by an upstream edit.
+
+- name: "area: admin"
+  color: "0e8a16"
+  description: "Dashboard page, endpoints, configuration"
+
+- name: "area: conflicts"
+  color: "d93f0b"
+  description: "Conflict rules and the conflict log"
+
+- name: "area: contract"
+  color: "0052cc"
+  description: "The consumer side of the pairing interface"
+
+- name: "area: fields"
+  color: "006b75"
+  description: "Which metadata fields move and which never do"
+
+- name: "area: matching"
+  color: "5319e7"
+  description: "Resolving the same item on two servers"
+
+- name: "area: reconcile"
+  color: "1d76db"
+  description: "The sync pass, its direction and its scheduling"
+
+- name: "area: supply-chain"
+  color: "c5def5"
+  description: "Dependencies, packaging, release pipeline"
+
+- name: "blocked-on-decision"
+  color: "fbca04"
+  description: "Waiting on a maintainer decision before it can be built"
+
+- name: "bug"
+  color: "d73a4a"
+  description: "Something isn't working"
+
+- name: "ci"
+  color: "ededed"
+  description: ""
+
+- name: "documentation"
+  color: "0075ca"
+  description: "Improvements or additions to documentation"
+
+- name: "duplicate"
+  color: "cfd3d7"
+  description: "This issue or pull request already exists"
+
+- name: "enhancement"
+  color: "a2eeef"
+  description: "New feature or request"
+
+- name: "good first issue"
+  color: "7057ff"
+  description: "Good for newcomers"
+
+- name: "headless"
+  color: "c2e0c6"
+  description: "Tests must run with no display, no elevation, no machine trust store"
+
+- name: "help wanted"
+  color: "008672"
+  description: "Extra attention is needed"
+
+- name: "invalid"
+  color: "e4e669"
+  description: "This doesn't seem right"
+
+- name: "non-goal"
+  color: "d4c5f9"
+  description: "Records something this plugin deliberately will not do"
+
+- name: "personal-data"
+  color: "b60205"
+  description: "Work that touches data about a person"
+
+- name: "planning"
+  color: "bfdadc"
+  description: ""
+
+- name: "question"
+  color: "d876e3"
+  description: "Further information is requested"
+
+- name: "security"
+  color: "b60205"
+  description: ""
+
+- name: "tests"
+  color: "c2e0c6"
+  description: ""
+
+- name: "wontfix"
+  color: "ffffff"
+  description: "This will not be worked on"
+
