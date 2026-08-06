@@ -30,7 +30,7 @@ public class HeadlessPolicyTests
     {
         "Microsoft.NET.Test.Sdk",
         "xunit",
-        "xunit.runner.visualstudio",
+        // "xunit.runner.visualstudio",
         "Jellyfin.Controller",
         "Jellyfin.Model",
     };
