@@ -1,8 +1,27 @@
 <Project>
+    <!-- build.yaml is the one place a release version is written. The packaging
+         tool already reads it from there and stamps the build with it, so a
+         version restated here was a second copy that a plain `dotnet build`
+         used and a packaged build ignored, and the two disagreed silently.
+
+         The read is a regular expression rather than a YAML parser because
+         MSBuild has no YAML, and adding one to the build would be a dependency
+         for one field. If the expression stops matching, the replacement
+         returns the whole file and the build fails on an unusable version
+         rather than falling back to a wrong one. ManifestTests asserts the
+         stamped version and the manifest agree, so a silent disagreement is
+         refused by the suite rather than left to be noticed.
+
+         The read is nested inside the match rather than held in a property
+         first. A property holding the file text is expanded as argument text
+         before the function is parsed, so the first comma or apostrophe in the
+         description would split the arguments and break the build for a reason
+         nowhere near the edit that caused it. Nested, the text is passed as a
+         value and never re-read as MSBuild syntax. -->
     <PropertyGroup>
-        <Version>0.0.0.0</Version>
-        <AssemblyVersion>0.0.0.0</AssemblyVersion>
-        <FileVersion>0.0.0.0</FileVersion>
+        <Version>$([System.Text.RegularExpressions.Regex]::Replace($([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)build.yaml')), '(?s)^.*?[\r\n]version:[ \t]*"([^"]*)".*$', '$1'))</Version>
+        <AssemblyVersion>$(Version)</AssemblyVersion>
+        <FileVersion>$(Version)</FileVersion>
     </PropertyGroup>
 
     <!-- Locked restore, for every project and every route. Without it a restore

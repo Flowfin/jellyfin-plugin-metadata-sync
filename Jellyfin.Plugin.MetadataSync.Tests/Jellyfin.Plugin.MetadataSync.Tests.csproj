@@ -38,4 +38,15 @@
     <None Include="..\build.yaml" Link="build.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The manifest claims a framework and a server ABI, and the thing those
+       claims have to agree with is the plugin project file itself. Reading the
+       compiled assembly instead would answer a different question: it says what
+       the build produced, not what the project declared, and the two diverge
+       exactly when the manifest is the one that is wrong. -->
+  <ItemGroup>
+    <None Include="..\Jellyfin.Plugin.MetadataSync\Jellyfin.Plugin.MetadataSync.csproj"
+          Link="Jellyfin.Plugin.MetadataSync.csproj"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
