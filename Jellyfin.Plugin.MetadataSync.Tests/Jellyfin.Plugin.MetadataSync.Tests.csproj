@@ -57,4 +57,21 @@
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- DefaultLevelLoggingTests reads the plugin's source text, because the rule
+       it holds up is about what a logging call was written to say. The compiled
+       assembly cannot answer that: a message template is a constant in the
+       metadata whether or not a value was passed beside it, and the placeholder
+       names are the whole subject.
+
+       The glob is deliberate rather than a list. A source file added to the
+       plugin is judged without anybody remembering to add it here, which is the
+       direction that fails closed. bin and obj are excluded because generated
+       assembly attributes are not code anybody wrote. -->
+  <ItemGroup>
+    <None Include="..\Jellyfin.Plugin.MetadataSync\**\*.cs"
+          Exclude="..\Jellyfin.Plugin.MetadataSync\bin\**\*.cs;..\Jellyfin.Plugin.MetadataSync\obj\**\*.cs"
+          Link="plugin-sources\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
