@@ -147,7 +147,7 @@ public class ManifestTests
     /// <returns>The value, or the reason it could not be read.</returns>
     private static (string? Value, string? Failure) FieldIn(string manifest, string name)
     {
-        var lines = manifest.Split('\n').Select(l => l.TrimEnd('\r')).ToList();
+        var lines = manifest.Split('\n').ToList();
         var field = new Regex("^" + Regex.Escape(name) + ":[ \t]*\"([^\"]*)\"[ \t]*$");
 
         var match = lines.Select(l => field.Match(l)).FirstOrDefault(m => m.Success);
