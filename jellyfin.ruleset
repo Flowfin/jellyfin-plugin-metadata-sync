@@ -130,6 +130,14 @@
              rule catches and doubling it produces guard clauses no test
              reaches. -->
         <Rule Id="CA1062" Action="Info" />
+        <!-- CA1859: use the concrete type rather than the interface, for
+             performance. This plugin's cost is network round trips and library
+             writes, not virtual dispatch, and the rule fires hardest where
+             declaring the abstraction is the point: a test that asserts the
+             interface behaves says so by declaring the interface, and a method
+             returning IReadOnlyList is refusing to hand out a mutable list. It
+             stays visible because on a hot path it would be right. -->
+        <Rule Id="CA1859" Action="Info" />
         <!-- CA1508: avoid dead conditional code. It reports false positives on
              code the compiler's own nullable analysis accepts, which is why
              the template carried it as informational too. -->

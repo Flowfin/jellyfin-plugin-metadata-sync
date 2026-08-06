@@ -68,7 +68,7 @@ public class StaticInstanceTests
         return File.ReadLines(file)
             .Select(line => line.TrimStart())
             .Where(line => !line.StartsWith("//", StringComparison.Ordinal))
-            .Where(line => !line.StartsWith("*", StringComparison.Ordinal))
+            .Where(line => !line.StartsWith('*'))
             .Any(line => line.Contains("Plugin.Instance", StringComparison.Ordinal));
     }
 
