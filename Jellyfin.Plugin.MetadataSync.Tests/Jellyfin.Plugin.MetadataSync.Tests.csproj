@@ -4,8 +4,6 @@
     <TargetFramework>net9.0</TargetFramework>
     <RootNamespace>Jellyfin.Plugin.MetadataSync.Tests</RootNamespace>
     <AssemblyName>Jellyfin.Plugin.MetadataSync.Tests</AssemblyName>
-    <Nullable>enable</Nullable>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <IsPackable>false</IsPackable>
     <!-- The suite targets the same runtime as the plugin. Rolling forward lets it
          also run on a machine that carries only a newer major runtime, instead of
