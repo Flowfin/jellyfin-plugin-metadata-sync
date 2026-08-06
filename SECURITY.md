@@ -117,14 +117,22 @@ an administrator action that reaches further than the server's own would, and
 that is in scope.
 
 A person who can read the two libraries can already learn what the sync would
-tell them. The privacy statement this file will point at once it exists covers
-what leaves this server and where it goes.
+tell them. `docs/personal-data.md` covers what leaves this server and where it
+goes.
 
 ## The threat model
 
 `docs/threat-model.md` names the adversaries, what each one obtains, and what
 stops them, including the risks that stay after the defences are built. It is
 the longer half of this file and it is deliberately short.
+
+## What this plugin holds and moves
+
+`docs/personal-data.md` is the same subject from the other side. It says which
+of the metadata this plugin moves can be personal data, whose it is, that the
+only destination is a peer the operator paired with, what may be logged and
+what may never be, and which of those sentences a check holds up rather than a
+reader.
 
 ## Supported versions
 

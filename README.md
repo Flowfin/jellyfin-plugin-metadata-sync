@@ -12,6 +12,11 @@ against. [docs/threat-model.md](docs/threat-model.md) names the adversaries,
 says what each one obtains and what stops them, and gathers the risks that
 stay after the defences are built.
 
+[docs/personal-data.md](docs/personal-data.md) is the other half and answers a
+different question: what this plugin moves when everything is working
+correctly, how much of it can be personal data, whose it is, where it goes, and
+what may never appear in a log.
+
 ## 0. Things you need to get started
 
 - [Dotnet SDK 9.0](https://dotnet.microsoft.com/en-us/download/dotnet)
