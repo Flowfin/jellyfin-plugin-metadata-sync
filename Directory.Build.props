@@ -41,4 +41,24 @@
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
         <RestoreLockedMode>true</RestoreLockedMode>
     </PropertyGroup>
+
+    <!-- Analysis, for every project this repository has and every one it adds.
+         These three sat in the plugin project file, which covered one project
+         out of two the moment the test project existed. A test project outside
+         the analyzer set is where an unsafe pattern is written first and copied
+         second, and nothing about it looks wrong in review.
+
+         AnalysisMode is the switch that is never lowered. A rule that genuinely
+         does not fit is turned off by name in jellyfin.ruleset with the reason
+         written at it, so the next reader can disagree with one rule instead of
+         guessing why the whole category is quiet.
+
+         Nullable is here for the same reason and CS8600 upward are warnings
+         that TreatWarningsAsErrors makes fatal. -->
+    <PropertyGroup>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <AnalysisMode>AllEnabledByDefault</AnalysisMode>
+        <CodeAnalysisRuleSet>$(MSBuildThisFileDirectory)jellyfin.ruleset</CodeAnalysisRuleSet>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
 </Project>

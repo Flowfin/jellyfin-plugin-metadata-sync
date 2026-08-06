@@ -1,108 +1,188 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RuleSet Name="Rules for Jellyfin.Server" Description="Code analysis rules for Jellyfin.Server.csproj" ToolsVersion="14.0">
+<!-- The analyzer rules for every project in this repository.
+
+     AnalysisMode is AllEnabledByDefault in Directory.Build.props, so a rule
+     absent from this file is on. This file is only the exceptions, and each one
+     carries the reason it is an exception here, in this repository. Those
+     reasons are this repository's own judgement written now. The set of rule
+     ids was inherited from the project template and the template gave no
+     reasons, so nothing below is a report of why somebody else turned a rule
+     off.
+
+     Action="None" means the rule never runs. Action="Info" means it reports and
+     does not fail the build, which is the setting for a rule worth reading and
+     not worth blocking on. Neither is reached by lowering AnalysisMode. -->
+<RuleSet Name="Rules for Jellyfin.Plugin.MetadataSync" Description="Code analysis rules for every project in this repository" ToolsVersion="14.0">
     <Rules AnalyzerId="StyleCop.Analyzers" RuleNamespace="StyleCop.Analyzers">
-        <!-- disable warning SA1009: Closing parenthesis should be followed by a space. -->
+        <!-- SA1009, SA1011: spacing after a closing parenthesis or bracket.
+             The repository formats with .editorconfig and dotnet format, and
+             two tools disagreeing about one space produces churn rather than
+             defects. -->
         <Rule Id="SA1009" Action="None" />
-        <!-- disable warning SA1011: Closing square bracket should be followed by a space. -->
         <Rule Id="SA1011" Action="None" />
-        <!-- disable warning SA1101: Prefix local calls with 'this.' -->
+        <!-- SA1101: prefix local calls with 'this.'. The codebase does not,
+             and a mixed convention is worse than either one. -->
         <Rule Id="SA1101" Action="None" />
-        <!-- disable warning SA1108: Block statements should not contain embedded comments -->
+        <!-- SA1108: no comment inside a block statement. The comments this
+             repository wants most are the ones next to the branch they
+             explain. -->
         <Rule Id="SA1108" Action="None" />
-        <!-- disable warning SA1118: Parameter must not span multiple lines. -->
+        <!-- SA1118: a parameter may not span lines. The conflict rules and the
+             field register produce long literal arguments, and breaking them
+             into named locals to satisfy a layout rule hides the shape. -->
         <Rule Id="SA1118" Action="None" />
-        <!-- disable warning SA1128:: Put constructor initializers on their own line -->
+        <!-- SA1128: constructor initializer on its own line. Layout only, and
+             the .editorconfig already decides it. -->
         <Rule Id="SA1128" Action="None" />
-        <!-- disable warning SA1130: Use lambda syntax -->
+        <!-- SA1130: use lambda syntax. A method group is often the clearer
+             form and this rule cannot tell the difference. -->
         <Rule Id="SA1130" Action="None" />
-        <!-- disable warning SA1200: 'using' directive must appear within a namespace declaration -->
+        <!-- SA1200: usings inside the namespace. This repository puts them at
+             the top of the file, which is what the file-scoped namespace
+             declarations it uses make natural. -->
         <Rule Id="SA1200" Action="None" />
-        <!-- disable warning SA1202: 'public' members must come before 'private' members -->
+        <!-- SA1202, SA1204: members ordered by accessibility and by staticness.
+             This repository orders members by what they are for, so a guard
+             sits next to the thing it guards. -->
         <Rule Id="SA1202" Action="None" />
-        <!-- disable warning SA1204: Static members must appear before non-static members -->
         <Rule Id="SA1204" Action="None" />
-        <!-- disable warning SA1309: Fields must not begin with an underscore -->
+        <!-- SA1309: no leading underscore on fields. The underscore is this
+             repository's marker for a private field and reads better than
+             this. as a disambiguator. -->
         <Rule Id="SA1309" Action="None" />
-        <!-- disable warning SA1413: Use trailing comma in multi-line initializers -->
+        <!-- SA1413: trailing comma in multi-line initializers. Worth having
+             and not worth failing a build over, so it is left to the
+             formatter. -->
         <Rule Id="SA1413" Action="None" />
-        <!-- disable warning SA1512: Single-line comments must not be followed by blank line -->
+        <!-- SA1512, SA1515: blank lines around single-line comments. Layout
+             only, and the two rules together forbid comment shapes this
+             repository uses deliberately. -->
         <Rule Id="SA1512" Action="None" />
-        <!-- disable warning SA1515: Single-line comment should be preceded by blank line -->
         <Rule Id="SA1515" Action="None" />
-        <!-- disable warning SA1600: Elements should be documented -->
+        <!-- SA1600, SA1602: every element and enum member documented. The
+             plugin project sets GenerateDocumentationFile, so the compiler
+             already requires documentation on public API through CS1591, and
+             the test project is not public API. Two rules asking the same
+             question with different scopes produces noise in the suite. -->
         <Rule Id="SA1600" Action="None" />
-        <!-- disable warning SA1602: Enumeration items should be documented -->
         <Rule Id="SA1602" Action="None" />
-        <!-- disable warning SA1633: The file header is missing or not located at the top of the file -->
+        <!-- SA1633: file header. This repository carries its licence in
+             LICENSE and its provenance in the manifest, and a header repeated
+             in every file is text that drifts. -->
         <Rule Id="SA1633" Action="None" />
     </Rules>
 
     <Rules AnalyzerId="Microsoft.CodeAnalysis.NetAnalyzers" RuleNamespace="Microsoft.Design">
-        <!-- error on CA1305: Specify IFormatProvider -->
+        <!-- Promoted from warning to error. Each of these is a defect this
+             plugin can actually ship, so it fails the build rather than
+             joining a list. -->
+        <!-- CA1305: an IFormatProvider is required. This plugin compares and
+             writes metadata field values, and a culture-dependent conversion
+             makes two servers disagree about the same value. -->
         <Rule Id="CA1305" Action="Error" />
-        <!-- error on CA1725: Parameter names should match base declaration -->
+        <!-- CA1725: parameter names match the base declaration. The plugin
+             implements server interfaces, and a renamed parameter breaks
+             callers that pass by name with nothing said. -->
         <Rule Id="CA1725" Action="Error" />
-        <!-- error on CA1725: Call async methods when in an async method -->
+        <!-- CA1727: use PascalCase for named placeholders. A misnamed
+             placeholder is how a field value ends up in a log line under a
+             name nobody greps for. -->
         <Rule Id="CA1727" Action="Error" />
-        <!-- error on CA1843: Do not use 'WaitAll' with a single task -->
+        <!-- CA1843: do not use WaitAll with a single task. Blocking inside a
+             sync pass is how a scheduled task stops being stoppable. -->
         <Rule Id="CA1843" Action="Error" />
-        <!-- error on CA2016: Forward the CancellationToken parameter to methods that take one
-            or pass in 'CancellationToken.None' explicitly to indicate intentionally not propagating the token -->
+        <!-- CA2016: forward the CancellationToken. A pass the server cannot
+             stop is the failure the scheduled task exists to avoid. -->
         <Rule Id="CA2016" Action="Error" />
-        <!-- error on CA2254: Template should be a static expression -->
+        <!-- CA2254: the logging template is a static expression. An
+             interpolated template puts the value into the message text, which
+             is exactly where a metadata field value may not go. -->
         <Rule Id="CA2254" Action="Error" />
 
-        <!-- disable warning CA1014: Mark assemblies with CLSCompliantAttribute -->
-        <Rule Id="CA1014" Action="Info" />
-        <!-- disable warning CA1024: Use properties where appropriate -->
-        <Rule Id="CA1024" Action="Info" />
-        <!-- disable warning CA1031: Do not catch general exception types -->
-        <Rule Id="CA1031" Action="Info" />
-        <!-- disable warning CA1032: Implement standard exception constructors -->
-        <Rule Id="CA1032" Action="Info" />
-        <!-- disable warning CA1040: Avoid empty interfaces -->
-        <Rule Id="CA1040" Action="Info" />
-        <!-- disable warning CA1062: Validate arguments of public methods -->
-        <Rule Id="CA1062" Action="Info" />
-        <!-- TODO: enable when false positives are fixed -->
-        <!-- disable warning CA1508: Avoid dead conditional code -->
-        <Rule Id="CA1508" Action="Info" />
-        <!-- disable warning CA1716: Identifiers should not match keywords -->
-        <Rule Id="CA1716" Action="Info" />
-        <!-- disable warning CA1720: Identifiers should not contain type names -->
-        <Rule Id="CA1720" Action="Info" />
-        <!-- disable warning CA1724: Type names should not match namespaces -->
-        <Rule Id="CA1724" Action="Info" />
-        <!-- disable warning CA1805: Do not initialize unnecessarily -->
-        <Rule Id="CA1805" Action="Info" />
-        <!-- disable warning CA1812: internal class that is apparently never instantiated.
-            If so, remove the code from the assembly.
-            If this class is intended to contain only static members, make it static -->
-        <Rule Id="CA1812" Action="Info" />
-        <!-- disable warning CA1822: Member does not access instance data and can be marked as static -->
-        <Rule Id="CA1822" Action="Info" />
-        <!-- disable warning CA2000: Dispose objects before losing scope -->
-        <Rule Id="CA2000" Action="Info" />
-        <!-- disable warning CA2253: Named placeholders should not be numeric values -->
-        <Rule Id="CA2253" Action="Info" />
-        <!-- disable warning CA5394: Do not use insecure randomness -->
-        <Rule Id="CA5394" Action="Info" />
+        <!-- The security categories are not exceptions and are not listed
+             here, which under AllEnabledByDefault means every CA2100 to CA5400
+             rule is on and fatal. CA5394 was inherited from the template as
+             informational and is restored: this plugin has no randomness
+             today, and the moment it acquires any, insecure randomness is a
+             defect rather than a note. -->
 
-        <!-- disable warning CA1054: Change the type of parameter url from string to System.Uri -->
+        <!-- Reported and not fatal. Each is a rule whose advice is usually
+             right and whose violations here are judgement calls a reader
+             should see rather than a build should refuse. -->
+        <!-- CA1014: CLSCompliant assemblies. The consumer is one server
+             runtime, not an arbitrary CLS consumer. -->
+        <Rule Id="CA1014" Action="Info" />
+        <!-- CA1024: use a property. A method that computes is honest about
+             costing something, and a property that computes is not. -->
+        <Rule Id="CA1024" Action="Info" />
+        <!-- CA1031: do not catch general exceptions. A sync pass over many
+             items has to survive one item, which is a broad catch at exactly
+             one place, and the rule cannot tell that place from the others. -->
+        <Rule Id="CA1031" Action="Info" />
+        <!-- CA1032: standard exception constructors. Constructors nothing
+             calls are code nothing tests. -->
+        <Rule Id="CA1032" Action="Info" />
+        <!-- CA1040: no empty interfaces. A marker interface is sometimes the
+             cheapest way to name a set for the container. -->
+        <Rule Id="CA1040" Action="Info" />
+        <!-- CA1062: validate arguments of public methods. Nullable is enabled
+             repository-wide, so the compiler already refuses most of what this
+             rule catches and doubling it produces guard clauses no test
+             reaches. -->
+        <Rule Id="CA1062" Action="Info" />
+        <!-- CA1508: avoid dead conditional code. It reports false positives on
+             code the compiler's own nullable analysis accepts, which is why
+             the template carried it as informational too. -->
+        <Rule Id="CA1508" Action="Info" />
+        <!-- CA1716, CA1720, CA1724: identifiers matching keywords, type names
+             or namespaces. This plugin's vocabulary is the domain's, and words
+             like Plan, Apply and Sync are the right names. -->
+        <Rule Id="CA1716" Action="Info" />
+        <Rule Id="CA1720" Action="Info" />
+        <Rule Id="CA1724" Action="Info" />
+        <!-- CA1805: do not initialize to the default. Writing the default
+             explicitly in a configuration type documents the intended value.
+             -->
+        <Rule Id="CA1805" Action="Info" />
+        <!-- CA1812: internal class never instantiated. Everything the server's
+             container constructs looks uninstantiated to this rule. -->
+        <Rule Id="CA1812" Action="Info" />
+        <!-- CA1822: member can be static. Making a member static to satisfy
+             this often blocks the substitution the headless suite depends on.
+             -->
+        <Rule Id="CA1822" Action="Info" />
+        <!-- CA2000: dispose before losing scope. It does not follow ownership
+             handed to the container, which is where most of this plugin's
+             disposables go. -->
+        <Rule Id="CA2000" Action="Info" />
+        <!-- CA2253: no numeric placeholders. Worth fixing, and a numbered
+             placeholder leaks nothing, so it does not stop a build. -->
+        <Rule Id="CA2253" Action="Info" />
+
+        <!-- Off entirely. Each is a rule whose premise does not hold here. -->
+        <!-- CA1054, CA1055, CA1056, CA2234: URIs as System.Uri rather than
+             string. The pairing plane hands this plugin addresses as strings
+             and hands them back the same way, so converting at every boundary
+             adds parsing that can fail without adding a check. -->
         <Rule Id="CA1054" Action="None" />
-        <!-- disable warning CA1055: URI return values should not be strings -->
         <Rule Id="CA1055" Action="None" />
-        <!-- disable warning CA1056: URI properties should not be strings -->
         <Rule Id="CA1056" Action="None" />
-        <!-- disable warning CA1303: Do not pass literals as localized parameters -->
-        <Rule Id="CA1303" Action="None" />
-        <!-- disable warning CA1308: Normalize strings to uppercase -->
-        <Rule Id="CA1308" Action="None" />
-        <!-- disable warning CA1848: Use the LoggerMessage delegates -->
-        <Rule Id="CA1848" Action="None" />
-        <!-- disable warning CA2101: Specify marshaling for P/Invoke string arguments -->
-        <Rule Id="CA2101" Action="None" />
-        <!-- disable warning CA2234: Pass System.Uri objects instead of strings -->
         <Rule Id="CA2234" Action="None" />
+        <!-- CA1303: do not pass literals as localized parameters. This plugin
+             is not localized, and the rule flags every log message and every
+             exception message. -->
+        <Rule Id="CA1303" Action="None" />
+        <!-- CA1308: normalize to uppercase. Provider identifier comparison
+             normalizes to lower case deliberately, which is #32's table, and
+             this rule would refuse the whole approach. -->
+        <Rule Id="CA1308" Action="None" />
+        <!-- CA1848: use LoggerMessage delegates. The gain is allocation on a
+             logging path this plugin uses at pass boundaries rather than per
+             item, and the cost is a delegate per message. -->
+        <Rule Id="CA1848" Action="None" />
+        <!-- CA2101: marshaling for P/Invoke strings. There is no P/Invoke in
+             this plugin, and the headless policy is one reason there will not
+             be. -->
+        <Rule Id="CA2101" Action="None" />
     </Rules>
 </RuleSet>
