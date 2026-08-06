@@ -15,6 +15,14 @@ on:
       - master
   workflow_dispatch:
 
+# Deny at the workflow level so the job below has to name what it takes.
+permissions: {}
+
 jobs:
   call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/build.yaml@master
+    # The called workflow checks out, sets up dotnet, runs jprm and uploads a
+    # build artefact. Reading the tree is the only token scope any of those
+    # steps uses.
+    permissions:
+      contents: read
+    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/build.yaml@eb99033a7ff644881b014bc0b4169916c854a68b # jellyfin-meta-plugins master, 2026-07-29
