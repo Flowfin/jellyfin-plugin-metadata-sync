@@ -1,16 +1,18 @@
 name: '🏗️ Build Plugin'
 
+# No path filter on either trigger. This job produces the required context
+# `call / build`, and a required context that never starts is pending rather
+# than failed, so a change touching only markdown waits on a check that will
+# never report and its merge state stays uncomputable. Adding a filter here
+# again makes every documentation-only change unmergeable, silently. The cost
+# of not filtering is one build per documentation change.
 on:
   push:
     branches:
       - master
-    paths-ignore:
-      - '**/*.md'
   pull_request:
     branches:
       - master
-    paths-ignore:
-      - '**/*.md'
   workflow_dispatch:
 
 jobs:
