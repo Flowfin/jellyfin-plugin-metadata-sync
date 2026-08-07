@@ -1,8 +1,10 @@
 name: unicode-guard
 
 on:
-  # Every branch and every PR: the guard is a cheap read-only scan and must cover
-  # any future release branch too, not just main (one code line since #954).
+  # Every branch and every PR: the guard is a cheap read-only scan, so it covers
+  # any future release branch as well as the default branch. The default branch
+  # is printed rather than restated here:
+  #   git symbolic-ref --short refs/remotes/origin/HEAD
   push:
     branches: ["**"]
   pull_request:

@@ -1,16 +1,22 @@
 ---
-name: "Template"
-guid: "eb5d7894-8eef-4b36-aa6f-5d124e828ce1"
+name: "Metadata Sync"
+guid: "5c37c448-9d94-4fdd-a621-4238b859165b"
 version: "1.0.0.0"
 targetAbi: "10.9.0.0"
-framework: "net8.0"
-overview: "Short description about your plugin"
+framework: "net9.0"
+overview: "Move chosen metadata fields between two paired Jellyfin servers."
 description: >
-  This is a longer description that can span more than one
-  line and include details about your plugin.
-category: "General"
-owner: "jellyfin"
+  Metadata Sync copies chosen metadata fields between two Jellyfin servers that
+  an operator has paired by hand. Nothing moves until that pairing exists, and
+  only the fields the field register declares ever move.
+
+  It never copies media files, artwork or any other library bytes. File
+  replication is a permanent non-goal rather than a feature that is still
+  coming: this plugin reads and writes metadata through the server's own
+  library calls and carries no file transfer of any kind.
+category: "Metadata"
+owner: "iderex"
 artifacts:
-- "Jellyfin.Plugin.Template.dll"
+- "Jellyfin.Plugin.MetadataSync.dll"
 changelog: >
-  changelog
+  Not yet released.

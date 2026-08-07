@@ -15,6 +15,17 @@ on:
 
 jobs:
   call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/scan-codeql.yaml@master
+    # The shared workflow declares no permissions of its own, and this
+    # repository's default workflow token is read-only:
+    #   gh api repos/iderex/jellyfin-plugin-metadata-sync/actions/permissions/workflow
+    #   {"default_workflow_permissions":"read", ...}
+    # So the scopes the analysis needs are granted here, on the calling job, and
+    # nowhere wider. Without security-events the upload is refused with
+    # "Resource not accessible by integration" and the whole run reds.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/scan-codeql.yaml@eb99033a7ff644881b014bc0b4169916c854a68b # jellyfin-meta-plugins master, 2026-07-29
     with:
-      repository-name: jellyfin/jellyfin-plugin-template
+      repository-name: iderex/jellyfin-plugin-metadata-sync

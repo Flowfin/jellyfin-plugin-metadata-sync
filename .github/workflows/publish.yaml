@@ -6,9 +6,18 @@ on:
       - released
   workflow_dispatch:
 
+# Deny at the workflow level so the job below has to name what it takes.
+permissions: {}
+
 jobs:
   call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/publish.yaml@master
+    # The called workflow builds, then attaches the built archive and its
+    # checksums to the release. Writing the release is the one scope its steps
+    # take from the job token; the deploy host is reached with the three
+    # secrets below and not with the token at all.
+    permissions:
+      contents: write
+    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/publish.yaml@eb99033a7ff644881b014bc0b4169916c854a68b # jellyfin-meta-plugins master, 2026-07-29
     with:
       version: ${{ github.event.release.tag_name }}
       is-unstable: ${{ github.event.release.prerelease }}

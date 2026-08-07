@@ -1,6 +1,26 @@
+> [!NOTE]
+>
+> **Part of [Flowfin](https://github.com/Flowfin).** It works with any Jellyfin
+> server, and with the Flowfin clients.
+
 # So you want to make a Jellyfin plugin
 
 Awesome! This guide is for you. Jellyfin plugins are written using the dotnet standard framework. What that means is you can write them in any language that implements the CLI or the DLI and can compile to net8.0. The examples on this page are in C# because that is what most of Jellyfin is written in, but F#, Visual Basic, and IronPython should all be compatible once compiled.
+
+## Security
+
+Report a vulnerability through this repository's private vulnerability
+reporting rather than in a public issue. [SECURITY.md](SECURITY.md) gives the
+route, what a report should carry, what is in scope, where the pairing plane
+and the server go instead, and what this plugin deliberately does not defend
+against. [docs/threat-model.md](docs/threat-model.md) names the adversaries,
+says what each one obtains and what stops them, and gathers the risks that
+stay after the defences are built.
+
+[docs/personal-data.md](docs/personal-data.md) is the other half and answers a
+different question: what this plugin moves when everything is working
+correctly, how much of it can be personal data, whose it is, where it goes, and
+what may never appear in a log.
 
 ## 0. Things you need to get started
 
