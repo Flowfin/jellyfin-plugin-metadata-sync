@@ -76,7 +76,7 @@ out.
 | `publish.yml` (Publish Release) | Present, different shape | `publish.yaml` here calls the shared plugin publish workflow rather than carrying its own steps. Same trade as the build row. |
 | `regenerate-manifest.yml` | Not adopted yet | Manual regeneration of a published manifest, which presumes a published manifest. Held by #88 with the freshness row. |
 | `scorecard.yml` (Scorecard supply-chain security) | Present | Arrived with the audit set. No difference to explain. |
-| `stryker-mutation.yml` (Stryker mutation testing) | Open question | #81 decides whether this is adopted and records the answer either way, so this row is deliberately not decided here. |
+| `stryker-mutation.yml` (Stryker mutation testing) | Not adopted for 1.0 | There is no decision code here to mutate yet, so a run would score the plugin skeleton and report nothing about the rules this repository cares about. The section below carries the reasoning and the condition that changes the answer. |
 | `unicode-guard.yml` | Present, required | Already in this repository's required set. No difference to explain. |
 | `wiki-lint.yml` (Wiki Lint) | Not adopted | This plugin has no wiki. The condition that changes the answer is a wiki being created for it. |
 | `zizmor.yml` (Workflow Security Analysis) | Present, not required | The audit runs here and reports. Putting it in the required set is #77. |
@@ -106,6 +106,37 @@ So the condition the row named as unmet is already met, and the honest state of
 this row is that the formatter is not adopted yet and has no issue on this board
 adopting it. That is a gap this document records rather than closes. The count
 moves as documents are added, so re-run it.
+
+## The mutation testing answer
+
+Not adopted for 1.0. This section is the recorded answer rather than a note
+that the question is still open, because an unexplained absence is the thing
+this document exists to remove.
+
+The reasoning is one line. The case for adopting the tool is that the decision
+code in this plan is pure by construction and its rules are exactly the kind a
+test can pass without really checking, and at the commit under review that
+decision code does not exist:
+
+    git ls-files -- 'Jellyfin.Plugin.MetadataSync/*.cs' | wc -l
+    5
+
+Those five files are a plugin entry point, a configuration holder, a
+configuration provider with its interface, and a service registration. A
+mutation run over them would score a skeleton. The score would be a number
+nobody would act on, and a repository that adopts the tool and then works
+nothing from its output has bought a report, which is the case against.
+
+The condition that changes the answer sits here next to it. Ask the question
+again once the pure planner asked for in #35 and the conflict resolver asked
+for in #44 are both in the tree and carry rules. Those two are the decision
+code the case for adoption is about, and until they exist the case cannot be
+tested against anything. The count above moves as the plugin grows, so re-run
+it rather than quoting this number.
+
+What the shape would be if the answer became yes is written in #81 and is not
+copied here, because a second copy of it would drift against the issue that
+decides it.
 
 ## One row per workflow here that the target does not have
 
