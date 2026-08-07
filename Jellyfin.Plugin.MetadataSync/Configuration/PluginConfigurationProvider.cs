@@ -20,7 +20,6 @@ public sealed class PluginConfigurationProvider : IPluginConfigurationProvider
     /// <param name="read">Reads the current configuration.</param>
     public PluginConfigurationProvider(Func<PluginConfiguration> read)
     {
-        ArgumentNullException.ThrowIfNull(read);
         _read = read;
     }
 
