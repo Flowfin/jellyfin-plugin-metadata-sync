@@ -4,66 +4,43 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using Jellyfin.Plugin.MetadataSync.Configuration;
 using Xunit;
 
 namespace Jellyfin.Plugin.MetadataSync.Tests;
 
 /// <summary>
-/// Every place the plugin refuses is tripped by a test here, and each one has a
-/// neighbour that differs by one thing and is not refused. A refusal nobody
-/// trips is a refusal nobody has seen happen, and it is indistinguishable from
+/// Every place the plugin refuses is named here, against the test that trips it
+/// and the neighbour that differs by one thing and is not refused. A refusal
+/// nobody trips has never been seen to happen, and it is indistinguishable from
 /// a line that cannot be reached at all.
 /// </summary>
 /// <remarks>
-/// The register below is the part that keeps working after this file is
-/// written. A guard added to the plugin later, with no entry here, fails the
-/// suite rather than waiting for somebody to notice it in review, and a guard
-/// deleted from the plugin leaves an entry with nothing behind it and fails
-/// the same way. Both directions, because a register that only grows stops
-/// describing the tree the moment a guard moves.
+/// This class holds no trip test of its own. The tests it names live beside the
+/// type they are about, and a second copy of an assertion is a copy that
+/// drifts. What is added here is the register, which is the part that keeps
+/// working after it is written: a guard added to the plugin later with no entry
+/// fails the suite rather than waiting for somebody to notice it in review, and
+/// a guard deleted while its entry stays fails it the same way. Both
+/// directions, because a register that only grows stops describing the tree the
+/// moment a guard moves.
 /// </remarks>
 public class RefusalTests
 {
     /// <summary>
-    /// One entry per refusal site the plugin carries, against the test that
-    /// trips it. The key is the file the site is in and the line of code that
-    /// refuses, so an edit to the guard itself shows up here rather than
-    /// passing under a line number that happens to still match.
+    /// One entry per refusal site the plugin carries. The key is the file the
+    /// site is in and the line of code that refuses, so an edit to the guard
+    /// itself shows up here rather than passing under a line number that
+    /// happens to still match.
     /// </summary>
-    private static readonly Dictionary<string, string> Register = new(StringComparer.Ordinal)
-    {
-        ["Configuration/PluginConfigurationProvider.cs -> ArgumentNullException.ThrowIfNull(read);"] =
-            nameof(AProviderBuiltWithNoReaderIsRefused),
-    };
-
-    /// <summary>
-    /// A provider handed nothing to read the configuration with refuses at
-    /// construction, naming the argument, rather than returning a provider that
-    /// throws later from somewhere that does not say what was missing.
-    /// </summary>
-    [Fact]
-    public void AProviderBuiltWithNoReaderIsRefused()
-    {
-        var refusal = Assert.Throws<ArgumentNullException>(
-            () => new PluginConfigurationProvider(null!));
-
-        Assert.Equal("read", refusal.ParamName);
-    }
-
-    /// <summary>
-    /// The neighbour. It differs from the refused case by one thing, which is
-    /// that the delegate is there, and it is not refused.
-    /// </summary>
-    [Fact]
-    public void AProviderBuiltWithAReaderIsNotRefused()
-    {
-        var configuration = new PluginConfiguration();
-
-        var provider = new PluginConfigurationProvider(() => configuration);
-
-        Assert.Same(configuration, provider.Configuration);
-    }
+    private static readonly Dictionary<string, (string TestClass, string Trip, string Neighbour, string DiffersBy)> Register =
+        new(StringComparer.Ordinal)
+        {
+            ["Configuration/PluginConfigurationProvider.cs -> ArgumentNullException.ThrowIfNull(read);"] =
+                (nameof(ServiceRegistrationTests),
+                 nameof(ServiceRegistrationTests.ConfigurationProviderRefusesAMissingReader),
+                 nameof(ServiceRegistrationTests.ConfigurationProviderReturnsTheConfigurationItWasGiven),
+                 "the delegate is there"),
+        };
 
     /// <summary>
     /// Every refusal site the scan finds in the plugin is named in the
@@ -82,8 +59,9 @@ public class RefusalTests
 
     /// <summary>
     /// Every entry in the register still has a site behind it. This is the leg
-    /// that catches a guard deleted while its entry stayed, which is also what
-    /// makes deleting the guard turn the suite red.
+    /// that catches a guard deleted while its entry stayed, and it is what
+    /// makes deleting a guard turn the suite red for the register as well as
+    /// for the test that tripped it.
     /// </summary>
     [Fact]
     public void EveryRegisterEntryStillHasASiteBehindIt()
@@ -99,23 +77,26 @@ public class RefusalTests
     }
 
     /// <summary>
-    /// The test each entry names is a test this class actually runs. What this
-    /// does not do is prove that the named test executes the site it is
-    /// registered against; nothing here reads coverage, and the pairing of a
-    /// site to a test is a claim made when the entry is written. The bound is
-    /// stated rather than left for a reader to discover.
+    /// The trip and the neighbour each entry names are tests the suite runs,
+    /// and they are two different tests.
     /// </summary>
+    /// <remarks>
+    /// What this does not do is prove that the named trip executes the site it
+    /// is registered against, or that the neighbour differs from it by the one
+    /// thing the entry says. Nothing here reads coverage, so both pairings are
+    /// claims made when the entry is written. The bound is stated rather than
+    /// left for a reader to discover.
+    /// </remarks>
     [Fact]
-    public void EveryRegisterEntryNamesATestThisClassRuns()
+    public void EveryRegisterEntryNamesTestsTheSuiteRuns()
     {
-        foreach (var entry in Register)
+        foreach (var entry in Register.Values)
         {
-            var method = typeof(RefusalTests).GetMethod(
-                entry.Value,
-                BindingFlags.Public | BindingFlags.Instance);
+            Assert.NotEqual(entry.Trip, entry.Neighbour);
+            Assert.False(string.IsNullOrWhiteSpace(entry.DiffersBy));
 
-            Assert.NotNull(method);
-            Assert.NotEmpty(method.GetCustomAttributes(typeof(FactAttribute), false));
+            AssertIsAFact(entry.TestClass, entry.Trip);
+            AssertIsAFact(entry.TestClass, entry.Neighbour);
         }
     }
 
@@ -127,6 +108,18 @@ public class RefusalTests
     public void TheScanActuallyReadsThePluginSources()
     {
         Assert.NotEmpty(PluginSourceFiles());
+    }
+
+    private static void AssertIsAFact(string testClass, string testMethod)
+    {
+        var type = typeof(RefusalTests).Assembly.GetType(
+            $"{typeof(RefusalTests).Namespace}.{testClass}");
+        Assert.NotNull(type);
+
+        var method = type.GetMethod(testMethod, BindingFlags.Public | BindingFlags.Instance);
+        Assert.NotNull(method);
+
+        Assert.NotEmpty(method.GetCustomAttributes(typeof(FactAttribute), false));
     }
 
     /// <summary>
