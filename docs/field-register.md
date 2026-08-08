@@ -116,6 +116,49 @@ when a server line renames a property.
 | `Path` | `MediaBrowser.Controller.Entities.BaseItem` | - |
 | `DateCreated` | `MediaBrowser.Controller.Entities.BaseItem` | - |
 
+## Which lock governs a row
+
+An operator can already tell the server that a field is theirs. Two instruments
+do it and they are not the same size. The item-level lock claims the whole item.
+The field-level lock claims one of nine named fields, and the nine are the
+server's own set rather than this register's, so most rows here have no lock of
+their own and are claimed only by locking the item.
+
+A lock refuses a write on this server whatever the direction says and whatever
+the configuration says. The mover checks the item first and the field second,
+and it refuses before it reaches the writer.
+
+
+| Field | The lock that governs it |
+| --- | --- |
+| `Name` | `MetadataField.Name` |
+| `ForcedSortName` | the item-level lock only |
+| `Overview` | `MetadataField.Overview` |
+| `Tagline` | the item-level lock only |
+| `Genres` | `MetadataField.Genres` |
+| `Tags` | `MetadataField.Tags` |
+| `Studios` | `MetadataField.Studios` |
+| `ProductionLocations` | `MetadataField.ProductionLocations` |
+| `People` | `MetadataField.Cast` |
+| `OfficialRating` | `MetadataField.OfficialRating` |
+| `CustomRating` | the item-level lock only |
+| `CommunityRating` | the item-level lock only |
+| `CriticRating` | the item-level lock only |
+| `PremiereDate` | the item-level lock only |
+| `ProductionYear` | the item-level lock only |
+| `EndDate` | the item-level lock only |
+| `IndexNumber` | the item-level lock only |
+| `ParentIndexNumber` | the item-level lock only |
+| `SeriesName` | the item-level lock only |
+| `ProviderIds` | the item-level lock only |
+| `RunTimeTicks` | `MetadataField.Runtime` |
+| `Container` | the item-level lock only |
+| `Size` | the item-level lock only |
+| `Width` | the item-level lock only |
+| `Height` | the item-level lock only |
+| `Path` | the item-level lock only |
+| `DateCreated` | the item-level lock only |
+
 ## What this register does not do
 
 It does not say which of two values wins. A field that moves can still be a
@@ -133,6 +176,18 @@ settles it.
 
 It does not cover images. Image bytes are a separate refusal with a separate
 reason, and #14 is where the rows for them are written.
+
+It does not record a lock refusal. A lock stops the write and nothing writes
+down that it did, because there is nowhere yet to write it; #48 is the conflict
+log that entry is owed to. Until then a refused write is visible to the caller
+that asked for it and to nobody else.
+
+It does not know the peer's lock state. The lock table above is about locks on
+this server. A field the operator locked on the other server has to refuse a
+send rather than a write, which means the answer this plugin gets back has to
+carry that state, and it comes from a contract this plugin does not yet
+reference. Nothing here covers that direction, and a reader should assume it is
+uncovered rather than covered elsewhere.
 
 ## What 1.0 does not carry, and which of those can change
 

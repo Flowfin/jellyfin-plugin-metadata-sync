@@ -8,6 +8,7 @@ using Jellyfin.Plugin.MetadataSync.Configuration;
 using Jellyfin.Plugin.MetadataSync.Fields;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
+using MediaBrowser.Model.Entities;
 using Xunit;
 
 namespace Jellyfin.Plugin.MetadataSync.Tests;
@@ -45,6 +46,30 @@ public class FieldRegisterTests
               "class": "Descriptive",
               "fromTheFile": false,
               "reason": "A row whose kind group the register never declares."
+            }
+          ]
+        }
+        """;
+
+    /// <summary>
+    /// A register whose one row names a lock the server does not have. The
+    /// near-miss is a real field name that is not a lockable one:
+    /// <c>Description</c> is what somebody writes for the overview, and the
+    /// server's lockable set spells it <c>Overview</c>.
+    /// </summary>
+    internal const string LockTheServerDoesNotHaveRegister = """
+        {
+          "kindGroups": { "all": ["Movie"] },
+          "rows": [
+            {
+              "field": "Overview",
+              "declaredOn": "MediaBrowser.Controller.Entities.BaseItem",
+              "kinds": "all",
+              "moves": true,
+              "lock": "Description",
+              "class": "Descriptive",
+              "fromTheFile": false,
+              "reason": "A row naming a lock the server does not let an operator set."
             }
           ]
         }
@@ -268,6 +293,7 @@ public class FieldRegisterTests
         {
             Assert.Contains(RowLine(row), text, StringComparison.Ordinal);
             Assert.Contains(WhereLine(row), text, StringComparison.Ordinal);
+            Assert.Contains(LockLine(row), text, StringComparison.Ordinal);
         }
 
         foreach (var group in FieldRegister.KindGroups)
@@ -282,10 +308,123 @@ public class FieldRegisterTests
         }
 
         // Every table row in the document begins this way, and each field appears
-        // in two of the three tables. A row the register does not have would pass
+        // in three of the four tables. A row the register does not have would pass
         // every check above and be caught only by the count.
         var tableRows = text.Split('\n').Count(l => l.StartsWith("| `", StringComparison.Ordinal));
-        Assert.Equal((FieldRegister.Rows.Count * 2) + FieldRegister.KindGroups.Count, tableRows);
+        Assert.Equal((FieldRegister.Rows.Count * 3) + FieldRegister.KindGroups.Count, tableRows);
+    }
+
+    /// <summary>
+    /// The nine names the server lets an operator lock are each claimed by
+    /// exactly one row, in both directions. A lock naming no row refuses
+    /// nothing, and a second row under one lock makes the answer to "may this
+    /// field be written" depend on which row was read.
+    /// </summary>
+    [Fact]
+    public void EachOfTheNineLockableNamesGovernsExactlyOneRow()
+    {
+        var server = Enum.GetNames<MetadataField>().ToHashSet(StringComparer.Ordinal);
+
+        var claimed = FieldRegister.Rows
+            .Where(r => r.Lock is not null)
+            .GroupBy(r => r.Lock!.Value.ToString(), StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Select(r => r.Field).ToList(), StringComparer.Ordinal);
+
+        var unclaimed = server.Except(claimed.Keys, StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
+        var claimedTwice = claimed.Where(p => p.Value.Count > 1).Select(p => p.Key).Order(StringComparer.Ordinal).ToList();
+
+        Assert.Empty(unclaimed);
+        Assert.Empty(claimedTwice);
+    }
+
+    /// <summary>
+    /// A field the operator locked is not written. Locked on exactly the field
+    /// being written rather than on everything, because a fixture that locked
+    /// the whole set would pass against a mover that read the wrong entry.
+    /// </summary>
+    /// <remarks>
+    /// Five of the nine lockable names govern a row that moves and are reachable
+    /// here. The other four, <c>Genres</c>, <c>Studios</c>, <c>Cast</c> and
+    /// <c>Runtime</c>, govern rows the register refuses to move at all, so the
+    /// register refuses before the lock is ever read. That is a stronger refusal
+    /// and not a gap, and it is why this covers five names rather than nine:
+    /// asserting a lock on a field nothing can write would be asserting about a
+    /// line no arrangement reaches.
+    /// </remarks>
+    [Theory]
+    [InlineData("Name", MetadataField.Name)]
+    [InlineData("Overview", MetadataField.Overview)]
+    [InlineData("Tags", MetadataField.Tags)]
+    [InlineData("ProductionLocations", MetadataField.ProductionLocations)]
+    [InlineData("OfficialRating", MetadataField.OfficialRating)]
+    public void AFieldTheOperatorLockedIsNotWritten(string field, MetadataField governing)
+    {
+        var row = FieldRegister.Find(field);
+        Assert.NotNull(row);
+        Assert.Equal(governing, row.Lock);
+
+        var from = new Movie();
+        var to = new Movie { LockedFields = new[] { governing } };
+        var before = Read(to, field);
+
+        var refused = Assert.Throws<FieldLockedException>(() => FieldMover.Move(field, from, to));
+
+        Assert.Contains(governing.ToString(), refused.Message, StringComparison.Ordinal);
+        Assert.Equal(before, Read(to, field));
+    }
+
+    /// <summary>
+    /// The near-miss for the lock. The same item, locked on one field, and the
+    /// field beside it written. A mover that read the lock set as a single
+    /// answer for the whole item would refuse this too.
+    /// </summary>
+    [Fact]
+    public void AFieldLockedOnAnotherRowDoesNotRefuseThisOne()
+    {
+        var from = new Movie { Overview = "What the peer says about it" };
+        var to = new Movie { Overview = "ours", LockedFields = new[] { MetadataField.Name } };
+
+        FieldMover.Move("Overview", from, to);
+
+        Assert.Equal("What the peer says about it", to.Overview);
+    }
+
+    /// <summary>
+    /// An operator who locked the item said nothing on it is ours, so no field
+    /// is written, including the ones the server has no field-level lock for.
+    /// </summary>
+    /// <remarks>
+    /// <c>Tagline</c> is the field chosen here for that reason: it has no lock
+    /// of its own, so it is the row that a mover checking only the nine names
+    /// would write straight through an item the operator had locked outright.
+    /// </remarks>
+    [Fact]
+    public void NoFieldIsWrittenOntoAnItemTheOperatorLocked()
+    {
+        var row = FieldRegister.Find("Tagline");
+        Assert.NotNull(row);
+        Assert.Null(row.Lock);
+
+        var from = new Movie { Tagline = "what the peer says" };
+        var to = new Movie { Tagline = "ours", IsLocked = true };
+
+        var refused = Assert.Throws<FieldLockedException>(() => FieldMover.Move("Tagline", from, to));
+
+        Assert.Contains("Tagline", refused.Message, StringComparison.Ordinal);
+        Assert.Equal("ours", to.Tagline);
+    }
+
+    /// <summary>
+    /// A row naming a lock the server does not have is refused when the register
+    /// is read. Read leniently it would be a row that names no lock at all,
+    /// which is the row that silently writes over an operator's decision.
+    /// </summary>
+    [Fact]
+    public void ARowNamingALockTheServerDoesNotHaveIsRefused()
+    {
+        var refused = Assert.Throws<InvalidOperationException>(() => FieldRegister.Parse(LockTheServerDoesNotHaveRegister));
+
+        Assert.Contains("Description", refused.Message, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -398,6 +537,25 @@ public class FieldRegisterTests
         row.Class,
         row.FromTheFile ? "yes" : "no",
         row.Reason);
+
+    /// <summary>
+    /// Reads a field back off an item by name, so a refusal can be asserted to
+    /// have left the value alone rather than only to have thrown.
+    /// </summary>
+    private static object? Read(BaseItem item, string field)
+    {
+        var property = typeof(BaseItem).GetProperty(field);
+        Assert.NotNull(property);
+
+        var value = property.GetValue(item);
+        return value is string[] strings ? string.Join('', strings) : value;
+    }
+
+    private static string LockLine(FieldRow row) => string.Format(
+        CultureInfo.InvariantCulture,
+        "| `{0}` | {1} |",
+        row.Field,
+        row.Lock is null ? "the item-level lock only" : "`MetadataField." + row.Lock + "`");
 
     private static string WhereLine(FieldRow row) => string.Format(
         CultureInfo.InvariantCulture,

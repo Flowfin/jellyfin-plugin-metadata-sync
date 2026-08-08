@@ -12,6 +12,7 @@
       "declaredOn": "MediaBrowser.Controller.Entities.BaseItem",
       "kinds": "all",
       "moves": true,
+      "lock": "Name",
       "class": "Descriptive",
       "fromTheFile": false,
       "reason": "The title an operator reads first and corrects by hand on whichever server they were looking at, which is the case this plugin exists for."
@@ -30,6 +31,7 @@
       "declaredOn": "MediaBrowser.Controller.Entities.BaseItem",
       "kinds": "all",
       "moves": true,
+      "lock": "Overview",
       "class": "Descriptive",
       "fromTheFile": false,
       "reason": "Free text about the item and not about either copy of it, so the same value is right on both servers."
@@ -48,6 +50,7 @@
       "declaredOn": "MediaBrowser.Controller.Entities.BaseItem",
       "kinds": "all",
       "moves": false,
+      "lock": "Genres",
       "class": "Descriptive",
       "fromTheFile": false,
       "reason": "A genre the receiving server has never seen becomes a genre entity there, which is growth of that library rather than a value on one item. Whether that may happen is decision 5 in #1 and is held by #15, and a row that moved this field before the answer exists would settle it."
@@ -57,6 +60,7 @@
       "declaredOn": "MediaBrowser.Controller.Entities.BaseItem",
       "kinds": "all",
       "moves": true,
+      "lock": "Tags",
       "class": "Descriptive",
       "fromTheFile": false,
       "reason": "Tags are free strings held on the item and the server builds no entity from them, which is what separates this row from genres and studios."
@@ -66,6 +70,7 @@
       "declaredOn": "MediaBrowser.Controller.Entities.BaseItem",
       "kinds": "video",
       "moves": false,
+      "lock": "Studios",
       "class": "Descriptive",
       "fromTheFile": false,
       "reason": "A studio the receiving server has never seen becomes a studio entity there. Same condition as genres: decision 5 in #1, held by #15."
@@ -75,6 +80,7 @@
       "declaredOn": "MediaBrowser.Controller.Entities.BaseItem",
       "kinds": "video",
       "moves": true,
+      "lock": "ProductionLocations",
       "class": "Descriptive",
       "fromTheFile": false,
       "reason": "Strings the server builds no entity from, so this row moves where genres and studios wait. The difference is exactly that this one creates nothing on the receiving side."
@@ -84,6 +90,7 @@
       "reachedBy": "MediaBrowser.Controller.Library.ILibraryManager",
       "kinds": "video",
       "moves": false,
+      "lock": "Cast",
       "class": "Descriptive",
       "fromTheFile": false,
       "reason": "People are entities of their own reached through the library rather than a property on the item, and a person the receiving server has never seen is created there. Same condition as genres and studios: decision 5 in #1, held by #15."
@@ -93,6 +100,7 @@
       "declaredOn": "MediaBrowser.Controller.Entities.BaseItem",
       "kinds": "all",
       "moves": true,
+      "lock": "OfficialRating",
       "class": "Structural",
       "fromTheFile": false,
       "reason": "The field an operator most often fixes on one server only, so it moves. It is structural rather than descriptive because a wrong value changes what a restricted account is allowed to see, which is the row to read first when deciding whether to apply a pass."
@@ -192,6 +200,7 @@
       "declaredOn": "MediaBrowser.Controller.Entities.BaseItem",
       "kinds": "playable",
       "moves": false,
+      "lock": "Runtime",
       "class": "Descriptive",
       "fromTheFile": true,
       "reason": "The length of the file this server holds. The peer's copy is a different file, so the peer's runtime describes the peer's copy and would be a lie about ours. This is the row the whole from-the-file class exists for."
