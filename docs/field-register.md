@@ -133,3 +133,41 @@ settles it.
 
 It does not cover images. Image bytes are a separate refusal with a separate
 reason, and #14 is where the rows for them are written.
+
+## What 1.0 does not carry, and which of those can change
+
+Two different kinds of absence sit under this heading and an operator has to be
+able to tell them apart, because they read identically in a release note and
+they are not the same promise. A permanent non-goal is something this plugin
+will not do, in any release, because doing it would be wrong. A scope decision
+is something 1.0 does not do, with a stated condition that would let a later
+release do it.
+
+Image bytes are the permanent non-goal. Their rows and the reason are #14.
+
+Collection membership and playlist membership are scope decisions.
+
+Neither is a field on an item. A collection and a playlist are items whose
+content is a set of references to other items, so carrying one means resolving
+every member, and a member that does not resolve leaves a partial collection
+that says nothing about why it is short. From the other server that is
+indistinguishable from a member somebody removed deliberately, so the two sides
+oscillate: this side sends the set it could resolve, the peer reads the missing
+members as removals, and the next pass sends the shortened set back. Prior art
+in this space ships that behaviour and documents it as a caveat rather than
+designing it away.
+
+Playlists carry a second reason of their own. A playlist usually belongs to a
+user, and what this plugin may hold and move about a user is decided in #18
+rather than here.
+
+The condition that would let a later release carry collections is the unmatched
+register in #29 being good enough that a partial collection can explain itself.
+An operator has to be able to see, per absent member, why it is absent, and to
+tell that apart from a member the other operator removed. Until an incomplete
+collection can say which of the two it is, carrying one moves a set nobody
+chose. Playlists wait on that and on #18 as well.
+
+The register carries no row for either, and no kind group names `BoxSet` or
+`Playlist`. The suite refuses a group that does, rather than leaving this
+paragraph to be remembered.
