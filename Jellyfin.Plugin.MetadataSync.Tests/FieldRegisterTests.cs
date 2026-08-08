@@ -124,6 +124,42 @@ public class FieldRegisterTests
     }
 
     /// <summary>
+    /// Collection membership and playlist membership are out of 1.0, and this
+    /// is where that stops being a sentence in a document. A kind group naming
+    /// <c>BoxSet</c> or <c>Playlist</c> makes every row that names the group
+    /// declare a field that moves on an item kind this release does not carry.
+    /// </summary>
+    /// <remarks>
+    /// The near-miss is a container kind added beside the container kinds that
+    /// are already there: <c>MusicAlbum</c> and <c>MusicArtist</c> sit in the
+    /// <c>all</c> group today, so <c>BoxSet</c> next to them reads like the
+    /// same sort of entry and is the one somebody adds without deciding
+    /// anything. What this cannot catch is a collection reached through a
+    /// field rather than through a kind, because the register has no column
+    /// that would say so, and it cannot catch a kind the server adds later for
+    /// the same idea under another name.
+    /// </remarks>
+    [Fact]
+    public void NoKindGroupNamesACollectionOrAPlaylist()
+    {
+        var outOfScope = new[] { "BoxSet", "Playlist" };
+
+        var naming = FieldRegister.KindGroups
+            .SelectMany(g => g.Value.Select(k => new { Group = g.Key, Kind = k }))
+            .Where(e => outOfScope.Contains(e.Kind, StringComparer.Ordinal))
+            .Select(e => e.Group + " names " + e.Kind)
+            .ToList();
+
+        Assert.Empty(naming);
+
+        // The two names above are the server's own. A line that renames either
+        // one turns this guard into a scan for a string nothing can match, so
+        // the vocabulary is read back out of the server rather than trusted.
+        var kinds = Enum.GetNames<BaseItemKind>().ToHashSet(StringComparer.Ordinal);
+        Assert.All(outOfScope, k => Assert.Contains(k, kinds));
+    }
+
+    /// <summary>
     /// This is the leg the register exists for. The set of fields the writing
     /// code can reach is compared with the set of rows that declare a field
     /// moves, in both directions, so a writer added without a row fails and a

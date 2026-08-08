@@ -22,6 +22,27 @@ different question: what this plugin moves when everything is working
 correctly, how much of it can be personal data, whose it is, where it goes, and
 what may never appear in a log.
 
+## What does not sync
+
+Read this before installing. This plugin moves a declared set of metadata
+fields between two paired servers and nothing outside that set. Which fields,
+and the reason for each one, is
+[docs/field-register.md](docs/field-register.md); a field with no row there does
+not move whatever the configuration says.
+
+Two things an operator is likely to expect are deliberately absent from 1.0.
+Collections and playlists do not sync. A collection is a set of references to
+other items, so carrying one means resolving every member, and a member that
+does not resolve on the other server looks exactly like a member somebody
+removed on purpose. A sync that cannot tell those two apart shortens the
+collection a little more on each pass. Playlists have the same problem and
+usually belong to a user besides.
+
+That is a scope decision rather than a refusal for all time, and the register
+states what would have to be true before a later release could carry them.
+Image bytes are the separate case: they never move, for their own reason, which
+the register also states.
+
 ## 0. Things you need to get started
 
 - [Dotnet SDK 9.0](https://dotnet.microsoft.com/en-us/download/dotnet)
