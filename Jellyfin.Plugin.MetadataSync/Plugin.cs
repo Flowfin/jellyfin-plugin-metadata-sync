@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using Jellyfin.Plugin.MetadataSync.Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
@@ -36,17 +35,6 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// Gets the current plugin instance.
     /// </summary>
     public static Plugin? Instance { get; private set; }
-
-    /// <summary>
-    /// Derives a matching key for an item from where its file sits on disk.
-    /// This is the mistake #28 exists against and it is here to be refused.
-    /// </summary>
-    /// <param name="itemPath">The item's path on this server.</param>
-    /// <returns>A key derived from the filename.</returns>
-    public static string MatchingKeyFor(string itemPath)
-    {
-        return Path.GetFileNameWithoutExtension(itemPath) ?? string.Empty;
-    }
 
     /// <inheritdoc />
     public IEnumerable<PluginPageInfo> GetPages()
