@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using MediaBrowser.Model.Entities;
 
 namespace Jellyfin.Plugin.MetadataSync.Fields;
 
@@ -17,6 +18,7 @@ public sealed class FieldRow
         bool moves,
         FieldClass fieldClass,
         bool fromTheFile,
+        MetadataField? governingLock,
         string reason)
     {
         Field = field;
@@ -27,6 +29,7 @@ public sealed class FieldRow
         Moves = moves;
         Class = fieldClass;
         FromTheFile = fromTheFile;
+        Lock = governingLock;
         Reason = reason;
     }
 
@@ -74,6 +77,18 @@ public sealed class FieldRow
     /// the peer's value describes the peer's copy and never moves.
     /// </summary>
     public bool FromTheFile { get; }
+
+    /// <summary>
+    /// Gets the server's own lock that governs this field, or null where the
+    /// server has no lock for it and the item-level lock is the only one.
+    /// </summary>
+    /// <remarks>
+    /// The server's lockable set is nine names and the register is wider than
+    /// it, so most rows are null here. Null is not "unlocked": it means the
+    /// operator can only claim this field by locking the whole item, which is
+    /// the coarser instrument and the one the mover checks first.
+    /// </remarks>
+    public MetadataField? Lock { get; }
 
     /// <summary>
     /// Gets the sentence this row is argued by. A row with no reason is a row

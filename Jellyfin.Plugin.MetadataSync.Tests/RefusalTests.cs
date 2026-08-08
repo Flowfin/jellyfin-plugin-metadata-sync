@@ -9,6 +9,7 @@ using Jellyfin.Plugin.MetadataSync.Configuration;
 using Jellyfin.Plugin.MetadataSync.Fields;
 using Jellyfin.Plugin.MetadataSync.Matching;
 using MediaBrowser.Controller.Entities.Movies;
+using MediaBrowser.Model.Entities;
 using Xunit;
 
 namespace Jellyfin.Plugin.MetadataSync.Tests;
@@ -65,6 +66,27 @@ public class RefusalTests
                  nameof(FieldRegisterTests.ADeclaredFieldIsWrittenOntoTheItem),
                  "the item the value is written to is there",
                  () => FieldMover.Move("Overview", new Movie(), null!)),
+
+            ["Fields/FieldMover.cs -> throw new FieldLockedException(TheWholeItemIsLocked(field));"] =
+                (nameof(FieldRegisterTests),
+                 nameof(FieldRegisterTests.NoFieldIsWrittenOntoAnItemTheOperatorLocked),
+                 nameof(FieldRegisterTests.ADeclaredFieldIsWrittenOntoTheItem),
+                 "the operator has not locked the receiving item",
+                 () => FieldMover.Move("Tagline", new Movie(), new Movie { IsLocked = true })),
+
+            ["Fields/FieldMover.cs -> throw new FieldLockedException(TheFieldIsLocked(field, governing));"] =
+                (nameof(FieldRegisterTests),
+                 nameof(FieldRegisterTests.AFieldTheOperatorLockedIsNotWritten),
+                 nameof(FieldRegisterTests.AFieldLockedOnAnotherRowDoesNotRefuseThisOne),
+                 "the lock the operator set is not the one governing this field",
+                 () => FieldMover.Move("Overview", new Movie(), new Movie { LockedFields = new[] { MetadataField.Overview } })),
+
+            ["Fields/FieldRegister.cs -> throw new InvalidOperationException(NoSuchLock(row));"] =
+                (nameof(FieldRegisterTests),
+                 nameof(FieldRegisterTests.ARowNamingALockTheServerDoesNotHaveIsRefused),
+                 nameof(FieldRegisterTests.TheRegisterThatShipsInTheAssemblyLoads),
+                 "the lock the row names is one the server has",
+                 () => FieldRegister.Parse(FieldRegisterTests.LockTheServerDoesNotHaveRegister)),
 
             ["Fields/FieldRegister.cs -> throw new FieldNotDeclaredException(NoRowAtAll(field));"] =
                 (nameof(FieldRegisterTests),

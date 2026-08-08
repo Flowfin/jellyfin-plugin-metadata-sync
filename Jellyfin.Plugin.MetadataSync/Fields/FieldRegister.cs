@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using MediaBrowser.Model.Entities;
 
 namespace Jellyfin.Plugin.MetadataSync.Fields;
 
@@ -156,10 +157,34 @@ public static class FieldRegister
                 row.Moves,
                 Enum.Parse<FieldClass>(row.Class, ignoreCase: false),
                 row.FromTheFile,
+                GoverningLock(row),
                 row.Reason));
         }
 
         return new RegisterContents(new ReadOnlyCollection<FieldRow>(rows), groups);
+    }
+
+    /// <summary>
+    /// Resolves the server lock a row names, refusing a name the server does
+    /// not have. A lock nobody can set is a lock that refuses nothing, and it
+    /// reads in the register exactly like one that works.
+    /// </summary>
+    private static MetadataField? GoverningLock(RegisterRow row)
+    {
+        if (row.Lock is null)
+        {
+            return null;
+        }
+
+        // Parsed by name and never by number, because Enum.TryParse reads "3"
+        // as a member and a register saying 3 declares nothing a reader can
+        // check.
+        if (Array.IndexOf(Enum.GetNames<MetadataField>(), row.Lock) < 0)
+        {
+            throw new InvalidOperationException(NoSuchLock(row));
+        }
+
+        return Enum.Parse<MetadataField>(row.Lock, ignoreCase: false);
     }
 
     private static string NoRowAtAll(string field) => string.Format(
@@ -180,6 +205,12 @@ public static class FieldRegister
 
     private static string NothingToRead() =>
         "The field register text describes no register, so no field is declared and nothing may move.";
+
+    private static string NoSuchLock(RegisterRow row) => string.Format(
+        CultureInfo.InvariantCulture,
+        "The row for '{0}' names the lock '{1}', which is not a field the server lets an operator lock.",
+        row.Field,
+        row.Lock);
 
     private static string NoSuchKindGroup(RegisterRow row) => string.Format(
         CultureInfo.InvariantCulture,
@@ -234,6 +265,9 @@ public static class FieldRegister
 
         [JsonPropertyName("moves")]
         public bool Moves { get; init; }
+
+        [JsonPropertyName("lock")]
+        public string? Lock { get; init; }
 
         [JsonPropertyName("class")]
         public string Class { get; init; } = string.Empty;
