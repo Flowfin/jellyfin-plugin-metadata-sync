@@ -19,7 +19,8 @@ public sealed class FieldRow
         FieldClass fieldClass,
         bool fromTheFile,
         MetadataField? governingLock,
-        string reason)
+        string reason,
+        string operatorReason)
     {
         Field = field;
         DeclaredOn = declaredOn;
@@ -31,6 +32,7 @@ public sealed class FieldRow
         FromTheFile = fromTheFile;
         Lock = governingLock;
         Reason = reason;
+        OperatorReason = operatorReason;
     }
 
     /// <summary>
@@ -95,4 +97,18 @@ public sealed class FieldRow
     /// nobody can disagree with later.
     /// </summary>
     public string Reason { get; }
+
+    /// <summary>
+    /// Gets the same decision written for the operator whose library this runs
+    /// against, rather than for whoever maintains the register.
+    /// </summary>
+    /// <remarks>
+    /// It is a field of the source rather than something a renderer derives,
+    /// because no generator can turn "Structural" into a sentence somebody can
+    /// disagree with. The two sentences answer different questions: the reason
+    /// above says why the row is what it is, and this one says what that means
+    /// for a library. A row where they are the same sentence has one of the two
+    /// audiences wrong.
+    /// </remarks>
+    public string OperatorReason { get; }
 }

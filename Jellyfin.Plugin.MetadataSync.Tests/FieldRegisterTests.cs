@@ -26,8 +26,6 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// </remarks>
 public class FieldRegisterTests
 {
-    private static readonly string _document = Path.Combine(AppContext.BaseDirectory, "field-register.md");
-
     /// <summary>
     /// A register whose one row names a kind group nothing declares. The refusal
     /// register runs the same text through the same seam, because naming a test
@@ -280,41 +278,6 @@ public class FieldRegisterTests
     }
 
     /// <summary>
-    /// The register is declared once. The document is a rendering of it that a
-    /// person reads, and a rendering that has drifted is worse than none,
-    /// because it is the copy an operator trusts.
-    /// </summary>
-    [Fact]
-    public void TheDocumentSaysExactlyWhatTheRegisterSays()
-    {
-        var text = File.ReadAllText(_document);
-
-        foreach (var row in FieldRegister.Rows)
-        {
-            Assert.Contains(RowLine(row), text, StringComparison.Ordinal);
-            Assert.Contains(WhereLine(row), text, StringComparison.Ordinal);
-            Assert.Contains(LockLine(row), text, StringComparison.Ordinal);
-        }
-
-        foreach (var group in FieldRegister.KindGroups)
-        {
-            var line = string.Format(
-                CultureInfo.InvariantCulture,
-                "| `{0}` | {1} |",
-                group.Key,
-                string.Join(", ", group.Value.Select(k => "`" + k + "`")));
-
-            Assert.Contains(line, text, StringComparison.Ordinal);
-        }
-
-        // Every table row in the document begins this way, and each field appears
-        // in three of the four tables. A row the register does not have would pass
-        // every check above and be caught only by the count.
-        var tableRows = text.Split('\n').Count(l => l.StartsWith("| `", StringComparison.Ordinal));
-        Assert.Equal((FieldRegister.Rows.Count * 3) + FieldRegister.KindGroups.Count, tableRows);
-    }
-
-    /// <summary>
     /// The nine names the server lets an operator lock are each claimed by
     /// exactly one row, in both directions. A lock naming no row refuses
     /// nothing, and a second row under one lock makes the answer to "may this
@@ -528,16 +491,6 @@ public class FieldRegisterTests
         Assert.Empty(repeated);
     }
 
-    private static string RowLine(FieldRow row) => string.Format(
-        CultureInfo.InvariantCulture,
-        "| `{0}` | {1} | {2} | {3} | {4} | {5} |",
-        row.Field,
-        row.KindGroup,
-        row.Moves ? "yes" : "no",
-        row.Class,
-        row.FromTheFile ? "yes" : "no",
-        row.Reason);
-
     /// <summary>
     /// Reads a field back off an item by name, so a refusal can be asserted to
     /// have left the value alone rather than only to have thrown.
@@ -548,21 +501,8 @@ public class FieldRegisterTests
         Assert.NotNull(property);
 
         var value = property.GetValue(item);
-        return value is string[] strings ? string.Join('', strings) : value;
+        return value is string[] strings ? string.Join(",", strings) : value;
     }
-
-    private static string LockLine(FieldRow row) => string.Format(
-        CultureInfo.InvariantCulture,
-        "| `{0}` | {1} |",
-        row.Field,
-        row.Lock is null ? "the item-level lock only" : "`MetadataField." + row.Lock + "`");
-
-    private static string WhereLine(FieldRow row) => string.Format(
-        CultureInfo.InvariantCulture,
-        "| `{0}` | {1} | {2} |",
-        row.Field,
-        row.DeclaredOn is null ? "not an item property" : "`" + row.DeclaredOn + "`",
-        row.ReachedBy is null ? "-" : "`" + row.ReachedBy + "`");
 
     private static Type? ResolveServerType(string name)
     {

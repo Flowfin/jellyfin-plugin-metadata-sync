@@ -28,7 +28,10 @@ Read this before installing. This plugin moves a declared set of metadata
 fields between two paired servers and nothing outside that set. Which fields,
 and the reason for each one, is
 [docs/field-register.md](docs/field-register.md); a field with no row there does
-not move whatever the configuration says.
+not move whatever the configuration says. The table under
+[what each row means for your library](docs/field-register.md#what-each-row-means-for-your-library)
+is the one to read first: it answers, per field, whether what you wrote here
+survives and whether what you fixed here reaches the other server.
 
 Two things an operator is likely to expect are deliberately absent from 1.0.
 Collections and playlists do not sync. A collection is a set of references to

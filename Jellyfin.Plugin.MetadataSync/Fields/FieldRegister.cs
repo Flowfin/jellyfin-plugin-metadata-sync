@@ -158,7 +158,8 @@ public static class FieldRegister
                 Enum.Parse<FieldClass>(row.Class, ignoreCase: false),
                 row.FromTheFile,
                 GoverningLock(row),
-                row.Reason));
+                row.Reason,
+                row.OperatorReason));
         }
 
         return new RegisterContents(new ReadOnlyCollection<FieldRow>(rows), groups);
@@ -265,6 +266,9 @@ public static class FieldRegister
 
         [JsonPropertyName("moves")]
         public bool Moves { get; init; }
+
+        [JsonPropertyName("operatorReason")]
+        public string OperatorReason { get; init; } = string.Empty;
 
         [JsonPropertyName("lock")]
         public string? Lock { get; init; }
