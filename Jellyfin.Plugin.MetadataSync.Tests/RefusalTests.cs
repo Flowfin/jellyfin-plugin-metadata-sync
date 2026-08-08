@@ -47,7 +47,7 @@ public class RefusalTests
                  nameof(ServiceRegistrationTests.ConfigurationProviderRefusesAMissingReader),
                  nameof(ServiceRegistrationTests.ConfigurationProviderReturnsTheConfigurationItWasGiven),
                  "the delegate is there",
-                 () => new PluginConfigurationProvider(null!)),
+                 () => new PluginConfigurationProvider(() => new PluginConfiguration())),
         };
 
     /// <summary>
