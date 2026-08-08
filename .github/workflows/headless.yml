@@ -1,0 +1,77 @@
+# The suite, run where the headless policy says it must hold: a container with
+# no display server and no network at all. `docs/testing.md` states the policy
+# and `docs/refused-tests.md` is the register of what it refuses; this is the
+# route that makes the network half of it a fact rather than a claim.
+#
+# The required check `call / test` runs the same suite on a hosted runner that
+# does have a network, so a test that quietly reached one would pass there and
+# nobody would learn. This job is the one that would fail.
+#
+# Two steps rather than one. The restore and the build need the package feed, so
+# they run with a network and are not the thing under test. The test run gets
+# `--network none` and `--no-build`, so what is measured is the suite, not the
+# toolchain fetching its own dependencies.
+#
+# The image is pinned by digest rather than by tag, for the same reason the
+# actions are pinned by commit: a tag is a name somebody else can repoint.
+name: Headless suite
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ "**" ]
+
+# Deny-all at workflow level; the job below takes only what it needs.
+permissions: {}
+
+# An audit run rather than a publish, so cancelling a superseded run is safe.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  headless:
+    name: Suite with no display and no network
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      SDK_IMAGE: mcr.microsoft.com/dotnet/sdk@sha256:2205fd3a7cf5e422c58398a9968aa8b5041fdbb47c76574fe631082e4cbfa2b8
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Restore and build, with a network
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -v "${PWD}:/src" -w /src \
+            -e DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+            -e DOTNET_NOLOGO=1 \
+            "${SDK_IMAGE}" \
+            dotnet build Jellyfin.Plugin.MetadataSync.sln --configuration Release
+
+      - name: Run the suite with no network
+        # --network none removes every interface but the loopback one, so a test
+        # that opened a socket to anything outside the container fails here and
+        # passes on the hosted runner. No DISPLAY is set and no X server exists in
+        # the image, so the display half is the same kind of fact.
+        run: |
+          set -euo pipefail
+          docker run --rm --network none \
+            -v "${PWD}:/src" -w /src \
+            -e DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+            -e DOTNET_NOLOGO=1 \
+            "${SDK_IMAGE}" \
+            dotnet test Jellyfin.Plugin.MetadataSync.sln --configuration Release --no-build
+
+      - name: Say what the run proves
+        # A green check that says nothing about its own reach is a check somebody
+        # reads as covering more than it does.
+        run: |
+          echo "The suite ran inside a container with no network interface and no display."
+          echo "It does not prove a test would fail if it opened a socket; it proves none of these did."

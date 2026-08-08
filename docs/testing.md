@@ -60,6 +60,20 @@ A refusal with no replacement is a gap. The register makes the gap visible
 rather than absent, which is the whole reason it is a file rather than a
 decision somebody remembers.
 
+**A refusal with no replacement fails review.** Writing the entry is what makes
+the gap arguable; it is not what makes it acceptable. A change that refuses a
+test and names `nothing` in its place is sent back unless the pull request says
+why the property can go uncovered for now and what would cover it, and the
+entry itself carries that sentence. The three entries in the register that say
+`nothing` today were written under this rule and each says what a reader should
+assume instead, which is that the property is untested rather than tested
+somewhere else.
+
+Nothing refuses this. It is a rule review holds, in the same way as the rest of
+this policy except the package assertion above, and it is written here rather
+than in the contributing guide because that is where the rest of the headless
+policy lives and a second home for half of it is a second answer.
+
 Format, one entry per refused test:
 
     ## <what the test would have proved>
@@ -74,6 +88,24 @@ Format, one entry per refused test:
 
 ## Where the suite runs
 
-The suite runs on a container with no display server, which is what makes the
-policy checkable rather than aspirational. `call / test` is the required check
-that runs it, and it runs on `ubuntu-latest` with no display.
+Two routes, and they are not the same run.
+
+`call / test` is the required check. It runs the suite on `ubuntu-latest`, which
+has no display server and does have a network, so it holds the display half of
+the policy and nothing at all of the network half.
+
+`Suite with no display and no network` is the second route and it is where the
+network half becomes a fact. The suite runs inside a container started with
+`--network none`, so the container has no interface but its own loopback and a
+test that reached anything outside it fails. The restore and the build run in a
+separate step that does have a network, because fetching packages is the
+toolchain doing its job rather than the suite reaching out, and the run under
+test is `dotnet test --no-build`.
+
+What that proves is bounded and the workflow prints the bound at the end of its
+own run: no test in this suite reached the network, and nothing there
+establishes that a test which tried to would be caught by anything other than
+failing. This is not in the required set today, and what the gate requires is
+printed rather than restated here:
+
+    gh api repos/Flowfin/jellyfin-plugin-metadata-sync/rulesets/20464851 --jq '[.rules[] | select(.type=="required_status_checks") | .parameters.required_status_checks[].context]'
