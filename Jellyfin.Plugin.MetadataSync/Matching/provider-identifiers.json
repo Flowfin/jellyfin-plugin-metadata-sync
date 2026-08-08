@@ -1,0 +1,62 @@
+{
+  "keyComparison": "OrdinalIgnoreCase",
+  "keyComparisonReason": "The dictionary key is a provider name written by whichever provider version was installed when the item was first saved, on either server. Two servers writing the same provider with different capitalisation is a spelling difference and never a different provider.",
+  "defaultRule": {
+    "provider": "any provider with no row",
+    "valueComparison": "Ordinal",
+    "trimmed": true,
+    "normalisation": "none",
+    "reason": "An identifier this table does not know is an opaque string. Comparing it case-insensitively assumes a shape nobody here has checked, and the fail-safe direction for an unknown identifier is to treat two spellings as two identifiers rather than one."
+  },
+  "rules": [
+    {
+      "provider": "Imdb",
+      "valueComparison": "OrdinalIgnoreCase",
+      "trimmed": true,
+      "normalisation": "none",
+      "reason": "An IMDb identifier is a tt prefix and digits, and the prefix is the only part where case can differ at all. Stripping the prefix is deliberately not done: a value without it is not the same identifier written differently, it is a different string, and a table that repaired it would be guessing."
+    },
+    {
+      "provider": "Tmdb",
+      "valueComparison": "Ordinal",
+      "trimmed": true,
+      "normalisation": "LeadingZeros",
+      "reason": "A TMDb identifier is a decimal number. One server writing it zero-padded and the other not is the same identifier, so leading zeros are dropped before the comparison, and only when the whole value is digits."
+    },
+    {
+      "provider": "Tvdb",
+      "valueComparison": "Ordinal",
+      "trimmed": true,
+      "normalisation": "LeadingZeros",
+      "reason": "A TVDB identifier is a decimal number, and the same zero-padding difference occurs. Same rule and same bound: the normalisation applies only where the whole value is digits."
+    },
+    {
+      "provider": "MusicBrainzAlbum",
+      "valueComparison": "OrdinalIgnoreCase",
+      "trimmed": true,
+      "normalisation": "none",
+      "reason": "A MusicBrainz identifier is a UUID, whose hexadecimal digits carry the same value in either case. The hyphens are part of the identifier and are not removed, because a value without them is a different spelling this table has not been shown."
+    },
+    {
+      "provider": "MusicBrainzArtist",
+      "valueComparison": "OrdinalIgnoreCase",
+      "trimmed": true,
+      "normalisation": "none",
+      "reason": "A UUID, for the same reason as the album row."
+    },
+    {
+      "provider": "MusicBrainzReleaseGroup",
+      "valueComparison": "OrdinalIgnoreCase",
+      "trimmed": true,
+      "normalisation": "none",
+      "reason": "A UUID, for the same reason as the album row."
+    },
+    {
+      "provider": "MusicBrainzTrack",
+      "valueComparison": "OrdinalIgnoreCase",
+      "trimmed": true,
+      "normalisation": "none",
+      "reason": "A UUID, for the same reason as the album row."
+    }
+  ]
+}
