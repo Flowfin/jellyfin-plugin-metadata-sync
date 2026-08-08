@@ -46,10 +46,17 @@ jobs:
           persist-credentials: false
 
       - name: Restore and build, with a network
+        # The package cache is a mount and not a thing inside the container. Two
+        # `docker run` invocations are two containers, so a cache that lived in
+        # the first is gone in the second, and the second cannot fetch it back
+        # with no network. What that looked like was a `dotnet test` that printed
+        # `Build succeeded` and exited zero having run no test at all.
         run: |
           set -euo pipefail
+          mkdir -p .container-nuget
           docker run --rm \
             -v "${PWD}:/src" -w /src \
+            -v "${PWD}/.container-nuget:/root/.nuget/packages" \
             -e DOTNET_CLI_TELEMETRY_OPTOUT=1 \
             -e DOTNET_NOLOGO=1 \
             "${SDK_IMAGE}" \
@@ -66,10 +73,11 @@ jobs:
           set -euo pipefail
           docker run --rm --network none \
             -v "${PWD}:/src" -w /src \
+            -v "${PWD}/.container-nuget:/root/.nuget/packages" \
             -e DOTNET_CLI_TELEMETRY_OPTOUT=1 \
             -e DOTNET_NOLOGO=1 \
             "${SDK_IMAGE}" \
-            sh -c 'cat /proc/net/dev; echo "DISPLAY=[${DISPLAY:-}]"; dotnet --version; ls -l Jellyfin.Plugin.MetadataSync.Tests/bin/Release/net9.0/ | head -20; dotnet test Jellyfin.Plugin.MetadataSync.Tests/Jellyfin.Plugin.MetadataSync.Tests.csproj --configuration Release --no-build -v n --logger "trx;LogFileName=headless.trx" --results-directory /src/headless-results 2>&1 | tail -40; echo "dotnet test exit=$?"'
+            sh -c 'cat /proc/net/dev; echo "DISPLAY=[${DISPLAY:-}]"; exec dotnet test Jellyfin.Plugin.MetadataSync.sln --configuration Release --no-build --logger "trx;LogFileName=headless.trx" --results-directory /src/headless-results'
 
       - name: Say what the run proves, and refuse a run that proved nothing
         # A run that executed no test exits zero and looks exactly like a run that
