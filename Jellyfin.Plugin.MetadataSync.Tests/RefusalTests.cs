@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Jellyfin.Plugin.MetadataSync.Configuration;
 using Jellyfin.Plugin.MetadataSync.Fields;
+using Jellyfin.Plugin.MetadataSync.Matching;
 using MediaBrowser.Controller.Entities.Movies;
 using Xunit;
 
@@ -99,6 +100,34 @@ public class RefusalTests
                  nameof(FieldRegisterTests.TheRegisterThatShipsInTheAssemblyLoads),
                  "the group the row names is one the register declares",
                  () => FieldRegister.Parse(FieldRegisterTests.UndeclaredKindGroupRegister)),
+
+            ["Matching/ProviderIdentifiers.cs -> ArgumentNullException.ThrowIfNull(local);"] =
+                (nameof(ProviderIdentifierTests),
+                 nameof(ProviderIdentifierTests.ComparingWithNoLocalDictionaryIsRefused),
+                 nameof(ProviderIdentifierTests.TwoDictionariesThatAreThereAreCompared),
+                 "this server's identifiers are there",
+                 () => ProviderIdentifiers.Compare(null!, new Dictionary<string, string>(StringComparer.Ordinal))),
+
+            ["Matching/ProviderIdentifiers.cs -> ArgumentNullException.ThrowIfNull(peer);"] =
+                (nameof(ProviderIdentifierTests),
+                 nameof(ProviderIdentifierTests.ComparingWithNoPeerDictionaryIsRefused),
+                 nameof(ProviderIdentifierTests.TwoDictionariesThatAreThereAreCompared),
+                 "the peer's identifiers are there",
+                 () => ProviderIdentifiers.Compare(new Dictionary<string, string>(StringComparer.Ordinal), null!)),
+
+            ["Matching/ProviderIdentifiers.cs -> using var stream = assembly.GetManifestResourceStream(resourceName) ?? throw new InvalidOperationException(NoTableEmbedded(resourceName));"] =
+                (nameof(ProviderIdentifierTests),
+                 nameof(ProviderIdentifierTests.ATableThatIsNotEmbeddedIsRefused),
+                 nameof(ProviderIdentifierTests.TheTableThatShipsInTheAssemblyLoads),
+                 "the assembly carries a table under that name",
+                 () => ProviderIdentifiers.Load("Jellyfin.Plugin.MetadataSync.Matching.no-such-table.json")),
+
+            ["Matching/ProviderIdentifiers.cs -> var read = JsonSerializer.Deserialize<TableFile>(text, _json) ?? throw new InvalidOperationException(NothingToRead());"] =
+                (nameof(ProviderIdentifierTests),
+                 nameof(ProviderIdentifierTests.TableTextThatDescribesNoTableIsRefused),
+                 nameof(ProviderIdentifierTests.TheTableThatShipsInTheAssemblyLoads),
+                 "the text describes a table",
+                 () => ProviderIdentifiers.Parse("null")),
         };
 
     /// <summary>

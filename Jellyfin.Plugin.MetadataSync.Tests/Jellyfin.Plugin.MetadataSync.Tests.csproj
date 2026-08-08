@@ -57,6 +57,14 @@
     <None Include="..\docs\field-register.md" Link="field-register.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The comparison rules are declared once in the table the plugin embeds, and
+       the document under docs/ carries both a rendering of it and the fixture
+       rows the suite runs. ProviderIdentifierTests reads the document, so it is
+       copied here for the same reason the field register is. -->
+  <ItemGroup>
+    <None Include="..\docs\provider-identifiers.md" Link="provider-identifiers.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- This project file is what HeadlessPolicyTests reads, so the suite can
        refuse a dependency that would need a display, a running server or the
        network. Reading the resolved package graph instead would answer a
