@@ -1,10 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Reflection.Metadata;
-using System.Reflection.PortableExecutable;
 using Xunit;
 
 namespace Jellyfin.Plugin.MetadataSync.Tests;
@@ -104,7 +101,7 @@ public class UserDataSurfaceTests
     [Fact]
     public void TheScanActuallyReadsThePluginsTypeReferences()
     {
-        Assert.NotEmpty(TypeNamesReferencedBy(typeof(Plugin).Assembly));
+        Assert.NotEmpty(AssemblyMetadata.TypeNames(typeof(Plugin).Assembly));
     }
 
     /// <summary>
@@ -169,45 +166,8 @@ public class UserDataSurfaceTests
     /// </summary>
     private static IReadOnlyList<string> UserScopedTypesNamedBy(Assembly assembly)
     {
-        var referenced = TypeNamesReferencedBy(assembly);
+        var referenced = AssemblyMetadata.TypeNames(assembly);
 
         return UserScopedTypes.Where(referenced.Contains).Order(StringComparer.Ordinal).ToList();
-    }
-
-    /// <summary>
-    /// Reads the type names an assembly's metadata carries: the ones it refers
-    /// to in another assembly, and the ones it declares itself. The first is
-    /// what a use of a server type produces; the second is here so a type
-    /// declared under one of these names in this plugin is caught too.
-    /// </summary>
-    private static HashSet<string> TypeNamesReferencedBy(Assembly assembly)
-    {
-        var location = assembly.Location;
-        Assert.False(string.IsNullOrEmpty(location), "The assembly under test has no file on disk to read.");
-
-        using var file = File.OpenRead(location);
-        using var portableExecutable = new PEReader(file);
-        var metadata = portableExecutable.GetMetadataReader();
-
-        var names = new HashSet<string>(StringComparer.Ordinal);
-
-        foreach (var handle in metadata.TypeReferences)
-        {
-            var reference = metadata.GetTypeReference(handle);
-            names.Add(FullName(metadata.GetString(reference.Namespace), metadata.GetString(reference.Name)));
-        }
-
-        foreach (var handle in metadata.TypeDefinitions)
-        {
-            var definition = metadata.GetTypeDefinition(handle);
-            names.Add(FullName(metadata.GetString(definition.Namespace), metadata.GetString(definition.Name)));
-        }
-
-        return names;
-    }
-
-    private static string FullName(string @namespace, string name)
-    {
-        return string.IsNullOrEmpty(@namespace) ? name : @namespace + "." + name;
     }
 }
