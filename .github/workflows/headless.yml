@@ -69,7 +69,7 @@ jobs:
             -e DOTNET_CLI_TELEMETRY_OPTOUT=1 \
             -e DOTNET_NOLOGO=1 \
             "${SDK_IMAGE}" \
-            sh -c 'cat /proc/net/dev; echo "DISPLAY=[${DISPLAY:-}]"; dotnet --version; dotnet test Jellyfin.Plugin.MetadataSync.Tests/Jellyfin.Plugin.MetadataSync.Tests.csproj --configuration Release --no-build --logger "trx;LogFileName=headless.trx" --results-directory /src/headless-results; echo "dotnet test exit=$?"'
+            sh -c 'cat /proc/net/dev; echo "DISPLAY=[${DISPLAY:-}]"; dotnet --version; ls -l Jellyfin.Plugin.MetadataSync.Tests/bin/Release/net9.0/ | head -20; dotnet test Jellyfin.Plugin.MetadataSync.Tests/Jellyfin.Plugin.MetadataSync.Tests.csproj --configuration Release --no-build -v n --logger "trx;LogFileName=headless.trx" --results-directory /src/headless-results 2>&1 | tail -40; echo "dotnet test exit=$?"'
 
       - name: Say what the run proves, and refuse a run that proved nothing
         # A run that executed no test exits zero and looks exactly like a run that
