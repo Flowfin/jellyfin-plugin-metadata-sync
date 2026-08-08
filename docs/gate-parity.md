@@ -59,7 +59,7 @@ out.
 | --- | --- | --- |
 | `build.yml` (Build) | Present, different shape | The target carries its own package and SBOM steps. Here `build.yaml` calls the shared plugin workflow instead, which is a smaller surface in this tree and a dependency on somebody else's workflow file. That trade is the row. |
 | `codeql.yml` (CodeQL) | Present, not required | `scan-codeql.yaml` runs here and calls the shared workflow. Putting it in the required set alongside the package inventory and build provenance is #80. |
-| `dco.yml` (DCO) | Present | Arrived with the template and the audit set. No difference to explain. |
+| `dco.yml` (DCO) | Present, and now stricter than the target | Arrived with the template and the audit set, carrying a comparison that built both sides from the same commit, so a commit whose author address was not an address agreed with itself and passed. #120 fixed that here. The target still carries the original line, which the difference section below prints. |
 | `dependency-review.yml` | Present | Arrived with the template and the audit set. No difference to explain. |
 | `dotnet.yml` (.NET) | Partly present | This workflow carries the target's `build`, `ABI floor build` and `Package (JPRM)` jobs. Here `build.yaml` and `test.yaml` call the shared workflows for the first. There is no ABI floor build, because a floor needs the supported server lines fixed first, which is #9. |
 | `e2e-login.yml` (E2E Login Harness) | Not adopted | This plugin has no login path, and a workflow that tests nothing is a green check that means nothing. The condition that changes the answer is this plugin gaining an interactive authentication path of its own, which the plan does not give it. |
@@ -137,6 +137,29 @@ it rather than quoting this number.
 What the shape would be if the answer became yes is written in #81 and is not
 copied here, because a second copy of it would drift against the issue that
 decides it.
+
+## The sign-off row, where this repository is now ahead
+
+The rows above mostly describe things the target has and this repository does
+not. This one goes the other way, and it is written down for the same reason:
+a difference nobody explained is indistinguishable from a mistake.
+
+Both sign-off gates build the line they look for out of the commit they are
+looking at, so the check asks whether the commit agrees with itself and the
+answer is yes whatever the author address is. The target still carries that
+line, at a named commit rather than at a branch that moves:
+
+    gh api 'repos/iderex/jellyfin-plugin-sso/contents/.github/workflows/dco.yml?ref=e9cee021e95763e5240b44b8d7af16598df609ce' --jq '.content' | base64 -d | grep -c 'expected="Signed-off-by: ${author_name} <${author_email}>"'
+    1
+
+Here the same line is preceded by a check that the author address, and every
+sign-off and co-author address in the message, is syntactically an address.
+#120 has the measurement and the evidence.
+
+Nothing here says the target is wrong to be where it is. It says the two files
+differ, and why, so the next person comparing them does not read the difference
+as drift. The target is a separate board and this document does not open work
+on it.
 
 ## One row per workflow here that the target does not have
 
