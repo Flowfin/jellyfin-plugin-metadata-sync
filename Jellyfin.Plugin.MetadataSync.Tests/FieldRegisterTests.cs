@@ -1,0 +1,378 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using Jellyfin.Data.Enums;
+using Jellyfin.Plugin.MetadataSync.Configuration;
+using Jellyfin.Plugin.MetadataSync.Fields;
+using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Entities.Movies;
+using Xunit;
+
+namespace Jellyfin.Plugin.MetadataSync.Tests;
+
+/// <summary>
+/// Holds the field register up as the only place a field is declared.
+/// </summary>
+/// <remarks>
+/// The single most destructive thing this plugin can do is write a field nobody
+/// expected it to write, and every leg here is one way that happens: a writer
+/// that no row declares, a row that moves with nothing behind it, a field name
+/// the server does not have, a value taken from the media file, a document that
+/// says something other than the register, and a caller asking for a field that
+/// was never declared at all.
+/// </remarks>
+public class FieldRegisterTests
+{
+    private static readonly string _document = Path.Combine(AppContext.BaseDirectory, "field-register.md");
+
+    /// <summary>
+    /// A register whose one row names a kind group nothing declares. The refusal
+    /// register runs the same text through the same seam, because naming a test
+    /// says what a caller saw and never which line refused, and a second copy of
+    /// the text would be a copy that drifts.
+    /// </summary>
+    internal const string UndeclaredKindGroupRegister = """
+        {
+          "kindGroups": { "all": ["Movie"] },
+          "rows": [
+            {
+              "field": "Overview",
+              "declaredOn": "MediaBrowser.Controller.Entities.BaseItem",
+              "kinds": "everything",
+              "moves": true,
+              "class": "Descriptive",
+              "fromTheFile": false,
+              "reason": "A row whose kind group the register never declares."
+            }
+          ]
+        }
+        """;
+
+    /// <summary>
+    /// A row with no reason is a row nobody can argue with later, which makes
+    /// the register a list instead of a set of decisions.
+    /// </summary>
+    [Fact]
+    public void EveryRowCarriesAReason()
+    {
+        Assert.NotEmpty(FieldRegister.Rows);
+
+        var without = FieldRegister.Rows
+            .Where(r => string.IsNullOrWhiteSpace(r.Reason) || r.Reason.Length < 40)
+            .Select(r => r.Field)
+            .ToList();
+
+        Assert.Empty(without);
+    }
+
+    /// <summary>
+    /// The register names fields as the server names them. A row naming a
+    /// property the server does not have is a row that can never be right, and
+    /// it is also what a server line renaming a property looks like from here.
+    /// </summary>
+    [Fact]
+    public void EveryFieldNamedIsOneTheServerActuallyHas()
+    {
+        var unresolved = new List<string>();
+
+        foreach (var row in FieldRegister.Rows)
+        {
+            if (row.DeclaredOn is null)
+            {
+                // A field that is not a property on an item owes the interface it
+                // is reached through instead, so no row is allowed to name nothing.
+                if (row.ReachedBy is null || ResolveServerType(row.ReachedBy) is null)
+                {
+                    unresolved.Add(row.Field + " (reached through " + (row.ReachedBy ?? "nothing") + ")");
+                }
+
+                continue;
+            }
+
+            Assert.Null(row.ReachedBy);
+
+            var declaring = ResolveServerType(row.DeclaredOn);
+            if (declaring is null || declaring.GetProperty(row.Field) is null)
+            {
+                unresolved.Add(row.Field + " on " + row.DeclaredOn);
+            }
+        }
+
+        Assert.Empty(unresolved);
+    }
+
+    /// <summary>
+    /// The kind column is a controlled vocabulary and the server owns it. A
+    /// group naming a kind the server does not have is a row that applies to
+    /// nothing, and it reads as one that applies to something.
+    /// </summary>
+    [Fact]
+    public void EveryItemKindNamedIsOneTheServerActuallyHas()
+    {
+        var kinds = Enum.GetNames<BaseItemKind>().ToHashSet(StringComparer.Ordinal);
+
+        var unknown = FieldRegister.KindGroups
+            .SelectMany(g => g.Value)
+            .Where(k => !kinds.Contains(k))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Empty(unknown);
+        Assert.All(FieldRegister.Rows, r => Assert.NotEmpty(r.Kinds));
+    }
+
+    /// <summary>
+    /// This is the leg the register exists for. The set of fields the writing
+    /// code can reach is compared with the set of rows that declare a field
+    /// moves, in both directions, so a writer added without a row fails and a
+    /// row that moves with nothing behind it fails too.
+    /// </summary>
+    [Fact]
+    public void TheFieldsTheMoverCanWriteAreExactlyTheRowsThatMove()
+    {
+        var declared = FieldRegister.Rows.Where(r => r.Moves).Select(r => r.Field).ToHashSet(StringComparer.Ordinal);
+        var writable = FieldMover.WritableFields.ToHashSet(StringComparer.Ordinal);
+
+        var writesWithoutARow = writable.Except(declared, StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
+        var rowsWithoutAWriter = declared.Except(writable, StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
+
+        Assert.Empty(writesWithoutARow);
+        Assert.Empty(rowsWithoutAWriter);
+    }
+
+    /// <summary>
+    /// A field with no row is refused when it is asked for. The refusal is at
+    /// run time and not only in review, because review is where the last one of
+    /// these got through.
+    /// </summary>
+    [Fact]
+    public void AFieldWithNoRowIsRefusedWhenSomethingAsksToMoveIt()
+    {
+        var from = new Movie();
+        var to = new Movie();
+
+        Assert.Null(FieldRegister.Find("PlaybackPositionTicks"));
+
+        var refused = Assert.Throws<FieldNotDeclaredException>(
+            () => FieldMover.Move("PlaybackPositionTicks", from, to));
+
+        Assert.Contains("PlaybackPositionTicks", refused.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A field that has a row saying it does not move is refused for that
+    /// reason, and the refusal quotes the row. A caller told only that a field
+    /// is unknown would go looking for a missing row that is right there.
+    /// </summary>
+    [Fact]
+    public void AFieldWhoseRowRefusesToMoveIsRefusedWithItsReason()
+    {
+        var row = FieldRegister.Find("RunTimeTicks");
+        Assert.NotNull(row);
+        Assert.False(row.Moves);
+
+        var refused = Assert.Throws<FieldNotDeclaredException>(
+            () => FieldMover.Move("RunTimeTicks", new Movie(), new Movie()));
+
+        Assert.Contains(row.Reason, refused.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A field derived from the media file describes this server's copy, so the
+    /// peer's value is a false statement about ours whatever else is true of it.
+    /// No row in that class may move, ever.
+    /// </summary>
+    [Fact]
+    public void NothingDerivedFromTheMediaFileMoves()
+    {
+        var moving = FieldRegister.Rows.Where(r => r.FromTheFile && r.Moves).Select(r => r.Field).ToList();
+
+        Assert.Empty(moving);
+        Assert.Contains(FieldRegister.Rows, r => r.FromTheFile);
+    }
+
+    /// <summary>
+    /// The class derived from the media file is empty of anything a caller can
+    /// enable, because a per-installation switch on one of those fields is the
+    /// setting that breaks a library. The configuration is where such a switch
+    /// would appear, so that is what is read.
+    /// </summary>
+    [Fact]
+    public void NoConfigurationSettingCanEnableAFieldTakenFromTheMediaFile()
+    {
+        var fromTheFile = FieldRegister.Rows.Where(r => r.FromTheFile).Select(r => r.Field).ToList();
+        Assert.NotEmpty(fromTheFile);
+
+        var settings = typeof(PluginConfiguration)
+            .GetProperties()
+            .Where(p => p.DeclaringType == typeof(PluginConfiguration))
+            .Select(p => p.Name)
+            .ToList();
+
+        var enabling = settings
+            .Where(s => fromTheFile.Any(f => s.Contains(f, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+
+        Assert.Empty(enabling);
+    }
+
+    /// <summary>
+    /// The register is declared once. The document is a rendering of it that a
+    /// person reads, and a rendering that has drifted is worse than none,
+    /// because it is the copy an operator trusts.
+    /// </summary>
+    [Fact]
+    public void TheDocumentSaysExactlyWhatTheRegisterSays()
+    {
+        var text = File.ReadAllText(_document);
+
+        foreach (var row in FieldRegister.Rows)
+        {
+            Assert.Contains(RowLine(row), text, StringComparison.Ordinal);
+            Assert.Contains(WhereLine(row), text, StringComparison.Ordinal);
+        }
+
+        foreach (var group in FieldRegister.KindGroups)
+        {
+            var line = string.Format(
+                CultureInfo.InvariantCulture,
+                "| `{0}` | {1} |",
+                group.Key,
+                string.Join(", ", group.Value.Select(k => "`" + k + "`")));
+
+            Assert.Contains(line, text, StringComparison.Ordinal);
+        }
+
+        // Every table row in the document begins this way, and each field appears
+        // in two of the three tables. A row the register does not have would pass
+        // every check above and be caught only by the count.
+        var tableRows = text.Split('\n').Count(l => l.StartsWith("| `", StringComparison.Ordinal));
+        Assert.Equal((FieldRegister.Rows.Count * 2) + FieldRegister.KindGroups.Count, tableRows);
+    }
+
+    /// <summary>
+    /// The ordinary case, and the neighbour every refusal below differs from by
+    /// one thing. A declared field is written and the value arrives.
+    /// </summary>
+    [Fact]
+    public void ADeclaredFieldIsWrittenOntoTheItem()
+    {
+        var from = new Movie { Overview = "What the peer says about it" };
+        var to = new Movie { Overview = "What this server says about it" };
+
+        FieldMover.Move("Overview", from, to);
+
+        Assert.Equal("What the peer says about it", to.Overview);
+    }
+
+    /// <summary>
+    /// There is nothing to take a value from. Writing a field off an item that
+    /// is not there would write whatever the default is, silently.
+    /// </summary>
+    [Fact]
+    public void MovingFromAnItemThatIsNotThereIsRefused()
+    {
+        Assert.Throws<ArgumentNullException>(() => FieldMover.Move("Overview", null!, new Movie()));
+    }
+
+    /// <summary>
+    /// There is nothing to write to. The same failure in the other direction,
+    /// and the one that would otherwise be a null reference somewhere later.
+    /// </summary>
+    [Fact]
+    public void MovingOntoAnItemThatIsNotThereIsRefused()
+    {
+        Assert.Throws<ArgumentNullException>(() => FieldMover.Move("Overview", new Movie(), null!));
+    }
+
+    /// <summary>
+    /// The register that ships inside the assembly is the one the plugin runs
+    /// on. This is the neighbour for the three loader refusals below.
+    /// </summary>
+    [Fact]
+    public void TheRegisterThatShipsInTheAssemblyLoads()
+    {
+        var contents = FieldRegister.Load(FieldRegister.EmbeddedResourceName);
+
+        Assert.NotEmpty(contents.Rows);
+        Assert.NotEmpty(contents.KindGroups);
+    }
+
+    /// <summary>
+    /// A build that did not embed the register is a build where no field is
+    /// declared. Reading that as an empty register would make every field
+    /// undeclared and every write refused, which looks like the plugin working.
+    /// </summary>
+    [Fact]
+    public void ARegisterThatIsNotEmbeddedIsRefused()
+    {
+        var refused = Assert.Throws<InvalidOperationException>(
+            () => FieldRegister.Load("Jellyfin.Plugin.MetadataSync.Fields.no-such-register.json"));
+
+        Assert.Contains("no-such-register.json", refused.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Register text that describes no register at all is refused rather than
+    /// read as one with no rows.
+    /// </summary>
+    [Fact]
+    public void RegisterTextThatDescribesNoRegisterIsRefused()
+    {
+        Assert.Throws<InvalidOperationException>(() => FieldRegister.Parse("null"));
+    }
+
+    /// <summary>
+    /// A row naming a kind group nothing declares applies to no item kind. Read
+    /// leniently it would be a row that applies to every kind, which is the
+    /// opposite of what it says.
+    /// </summary>
+    [Fact]
+    public void ARowNamingAKindGroupNothingDeclaresIsRefused()
+    {
+        var refused = Assert.Throws<InvalidOperationException>(() => FieldRegister.Parse(UndeclaredKindGroupRegister));
+
+        Assert.Contains("everything", refused.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// One row per field. Two rows for one field means one of them is the rule
+    /// and the other is decoration, and nothing says which.
+    /// </summary>
+    [Fact]
+    public void NoFieldHasTwoRows()
+    {
+        var repeated = FieldRegister.Rows
+            .GroupBy(r => r.Field, StringComparer.Ordinal)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
+        Assert.Empty(repeated);
+    }
+
+    private static string RowLine(FieldRow row) => string.Format(
+        CultureInfo.InvariantCulture,
+        "| `{0}` | {1} | {2} | {3} | {4} | {5} |",
+        row.Field,
+        row.KindGroup,
+        row.Moves ? "yes" : "no",
+        row.Class,
+        row.FromTheFile ? "yes" : "no",
+        row.Reason);
+
+    private static string WhereLine(FieldRow row) => string.Format(
+        CultureInfo.InvariantCulture,
+        "| `{0}` | {1} | {2} |",
+        row.Field,
+        row.DeclaredOn is null ? "not an item property" : "`" + row.DeclaredOn + "`",
+        row.ReachedBy is null ? "-" : "`" + row.ReachedBy + "`");
+
+    private static Type? ResolveServerType(string name)
+    {
+        return typeof(BaseItem).Assembly.GetType(name)
+            ?? typeof(BaseItemKind).Assembly.GetType(name);
+    }
+}

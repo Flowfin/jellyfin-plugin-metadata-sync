@@ -27,4 +27,13 @@
     <EmbeddedResource Include="Configuration\configPage.html" />
   </ItemGroup>
 
+  <!-- The field register ships inside the assembly. A register sitting beside
+       the assembly is a file an operator can edit, and the whole point of the
+       register is that the set of fields this plugin may write is not editable
+       per installation. -->
+  <ItemGroup>
+    <None Remove="Fields\field-register.json" />
+    <EmbeddedResource Include="Fields\field-register.json" LogicalName="Jellyfin.Plugin.MetadataSync.Fields.field-register.json" />
+  </ItemGroup>
+
 </Project>

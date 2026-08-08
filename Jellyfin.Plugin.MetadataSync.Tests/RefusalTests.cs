@@ -6,6 +6,8 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Jellyfin.Plugin.MetadataSync.Configuration;
+using Jellyfin.Plugin.MetadataSync.Fields;
+using MediaBrowser.Controller.Entities.Movies;
 using Xunit;
 
 namespace Jellyfin.Plugin.MetadataSync.Tests;
@@ -48,6 +50,55 @@ public class RefusalTests
                  nameof(ServiceRegistrationTests.ConfigurationProviderReturnsTheConfigurationItWasGiven),
                  "the delegate is there",
                  () => new PluginConfigurationProvider(null!)),
+
+            ["Fields/FieldMover.cs -> ArgumentNullException.ThrowIfNull(from);"] =
+                (nameof(FieldRegisterTests),
+                 nameof(FieldRegisterTests.MovingFromAnItemThatIsNotThereIsRefused),
+                 nameof(FieldRegisterTests.ADeclaredFieldIsWrittenOntoTheItem),
+                 "the item the value is taken from is there",
+                 () => FieldMover.Move("Overview", null!, new Movie())),
+
+            ["Fields/FieldMover.cs -> ArgumentNullException.ThrowIfNull(to);"] =
+                (nameof(FieldRegisterTests),
+                 nameof(FieldRegisterTests.MovingOntoAnItemThatIsNotThereIsRefused),
+                 nameof(FieldRegisterTests.ADeclaredFieldIsWrittenOntoTheItem),
+                 "the item the value is written to is there",
+                 () => FieldMover.Move("Overview", new Movie(), null!)),
+
+            ["Fields/FieldRegister.cs -> throw new FieldNotDeclaredException(NoRowAtAll(field));"] =
+                (nameof(FieldRegisterTests),
+                 nameof(FieldRegisterTests.AFieldWithNoRowIsRefusedWhenSomethingAsksToMoveIt),
+                 nameof(FieldRegisterTests.ADeclaredFieldIsWrittenOntoTheItem),
+                 "the field has a row",
+                 () => FieldRegister.RequireMovable("PlaybackPositionTicks")),
+
+            ["Fields/FieldRegister.cs -> throw new FieldNotDeclaredException(ARowThatRefuses(row));"] =
+                (nameof(FieldRegisterTests),
+                 nameof(FieldRegisterTests.AFieldWhoseRowRefusesToMoveIsRefusedWithItsReason),
+                 nameof(FieldRegisterTests.ADeclaredFieldIsWrittenOntoTheItem),
+                 "the row the field has says it moves",
+                 () => FieldRegister.RequireMovable("RunTimeTicks")),
+
+            ["Fields/FieldRegister.cs -> using var stream = assembly.GetManifestResourceStream(resourceName) ?? throw new InvalidOperationException(NoRegisterEmbedded(resourceName));"] =
+                (nameof(FieldRegisterTests),
+                 nameof(FieldRegisterTests.ARegisterThatIsNotEmbeddedIsRefused),
+                 nameof(FieldRegisterTests.TheRegisterThatShipsInTheAssemblyLoads),
+                 "the assembly carries a register under that name",
+                 () => FieldRegister.Load("Jellyfin.Plugin.MetadataSync.Fields.no-such-register.json")),
+
+            ["Fields/FieldRegister.cs -> var read = JsonSerializer.Deserialize<RegisterFile>(text, _json) ?? throw new InvalidOperationException(NothingToRead());"] =
+                (nameof(FieldRegisterTests),
+                 nameof(FieldRegisterTests.RegisterTextThatDescribesNoRegisterIsRefused),
+                 nameof(FieldRegisterTests.TheRegisterThatShipsInTheAssemblyLoads),
+                 "the text describes a register",
+                 () => FieldRegister.Parse("null")),
+
+            ["Fields/FieldRegister.cs -> throw new InvalidOperationException(NoSuchKindGroup(row));"] =
+                (nameof(FieldRegisterTests),
+                 nameof(FieldRegisterTests.ARowNamingAKindGroupNothingDeclaresIsRefused),
+                 nameof(FieldRegisterTests.TheRegisterThatShipsInTheAssemblyLoads),
+                 "the group the row names is one the register declares",
+                 () => FieldRegister.Parse(FieldRegisterTests.UndeclaredKindGroupRegister)),
         };
 
     /// <summary>

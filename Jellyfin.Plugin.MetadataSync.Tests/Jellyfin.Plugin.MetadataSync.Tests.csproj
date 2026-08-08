@@ -47,6 +47,16 @@
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The field register is declared once, in the JSON the plugin embeds, and
+       the document under docs/ is a rendering of it that a person reads.
+       FieldRegisterTests holds the two against each other, so both are copied
+       here. Reading the document out of the repository by walking up from the
+       test binary would answer a different question on a machine where the
+       tests run from somewhere else. -->
+  <ItemGroup>
+    <None Include="..\docs\field-register.md" Link="field-register.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- This project file is what HeadlessPolicyTests reads, so the suite can
        refuse a dependency that would need a display, a running server or the
        network. Reading the resolved package graph instead would answer a
