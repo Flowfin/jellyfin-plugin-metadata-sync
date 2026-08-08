@@ -4,9 +4,18 @@
 # action. It verifies every non-merge commit in the PR carries a `Signed-off-by:`
 # trailer matching its author. Fail-closed: any unsigned commit reds the check.
 #
-# This check is not in the required set today. What the gate requires is printed
-# rather than restated here:
-#   gh api repos/iderex/jellyfin-plugin-metadata-sync/rulesets/20464851 --jq '[.rules[] | select(.type=="required_status_checks") | .parameters.required_status_checks[].context]'
+# It also verifies that the addresses it compares are addresses. Both sides of the
+# match are built from the commit, so a commit whose author address is a stray
+# command-line flag once agreed with itself and passed. What that check cannot do
+# is prove a well-formed address belongs to a person: it reads syntax, nothing
+# resolves the mailbox, and nothing here shows anybody is behind it.
+#
+# This check is not in the required set today, and it belongs in it: a sign-off
+# that reds nothing is a record with no weight, and every other legal-authorization
+# control in this tree is either required or has an issue putting it there. Adding
+# it is a change to the ruleset rather than to this file, so what the gate requires
+# is printed rather than restated here:
+#   gh api repos/Flowfin/jellyfin-plugin-metadata-sync/rulesets/20464851 --jq '[.rules[] | select(.type=="required_status_checks") | .parameters.required_status_checks[].context]'
 name: DCO
 
 on:
@@ -45,6 +54,15 @@ jobs:
         run: |
           set -euo pipefail
           fail=0
+          # An address is an address: a non-empty local part, one `@`, a dotted
+          # domain, and no whitespace or angle brackets anywhere in it. This is
+          # syntax and nothing more, which is the whole of what it claims - it
+          # refuses the empty address, a bare word, and a command-line flag such as
+          # `--get-all`, and it says nothing about whether a mailbox exists or who
+          # reads it.
+          is_address() {
+            printf '%s' "$1" | grep -qE '^[^[:space:]<>@]+@[^[:space:]<>@.]+(\.[^[:space:]<>@.]+)+$'
+          }
           # Guard the walk explicitly so a `git rev-list` failure reds the job
           # instead of silently passing it. A command-substitution failure inside a
           # `for ... in $(...)` word list does not trip `set -e`, which would pass
@@ -68,16 +86,52 @@ jobs:
               | "github-actions[bot]@users.noreply.github.com")
                 echo "skip  $sha (bot: $author_email)"; continue ;;
             esac
-            expected="Signed-off-by: ${author_name} <${author_email}>"
-            if git show -s --format='%B' "$sha" | grep -qxF "$expected"; then
-              echo "ok    $sha"
-            else
-              echo "FAIL  $sha is missing: ${expected}"
+            # The author address is checked before the trailer is compared against
+            # it. Comparing an unchecked address with itself is the defect this
+            # leg exists for, and reporting one commit once keeps the run readable.
+            if ! is_address "$author_email"; then
+              echo "FAIL  $sha author address is not an address: <${author_email}>"
               fail=1
+              continue
+            fi
+            commit_fail=0
+            message=$(git show -s --format='%B' "$sha")
+            # `Co-authored-by` carries the same value as the sign-off and asserts
+            # the same authorship, so it is held to the same rule. It is read by a
+            # different consumer - GitHub's attribution, not this gate - and an
+            # address that identifies nobody is worth as little there.
+            trailers=$(printf '%s\n' "$message" | grep -E '^(Signed-off-by|Co-authored-by):' || true)
+            if [ -n "$trailers" ]; then
+              while IFS= read -r trailer; do
+                field=${trailer%%:*}
+                value=${trailer#*:}
+                value=${value#"${value%%[![:space:]]*}"}
+                if ! printf '%s' "$value" | grep -qE '<[^<>]*>$'; then
+                  echo "FAIL  $sha ${field} trailer carries no <address>: ${value}"
+                  fail=1; commit_fail=1
+                  continue
+                fi
+                address=${value##*<}
+                address=${address%>}
+                if ! is_address "$address"; then
+                  echo "FAIL  $sha ${field} address is not an address: <${address}>"
+                  fail=1; commit_fail=1
+                fi
+              done <<< "$trailers"
+            fi
+            expected="Signed-off-by: ${author_name} <${author_email}>"
+            if ! printf '%s\n' "$message" | grep -qxF "$expected"; then
+              echo "FAIL  $sha is missing: ${expected}"
+              fail=1; commit_fail=1
+            fi
+            # One line per commit that passed everything. A commit that failed a
+            # leg above has already said so and does not also report ok.
+            if [ "$commit_fail" -eq 0 ]; then
+              echo "ok    $sha"
             fi
           done
           if [ "$fail" -ne 0 ]; then
-            echo "::error::One or more commits lack a DCO Signed-off-by matching the author. Sign your work with 'git commit -s' (or add it retroactively with 'git rebase --signoff <base>')."
+            echo "::error::One or more commits lack a DCO Signed-off-by matching the author, or name something that is not an address where an address belongs. Sign your work with 'git commit -s' (or add it retroactively with 'git rebase --signoff <base>'), from an author address that is one."
             exit 1
           fi
           echo "All commits carry a matching DCO sign-off."
