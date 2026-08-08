@@ -9,8 +9,14 @@ The register is written for the operator who has to decide whether to let this
 run against their library. It is not a summary of the implementation. The
 implementation reads the same rows: they are declared once, in
 `Jellyfin.Plugin.MetadataSync/Fields/field-register.json`, which ships inside
-the assembly, and this document is checked against that file by the suite. If
-the two disagree, the suite is red and neither is quietly right.
+the assembly.
+
+Every table below is rendered from that file. The suite renders them again and
+compares them to what is committed here, character for character, so a row
+added to the source with no rendering is red and a line edited here that the
+source does not produce is red as well. The prose between the tables is written
+by hand and nothing checks it, which is the bound worth knowing: a paragraph
+that contradicts the table under it is caught by a reader and by nothing else.
 
 ## How to read a row
 
@@ -37,6 +43,7 @@ groups are written out below.
 
 ## The rows
 
+<!-- rendered from field-register.json: rows -->
 | Field | Item kinds | Moves | Class | From the file | Reason |
 | --- | --- | --- | --- | --- | --- |
 | `Name` | all | yes | Descriptive | no | The title an operator reads first and corrects by hand on whichever server they were looking at, which is the case this plugin exists for. |
@@ -66,10 +73,12 @@ groups are written out below.
 | `Height` | playable | no | Descriptive | yes | The other half of the same measurement of this server's copy. |
 | `Path` | playable | no | Structural | yes | Names a file on this server's disk. #28 refuses to read identity out of a path and this row refuses to write one, which are the two halves of the same rule. |
 | `DateCreated` | all | no | Structural | yes | When this server first saw its own copy. It drives the recently-added lists, so moving it would rewrite one operator's view of their own library with the other's history. |
+<!-- end rendered -->
 
 ## The kind groups
 
 
+<!-- rendered from field-register.json: kind groups -->
 | Group | Item kinds |
 | --- | --- |
 | `all` | `Movie`, `Series`, `Season`, `Episode`, `Audio`, `MusicAlbum`, `MusicArtist`, `MusicVideo`, `Book`, `AudioBook` |
@@ -77,6 +86,7 @@ groups are written out below.
 | `playable` | `Movie`, `Episode`, `Audio`, `MusicVideo`, `Book`, `AudioBook` |
 | `seriesTree` | `Series`, `Season`, `Episode` |
 | `episode` | `Episode` |
+<!-- end rendered -->
 
 ## Where each field lives
 
@@ -86,6 +96,7 @@ every one of them and fails if a name stops resolving, which is what happens
 when a server line renames a property.
 
 
+<!-- rendered from field-register.json: where each field lives -->
 | Field | Declared on | Reached through |
 | --- | --- |  --- |
 | `Name` | `MediaBrowser.Controller.Entities.BaseItem` | - |
@@ -115,6 +126,47 @@ when a server line renames a property.
 | `Height` | `MediaBrowser.Controller.Entities.BaseItem` | - |
 | `Path` | `MediaBrowser.Controller.Entities.BaseItem` | - |
 | `DateCreated` | `MediaBrowser.Controller.Entities.BaseItem` | - |
+<!-- end rendered -->
+
+## What each row means for your library
+
+The same rows again, in the terms somebody deciding whether to run this actually
+asks in: will the thing I wrote here survive, and will the thing I fixed here
+reach the other server. Both this table and the one above are rendered from the
+same file, so they cannot come apart, and the sentences here are written by hand
+in that file rather than derived from the class.
+
+<!-- rendered from field-register.json: what it means for an operator -->
+| Field | Does it travel | What that means for your library |
+| --- | --- | --- |
+| `Name` | yes | The title you see in your library. If the other server has a different one, yours is replaced with theirs, so a title you corrected by hand here will be corrected there too rather than fought over. |
+| `ForcedSortName` | no | The hidden value that decides where an item sits in an alphabetical list. It stays as you set it, because the two libraries are sorted by two people with different habits and neither should reorder the other's shelves. |
+| `Overview` | yes | The description text. It is the same work on both servers, so the same description is right on both, and this one travels. Lock it on an item if the description there is yours. |
+| `Tagline` | yes | The one-line strapline shown above the description on films and shows. Same reasoning as the description, and it travels. |
+| `Genres` | no | Stays where it is for now. A genre you do not have would have to be created here as a new genre, which grows your library rather than editing one item, and nobody has decided yet whether this plugin may do that. |
+| `Tags` | yes | Your own free-text tags travel. They are plain strings on the item and the server builds nothing else out of them, so a tag arriving from the other server adds no entry to any list you did not already have. |
+| `Studios` | no | Stays where it is for now, for the same reason as genres: a studio you do not have would be created here as a new studio. |
+| `ProductionLocations` | yes | The filming countries travel. They are plain strings like your tags, and nothing new is created here to hold them. |
+| `People` | no | Cast and crew stay where they are for now. A person you do not have would be created here as a new person, and matching people by name across two servers is how one actor becomes two records spelled differently. |
+| `OfficialRating` | yes | The age rating travels. Read this row before you let a pass apply: the rating decides what a restricted account in your house is allowed to see, so a wrong value arriving here changes what somebody can watch. |
+| `CustomRating` | no | Your own override of the age rating stays here. You set it because the fetched one was wrong on this server, and taking the other operator's override would undo your decision with theirs. |
+| `CommunityRating` | no | The community score stays here. Both servers fetch it from the same places, so copying it moves how recently the other server refreshed rather than anything about the film. |
+| `CriticRating` | no | The critic score stays here, for the same reason as the community score. |
+| `PremiereDate` | yes | The release date travels. It is a fact about the work rather than about your copy. It also orders episodes and seasons, so a wrong one moves things in your library rather than only mislabelling one item. |
+| `ProductionYear` | yes | The year travels. It is a fact about the work, and your server uses it to tell two films with the same title apart. |
+| `EndDate` | yes | The date a series ended travels. It is a fact about the series and not about either server's copy. |
+| `IndexNumber` | no | The episode number stays here. It is part of how an episode is identified, so writing it would move the thing this plugin reads to work out which episode it is looking at. |
+| `ParentIndexNumber` | no | The season number stays here, for the same reason as the episode number. |
+| `SeriesName` | no | The series an episode belongs to stays here. Your server writes it from where the episode actually sits in your library, rather than from anything sent to it. |
+| `ProviderIds` | no | The database identifiers stay here. They are what this plugin matches your items against the other server's by, so writing them would change the answer underneath a sync that is still running. |
+| `RunTimeTicks` | no | The running time stays here. It is the length of your file, and the other server holds a different file. Their runtime describes their copy and would simply be untrue about yours. |
+| `Container` | no | The file format stays here. It describes the file on your disk. |
+| `Size` | no | The file size stays here. It describes your file, not the work. |
+| `Width` | no | The picture width stays here. Two people holding different encodings of one film is the normal case rather than a problem to sync away. |
+| `Height` | no | The picture height stays here, for the same reason as the width. |
+| `Path` | no | Where the file sits on your disk stays here, and this plugin neither reads identity out of a path nor writes one. |
+| `DateCreated` | no | When your server first saw its copy stays here. It drives your recently-added list, so taking the other server's value would rewrite your own view of your library with somebody else's history. |
+<!-- end rendered -->
 
 ## Which lock governs a row
 
@@ -129,6 +181,7 @@ the configuration says. The mover checks the item first and the field second,
 and it refuses before it reaches the writer.
 
 
+<!-- rendered from field-register.json: locks -->
 | Field | The lock that governs it |
 | --- | --- |
 | `Name` | `MetadataField.Name` |
@@ -158,6 +211,7 @@ and it refuses before it reaches the writer.
 | `Height` | the item-level lock only |
 | `Path` | the item-level lock only |
 | `DateCreated` | the item-level lock only |
+<!-- end rendered -->
 
 ## What this register does not do
 

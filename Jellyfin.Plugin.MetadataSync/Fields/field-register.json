@@ -15,6 +15,7 @@
       "lock": "Name",
       "class": "Descriptive",
       "fromTheFile": false,
+      "operatorReason": "The title you see in your library. If the other server has a different one, yours is replaced with theirs, so a title you corrected by hand here will be corrected there too rather than fought over.",
       "reason": "The title an operator reads first and corrects by hand on whichever server they were looking at, which is the case this plugin exists for."
     },
     {
@@ -24,6 +25,7 @@
       "moves": false,
       "class": "Structural",
       "fromTheFile": false,
+      "operatorReason": "The hidden value that decides where an item sits in an alphabetical list. It stays as you set it, because the two libraries are sorted by two people with different habits and neither should reorder the other's shelves.",
       "reason": "The stored override behind the sort name, usually empty so the server derives ordering itself. Moving one server's sorting conventions into the other's lists changes the shape of a library nobody asked to reshape."
     },
     {
@@ -34,6 +36,7 @@
       "lock": "Overview",
       "class": "Descriptive",
       "fromTheFile": false,
+      "operatorReason": "The description text. It is the same work on both servers, so the same description is right on both, and this one travels. Lock it on an item if the description there is yours.",
       "reason": "Free text about the item and not about either copy of it, so the same value is right on both servers."
     },
     {
@@ -43,6 +46,7 @@
       "moves": true,
       "class": "Descriptive",
       "fromTheFile": false,
+      "operatorReason": "The one-line strapline shown above the description on films and shows. Same reasoning as the description, and it travels.",
       "reason": "Free text of the same kind as the overview, carried on the video kinds that display it."
     },
     {
@@ -53,6 +57,7 @@
       "lock": "Genres",
       "class": "Descriptive",
       "fromTheFile": false,
+      "operatorReason": "Stays where it is for now. A genre you do not have would have to be created here as a new genre, which grows your library rather than editing one item, and nobody has decided yet whether this plugin may do that.",
       "reason": "A genre the receiving server has never seen becomes a genre entity there, which is growth of that library rather than a value on one item. Whether that may happen is decision 5 in #1 and is held by #15, and a row that moved this field before the answer exists would settle it."
     },
     {
@@ -63,6 +68,7 @@
       "lock": "Tags",
       "class": "Descriptive",
       "fromTheFile": false,
+      "operatorReason": "Your own free-text tags travel. They are plain strings on the item and the server builds nothing else out of them, so a tag arriving from the other server adds no entry to any list you did not already have.",
       "reason": "Tags are free strings held on the item and the server builds no entity from them, which is what separates this row from genres and studios."
     },
     {
@@ -73,6 +79,7 @@
       "lock": "Studios",
       "class": "Descriptive",
       "fromTheFile": false,
+      "operatorReason": "Stays where it is for now, for the same reason as genres: a studio you do not have would be created here as a new studio.",
       "reason": "A studio the receiving server has never seen becomes a studio entity there. Same condition as genres: decision 5 in #1, held by #15."
     },
     {
@@ -83,6 +90,7 @@
       "lock": "ProductionLocations",
       "class": "Descriptive",
       "fromTheFile": false,
+      "operatorReason": "The filming countries travel. They are plain strings like your tags, and nothing new is created here to hold them.",
       "reason": "Strings the server builds no entity from, so this row moves where genres and studios wait. The difference is exactly that this one creates nothing on the receiving side."
     },
     {
@@ -93,6 +101,7 @@
       "lock": "Cast",
       "class": "Descriptive",
       "fromTheFile": false,
+      "operatorReason": "Cast and crew stay where they are for now. A person you do not have would be created here as a new person, and matching people by name across two servers is how one actor becomes two records spelled differently.",
       "reason": "People are entities of their own reached through the library rather than a property on the item, and a person the receiving server has never seen is created there. Same condition as genres and studios: decision 5 in #1, held by #15."
     },
     {
@@ -103,6 +112,7 @@
       "lock": "OfficialRating",
       "class": "Structural",
       "fromTheFile": false,
+      "operatorReason": "The age rating travels. Read this row before you let a pass apply: the rating decides what a restricted account in your house is allowed to see, so a wrong value arriving here changes what somebody can watch.",
       "reason": "The field an operator most often fixes on one server only, so it moves. It is structural rather than descriptive because a wrong value changes what a restricted account is allowed to see, which is the row to read first when deciding whether to apply a pass."
     },
     {
@@ -112,6 +122,7 @@
       "moves": false,
       "class": "Structural",
       "fromTheFile": false,
+      "operatorReason": "Your own override of the age rating stays here. You set it because the fetched one was wrong on this server, and taking the other operator's override would undo your decision with theirs.",
       "reason": "The operator's own override of the rating on this server, set because the fetched one was wrong here. Moving it would overwrite the other operator's deliberate local decision with this one's."
     },
     {
@@ -121,6 +132,7 @@
       "moves": false,
       "class": "Descriptive",
       "fromTheFile": false,
+      "operatorReason": "The community score stays here. Both servers fetch it from the same places, so copying it moves how recently the other server refreshed rather than anything about the film.",
       "reason": "Both servers fetch this from the same providers, so moving it copies one server's refresh state rather than a fact, and the value that arrives is stale the moment the receiving server refreshes."
     },
     {
@@ -130,6 +142,7 @@
       "moves": false,
       "class": "Descriptive",
       "fromTheFile": false,
+      "operatorReason": "The critic score stays here, for the same reason as the community score.",
       "reason": "Same as the community rating: fetched independently on both sides from the same providers."
     },
     {
@@ -139,6 +152,7 @@
       "moves": true,
       "class": "Structural",
       "fromTheFile": false,
+      "operatorReason": "The release date travels. It is a fact about the work rather than about your copy. It also orders episodes and seasons, so a wrong one moves things in your library rather than only mislabelling one item.",
       "reason": "A property of the work rather than of either copy. Structural because it orders episodes and seasons, so a wrong value moves items in the library rather than only mislabelling one."
     },
     {
@@ -148,6 +162,7 @@
       "moves": true,
       "class": "Structural",
       "fromTheFile": false,
+      "operatorReason": "The year travels. It is a fact about the work, and your server uses it to tell two films with the same title apart.",
       "reason": "A property of the work, and one the server groups and disambiguates by, which is why it is structural and not descriptive."
     },
     {
@@ -157,6 +172,7 @@
       "moves": true,
       "class": "Descriptive",
       "fromTheFile": false,
+      "operatorReason": "The date a series ended travels. It is a fact about the series and not about either server's copy.",
       "reason": "The date a series stopped, which is a fact about the series and not about either server's copy of it."
     },
     {
@@ -166,6 +182,7 @@
       "moves": false,
       "class": "Structural",
       "fromTheFile": false,
+      "operatorReason": "The episode number stays here. It is part of how an episode is identified, so writing it would move the thing this plugin reads to work out which episode it is looking at.",
       "reason": "This is identity. #30 resolves an episode as a series plus an ordinal, so writing the ordinal would move the thing the resolver reads to decide which item it is looking at."
     },
     {
@@ -175,6 +192,7 @@
       "moves": false,
       "class": "Structural",
       "fromTheFile": false,
+      "operatorReason": "The season number stays here, for the same reason as the episode number.",
       "reason": "The season ordinal, and the other half of the same identity. Same reason as the index number."
     },
     {
@@ -184,6 +202,7 @@
       "moves": false,
       "class": "Structural",
       "fromTheFile": false,
+      "operatorReason": "The series an episode belongs to stays here. Your server writes it from where the episode actually sits in your library, rather than from anything sent to it.",
       "reason": "The series half of an episode's identity, and it is written by the server from the item's place in the tree rather than set on the episode from outside."
     },
     {
@@ -193,6 +212,7 @@
       "moves": false,
       "class": "Structural",
       "fromTheFile": false,
+      "operatorReason": "The database identifiers stay here. They are what this plugin matches your items against the other server's by, so writing them would change the answer underneath a sync that is still running.",
       "reason": "The resolver decides which local item a payload is about by reading these, so writing them would change identity underneath a pass that is still running."
     },
     {
@@ -203,6 +223,7 @@
       "lock": "Runtime",
       "class": "Descriptive",
       "fromTheFile": true,
+      "operatorReason": "The running time stays here. It is the length of your file, and the other server holds a different file. Their runtime describes their copy and would simply be untrue about yours.",
       "reason": "The length of the file this server holds. The peer's copy is a different file, so the peer's runtime describes the peer's copy and would be a lie about ours. This is the row the whole from-the-file class exists for."
     },
     {
@@ -212,6 +233,7 @@
       "moves": false,
       "class": "Descriptive",
       "fromTheFile": true,
+      "operatorReason": "The file format stays here. It describes the file on your disk.",
       "reason": "The format of the file on this server's disk, which the other server's file need not share."
     },
     {
@@ -221,6 +243,7 @@
       "moves": false,
       "class": "Descriptive",
       "fromTheFile": true,
+      "operatorReason": "The file size stays here. It describes your file, not the work.",
       "reason": "The byte count of this server's file. Same class as the runtime and the same reason."
     },
     {
@@ -230,6 +253,7 @@
       "moves": false,
       "class": "Descriptive",
       "fromTheFile": true,
+      "operatorReason": "The picture width stays here. Two people holding different encodings of one film is the normal case rather than a problem to sync away.",
       "reason": "A property of this server's copy. Two operators holding different encodings of the same film is the ordinary case, not the exception."
     },
     {
@@ -239,6 +263,7 @@
       "moves": false,
       "class": "Descriptive",
       "fromTheFile": true,
+      "operatorReason": "The picture height stays here, for the same reason as the width.",
       "reason": "The other half of the same measurement of this server's copy."
     },
     {
@@ -248,6 +273,7 @@
       "moves": false,
       "class": "Structural",
       "fromTheFile": true,
+      "operatorReason": "Where the file sits on your disk stays here, and this plugin neither reads identity out of a path nor writes one.",
       "reason": "Names a file on this server's disk. #28 refuses to read identity out of a path and this row refuses to write one, which are the two halves of the same rule."
     },
     {
@@ -257,6 +283,7 @@
       "moves": false,
       "class": "Structural",
       "fromTheFile": true,
+      "operatorReason": "When your server first saw its copy stays here. It drives your recently-added list, so taking the other server's value would rewrite your own view of your library with somebody else's history.",
       "reason": "When this server first saw its own copy. It drives the recently-added lists, so moving it would rewrite one operator's view of their own library with the other's history."
     }
   ]
