@@ -56,10 +56,12 @@ jobs:
             dotnet build Jellyfin.Plugin.MetadataSync.sln --configuration Release
 
       - name: Run the suite with no network
-        # --network none removes every interface but the loopback one, so a test
-        # that opened a socket to anything outside the container fails here and
-        # passes on the hosted runner. No DISPLAY is set and no X server exists in
-        # the image, so the display half is the same kind of fact.
+        # --network none leaves the container with a loopback interface and
+        # nothing else, so a test that reached anything outside it fails here and
+        # passes on the hosted runner. No DISPLAY is set and the image carries no
+        # X server, so the display half is the same kind of fact. The interfaces
+        # are printed before the run, because a claim about the environment that
+        # nothing shows is a claim.
         run: |
           set -euo pipefail
           docker run --rm --network none \
@@ -67,11 +69,25 @@ jobs:
             -e DOTNET_CLI_TELEMETRY_OPTOUT=1 \
             -e DOTNET_NOLOGO=1 \
             "${SDK_IMAGE}" \
-            dotnet test Jellyfin.Plugin.MetadataSync.sln --configuration Release --no-build
+            sh -c 'cat /proc/net/dev; echo "DISPLAY=[${DISPLAY:-}]"; exec dotnet test Jellyfin.Plugin.MetadataSync.sln --configuration Release --no-build --logger "trx;LogFileName=headless.trx" --results-directory /src/headless-results'
 
-      - name: Say what the run proves
-        # A green check that says nothing about its own reach is a check somebody
-        # reads as covering more than it does.
+      - name: Say what the run proves, and refuse a run that proved nothing
+        # A run that executed no test exits zero and looks exactly like a run that
+        # executed all of them. The count is read back out of the run's own result
+        # file, so this step fails closed on a suite that never started.
         run: |
+          set -euo pipefail
+          trx=headless-results/headless.trx
+          if [ ! -f "$trx" ]; then
+            echo "::error::The container run left no result file at ${trx}, so nothing establishes that any test ran."
+            exit 1
+          fi
+          executed=$(grep -o 'executed="[0-9]*"' "$trx" | head -1 | grep -o '[0-9]*')
+          passed=$(grep -o 'passed="[0-9]*"' "$trx" | head -1 | grep -o '[0-9]*')
+          echo "executed=${executed:-0} passed=${passed:-0}"
+          if [ "${executed:-0}" -lt 1 ] || [ "${executed:-0}" -ne "${passed:-0}" ]; then
+            echo "::error::The container run executed ${executed:-0} test(s) and passed ${passed:-0}."
+            exit 1
+          fi
           echo "The suite ran inside a container with no network interface and no display."
           echo "It does not prove a test would fail if it opened a socket; it proves none of these did."
