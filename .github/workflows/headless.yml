@@ -1,0 +1,101 @@
+# The suite, run where the headless policy says it must hold: a container with
+# no display server and no network at all. `docs/testing.md` states the policy
+# and `docs/refused-tests.md` is the register of what it refuses; this is the
+# route that makes the network half of it a fact rather than a claim.
+#
+# The required check `call / test` runs the same suite on a hosted runner that
+# does have a network, so a test that quietly reached one would pass there and
+# nobody would learn. This job is the one that would fail.
+#
+# Two steps rather than one. The restore and the build need the package feed, so
+# they run with a network and are not the thing under test. The test run gets
+# `--network none` and `--no-build`, so what is measured is the suite, not the
+# toolchain fetching its own dependencies.
+#
+# The image is pinned by digest rather than by tag, for the same reason the
+# actions are pinned by commit: a tag is a name somebody else can repoint.
+name: Headless suite
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ "**" ]
+
+# Deny-all at workflow level; the job below takes only what it needs.
+permissions: {}
+
+# An audit run rather than a publish, so cancelling a superseded run is safe.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  headless:
+    name: Suite with no display and no network
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      SDK_IMAGE: mcr.microsoft.com/dotnet/sdk@sha256:2205fd3a7cf5e422c58398a9968aa8b5041fdbb47c76574fe631082e4cbfa2b8
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Restore and build, with a network
+        # The package cache is a mount and not a thing inside the container. Two
+        # `docker run` invocations are two containers, so a cache that lived in
+        # the first is gone in the second, and the second cannot fetch it back
+        # with no network. What that looked like was a `dotnet test` that printed
+        # `Build succeeded` and exited zero having run no test at all.
+        run: |
+          set -euo pipefail
+          mkdir -p .container-nuget
+          docker run --rm \
+            -v "${PWD}:/src" -w /src \
+            -v "${PWD}/.container-nuget:/root/.nuget/packages" \
+            -e DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+            -e DOTNET_NOLOGO=1 \
+            "${SDK_IMAGE}" \
+            dotnet build Jellyfin.Plugin.MetadataSync.sln --configuration Release
+
+      - name: Run the suite with no network
+        # --network none leaves the container with a loopback interface and
+        # nothing else, so a test that reached anything outside it fails here and
+        # passes on the hosted runner. No DISPLAY is set and the image carries no
+        # X server, so the display half is the same kind of fact. The interfaces
+        # are printed before the run, because a claim about the environment that
+        # nothing shows is a claim.
+        run: |
+          set -euo pipefail
+          docker run --rm --network none \
+            -v "${PWD}:/src" -w /src \
+            -v "${PWD}/.container-nuget:/root/.nuget/packages" \
+            -e DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+            -e DOTNET_NOLOGO=1 \
+            "${SDK_IMAGE}" \
+            sh -c 'cat /proc/net/dev; echo "DISPLAY=[${DISPLAY:-}]"; exec dotnet test Jellyfin.Plugin.MetadataSync.sln --configuration Release --no-build --logger "trx;LogFileName=headless.trx" --results-directory /src/headless-results'
+
+      - name: Say what the run proves, and refuse a run that proved nothing
+        # A run that executed no test exits zero and looks exactly like a run that
+        # executed all of them. The count is read back out of the run's own result
+        # file, so this step fails closed on a suite that never started.
+        run: |
+          set -euo pipefail
+          trx=headless-results/headless.trx
+          if [ ! -f "$trx" ]; then
+            echo "::error::The container run left no result file at ${trx}, so nothing establishes that any test ran."
+            exit 1
+          fi
+          executed=$(grep -o 'executed="[0-9]*"' "$trx" | head -1 | grep -o '[0-9]*')
+          passed=$(grep -o 'passed="[0-9]*"' "$trx" | head -1 | grep -o '[0-9]*')
+          echo "executed=${executed:-0} passed=${passed:-0}"
+          if [ "${executed:-0}" -lt 1 ] || [ "${executed:-0}" -ne "${passed:-0}" ]; then
+            echo "::error::The container run executed ${executed:-0} test(s) and passed ${passed:-0}."
+            exit 1
+          fi
+          echo "The suite ran inside a container with no network interface and no display."
+          echo "It does not prove a test would fail if it opened a socket; it proves none of these did."
