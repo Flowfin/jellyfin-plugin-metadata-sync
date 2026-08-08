@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Jellyfin.Plugin.MetadataSync.Configuration;
 using Xunit;
 
 namespace Jellyfin.Plugin.MetadataSync.Tests;
@@ -15,14 +17,19 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// a line that cannot be reached at all.
 /// </summary>
 /// <remarks>
-/// This class holds no trip test of its own. The tests it names live beside the
-/// type they are about, and a second copy of an assertion is a copy that
-/// drifts. What is added here is the register, which is the part that keeps
-/// working after it is written: a guard added to the plugin later with no entry
-/// fails the suite rather than waiting for somebody to notice it in review, and
-/// a guard deleted while its entry stays fails it the same way. Both
-/// directions, because a register that only grows stops describing the tree the
-/// moment a guard moves.
+/// The behavioural tests this register names live beside the type they are
+/// about, and a second copy of an assertion is a copy that drifts. What is
+/// added here is the register, which is the part that keeps working after it is
+/// written: a guard added to the plugin later with no entry fails the suite
+/// rather than waiting for somebody to notice it in review, and a guard deleted
+/// while its entry stays fails it the same way. Both directions, because a
+/// register that only grows stops describing the tree the moment a guard moves.
+/// <para>
+/// Each entry also carries the arrangement that reaches its site, and the
+/// register runs it. That is not a copy of the named test's assertion: the
+/// named test asserts what the caller sees, and the register asserts where the
+/// refusal came from, which is the thing naming a test cannot establish.
+/// </para>
 /// </remarks>
 public class RefusalTests
 {
@@ -32,14 +39,15 @@ public class RefusalTests
     /// itself shows up here rather than passing under a line number that
     /// happens to still match.
     /// </summary>
-    private static readonly Dictionary<string, (string TestClass, string Trip, string Neighbour, string DiffersBy)> Register =
+    private static readonly Dictionary<string, (string TestClass, string Trip, string Neighbour, string DiffersBy, Action Reaches)> Register =
         new(StringComparer.Ordinal)
         {
             ["Configuration/PluginConfigurationProvider.cs -> ArgumentNullException.ThrowIfNull(read);"] =
                 (nameof(ServiceRegistrationTests),
                  nameof(ServiceRegistrationTests.ConfigurationProviderRefusesAMissingReader),
                  nameof(ServiceRegistrationTests.ConfigurationProviderReturnsTheConfigurationItWasGiven),
-                 "the delegate is there"),
+                 "the delegate is there",
+                 () => new PluginConfigurationProvider(null!)),
         };
 
     /// <summary>
@@ -81,11 +89,13 @@ public class RefusalTests
     /// and they are two different tests.
     /// </summary>
     /// <remarks>
-    /// What this does not do is prove that the named trip executes the site it
-    /// is registered against, or that the neighbour differs from it by the one
-    /// thing the entry says. Nothing here reads coverage, so both pairings are
-    /// claims made when the entry is written. The bound is stated rather than
-    /// left for a reader to discover.
+    /// What this does not do is prove that the named trip is the thing that
+    /// reaches the site, or that the neighbour differs from it by the one thing
+    /// the entry says. Both pairings are claims made when the entry is written.
+    /// The site is reached by the entry's own arrangement, which
+    /// <see cref="EveryRegisteredSiteIsObservedToRefuseAtItsOwnLine"/> runs, so
+    /// what is left unproved here is the naming and not the reach. The bound is
+    /// stated rather than left for a reader to discover.
     /// </remarks>
     [Fact]
     public void EveryRegisterEntryNamesTestsTheSuiteRuns()
@@ -101,6 +111,34 @@ public class RefusalTests
     }
 
     /// <summary>
+    /// Every registered site is seen refusing, at the line the register names
+    /// it by. This is the leg that separates a register from a proof: the three
+    /// legs above are satisfied by an entry naming a line nothing ever reaches,
+    /// and this one is not.
+    /// </summary>
+    /// <remarks>
+    /// Reaching the line is not the property. The guard here is spelled
+    /// <c>ArgumentNullException.ThrowIfNull</c>, and that line executes on the
+    /// neighbour as much as on the trip, so a check that asked only which lines
+    /// ran would pass on an arrangement that was never refused at all. What is
+    /// asserted instead is where the refusal came from: the exception carries
+    /// the frames it was thrown through, and the first of them inside the
+    /// plugin is read back out of the source to give the same site string the
+    /// scan produces.
+    /// </remarks>
+    [Fact]
+    public void EveryRegisteredSiteIsObservedToRefuseAtItsOwnLine()
+    {
+        foreach (var (site, entry) in Register)
+        {
+            var refusal = Record.Exception(entry.Reaches);
+
+            Assert.NotNull(refusal);
+            Assert.Equal(site, SiteThatRefused(refusal));
+        }
+    }
+
+    /// <summary>
     /// The scan looks at files. If it ever looks at none, both register legs
     /// pass for the wrong reason, so it says so instead.
     /// </summary>
@@ -108,6 +146,48 @@ public class RefusalTests
     public void TheScanActuallyReadsThePluginSources()
     {
         Assert.NotEmpty(PluginSourceFiles());
+    }
+
+    /// <summary>
+    /// Returns the site string for the place inside the plugin that a refusal
+    /// was thrown from, in the same spelling the scan produces.
+    /// </summary>
+    /// <remarks>
+    /// The frames are read outermost-throw first, and the first one carrying a
+    /// file inside the plugin is the answer: the helpers that throw on a
+    /// caller's behalf live in the framework and carry no file at all, so the
+    /// first file-bearing frame is the line somebody wrote. It is read out of
+    /// the source rather than trusted from the entry, so a guard that moved to
+    /// another line reports the line it moved to.
+    /// </remarks>
+    private static string SiteThatRefused(Exception refusal)
+    {
+        var root = Path.Combine(RepositoryRoot(), "Jellyfin.Plugin.MetadataSync");
+
+        foreach (var frame in new StackTrace(refusal, true).GetFrames())
+        {
+            var file = frame.GetFileName();
+            var line = frame.GetFileLineNumber();
+
+            if (file is null || line <= 0 || !IsUnder(root, file))
+            {
+                continue;
+            }
+
+            var text = File.ReadLines(file).Skip(line - 1).First().Trim();
+            return $"{RelativeTo(root, file)} -> {text}";
+        }
+
+        // Every frame with a file was outside the plugin, or none carried one.
+        // The second case is a build without line information rather than a
+        // refusal from somewhere else, and the caller's assertion says which by
+        // printing the site it wanted.
+        return "no frame inside the plugin carried a source line";
+    }
+
+    private static bool IsUnder(string root, string file)
+    {
+        return !Path.GetRelativePath(root, file).StartsWith("..", StringComparison.Ordinal);
     }
 
     private static void AssertIsAFact(string testClass, string testMethod)
