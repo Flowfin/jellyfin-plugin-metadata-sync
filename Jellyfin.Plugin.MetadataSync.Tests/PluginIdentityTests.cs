@@ -36,12 +36,26 @@ public class PluginIdentityTests
     /// operator a configuration page that fails to load, with nothing said at
     /// build time.
     /// </summary>
+    /// <remarks>
+    /// The path is taken from the declaration the server reads rather than
+    /// rebuilt here from the same namespace. Rebuilt, this passed on any change
+    /// that moved the declaration, because the copy in the test moved with the
+    /// namespace and never with the declaration.
+    /// </remarks>
     [Fact]
     public void ConfigurationPageResourceResolvesFromThePluginNamespace()
     {
-        var expected = $"{typeof(Plugin).Namespace}.Configuration.configPage.html";
+        Assert.Contains(DeclaredPages.ConfigurationPagePath(), PluginAssembly.GetManifestResourceNames());
+    }
 
-        Assert.Contains(expected, PluginAssembly.GetManifestResourceNames());
+    /// <summary>
+    /// One page, and the tests that read it read that one. Two declarations
+    /// would leave every leg here asserting about whichever came first.
+    /// </summary>
+    [Fact]
+    public void ThePluginDeclaresOnePage()
+    {
+        Assert.Single(DeclaredPages.All());
     }
 
     private static string ManifestPath() => Path.Combine(AppContext.BaseDirectory, "build.yaml");
