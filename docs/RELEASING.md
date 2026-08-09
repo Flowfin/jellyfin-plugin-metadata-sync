@@ -103,6 +103,35 @@ on the repository settings below. Without immutable releases you can delete the
 incomplete release, delete the tag, and push it again. With immutable releases you
 cannot, and the version has to be raised.
 
+## A shipped version number keeps its meaning
+
+The section above fixes the bytes of a release. This one fixes what the number
+means, which is the other half and the one nothing can enforce after the fact.
+
+Two artefacts stay on an installation after the plugin is upgraded: the plugin
+configuration, and the plugin's own store. Both are stamped with the version that
+wrote them, and an upgrade steps them forward one released version at a time. A
+step is written against the shape the number had on the day it shipped.
+
+So once a version has been released, what that number says about those two
+artefacts is settled. Redefining it later does not change the step that reads it.
+It leaves the step in place and makes it wrong, on every installation still
+holding an artefact written under the old meaning, and the result is a file that
+looks migrated and is not. Nothing detects that: the version matches, the step
+ran, and the values are quietly the wrong ones.
+
+A shape that has shipped is therefore superseded by a new number and never edited
+into an old one. Where a released version turns out to describe the wrong thing,
+the repair is the next number plus a step from the one that was wrong, the same
+answer this document gives for a release that went out with the wrong contents.
+
+Neither artefact carries a version today and nothing has been released, so this
+binds the first release rather than describing the current tree. Nothing refuses a
+violation of it either, here or anywhere else: what would refuse one is the step
+chain itself, which does not exist. #59 is where that mechanism is built, and
+`docs/storage.md` is where the two artefacts and the split between them are
+argued.
+
 ## Repository settings this expects
 
 - Default workflow permissions set to read only.
