@@ -285,6 +285,116 @@
       "fromTheFile": true,
       "operatorReason": "When your server first saw its copy stays here. It drives your recently-added list, so taking the other server's value would rewrite your own view of your library with somebody else's history.",
       "reason": "When this server first saw its own copy. It drives the recently-added lists, so moving it would rewrite one operator's view of their own library with the other's history."
+    },
+    {
+      "field": "ImageInfos",
+      "declaredOn": "MediaBrowser.Controller.Entities.BaseItem",
+      "kinds": "all",
+      "moves": false,
+      "class": "Structural",
+      "fromTheFile": false,
+      "operatorReason": "Your posters, backdrops, logos and thumbnails stay yours. Each entry here points at a picture file on your disk, and sending one means sending the file, which is the one thing this plugin will never do. Two servers with different artwork stay that way, and a poster you chose by hand here has to be chosen by hand there too.",
+      "reason": "The item's list of image records, each naming a file this server holds. Moving one means moving the bytes behind it, which is file replication under another name and a permanent non-goal of this family of plugins rather than a scope decision a later release revisits. It is not in the from-the-file class because an image is a file of its own rather than the media file, and it never moves for its own reason."
+    },
+    {
+      "field": "PrimaryImagePath",
+      "declaredOn": "MediaBrowser.Controller.Entities.BaseItem",
+      "kinds": "all",
+      "moves": false,
+      "class": "Structural",
+      "fromTheFile": false,
+      "operatorReason": "Where your main picture for an item sits on your disk stays here. It is a path on your machine, so it would mean nothing on the other server even if the picture were sent, and the picture is not sent either.",
+      "reason": "The derived path to the item's primary image on this server's disk. It names a location on this machine, so it is meaningless on the peer, and it is the second way to reach the same bytes the row above refuses."
+    },
+    {
+      "field": "Played",
+      "declaredOn": "MediaBrowser.Controller.Entities.UserItemData",
+      "kinds": "all",
+      "moves": false,
+      "class": "Structural",
+      "fromTheFile": false,
+      "operatorReason": "Whether you have watched something is about you rather than about the film, and it stays on the server you watched it on. Moving watch history between two servers is what the watch sync plugin is for, and installing this one gets you library reconciliation and nothing about anybody's viewing.",
+      "reason": "Played state is held per user behind the server's own user-data surface, and this plugin reconciles what a library says about a work rather than what a server holds about a person. It is the sibling plugin's functionality, and keeping it unreachable is what lets a review of this plugin's exposure stop at the item."
+    },
+    {
+      "field": "PlayCount",
+      "declaredOn": "MediaBrowser.Controller.Entities.UserItemData",
+      "kinds": "all",
+      "moves": false,
+      "class": "Structural",
+      "fromTheFile": false,
+      "operatorReason": "How many times you have watched something stays on the server you watched it on, for the same reason as the played mark. It counts what a person did rather than describing the work.",
+      "reason": "The same per-user state one step finer than the played mark. A guard or a register that named only the mark would leave the count as a second route to the same account of what one person watched."
+    },
+    {
+      "field": "PlaybackPositionTicks",
+      "declaredOn": "MediaBrowser.Controller.Entities.UserItemData",
+      "kinds": "all",
+      "moves": false,
+      "class": "Structural",
+      "fromTheFile": false,
+      "operatorReason": "Where you stopped watching stays here. It is a position in your copy of the file, and the other server holds a different file, so a resume point carried across would drop you somewhere nobody chose.",
+      "reason": "A resume point is per user and it is also a position inside this server's own copy, so it is wrong on both counts. Two servers holding different encodings of one work do not share an offset."
+    },
+    {
+      "field": "LastPlayedDate",
+      "declaredOn": "MediaBrowser.Controller.Entities.UserItemData",
+      "kinds": "all",
+      "moves": false,
+      "class": "Structural",
+      "fromTheFile": false,
+      "operatorReason": "When you last watched something stays here. It orders your own lists of what you have been watching, and it says what a person in this house did and when.",
+      "reason": "Per-user viewing history with a time attached, which is the most disclosing entry in this group. It also orders the server's own lists, so a value from elsewhere would rewrite one household's view of its own habits."
+    },
+    {
+      "field": "IsFavorite",
+      "declaredOn": "MediaBrowser.Controller.Entities.UserItemData",
+      "kinds": "all",
+      "moves": false,
+      "class": "Descriptive",
+      "fromTheFile": false,
+      "operatorReason": "Your favourites are yours. A heart you put on something on one server says what you like, not what the film is, so it stays where you put it.",
+      "reason": "A favourite is a statement by one person about their own library and not a property of the work, so there is no sense in which the peer's answer is right here."
+    },
+    {
+      "field": "Likes",
+      "declaredOn": "MediaBrowser.Controller.Entities.UserItemData",
+      "kinds": "all",
+      "moves": false,
+      "class": "Descriptive",
+      "fromTheFile": false,
+      "operatorReason": "The thumbs up or thumbs down you gave something stays here, for the same reason as your favourites. It records an opinion of yours rather than anything about the work.",
+      "reason": "The same per-user opinion in a second spelling. It sits beside the favourite on the same record and is reached the same way, so a register naming one and not the other would declare half a refusal."
+    },
+    {
+      "field": "Rating",
+      "declaredOn": "MediaBrowser.Controller.Entities.UserItemData",
+      "kinds": "all",
+      "moves": false,
+      "class": "Descriptive",
+      "fromTheFile": false,
+      "operatorReason": "The score you gave something yourself stays here. Read this row next to the community rating: they look alike in the dashboard and one is what everybody thinks while this one is what you think.",
+      "reason": "This is the row the whole group exists to keep separate. A personal rating looks exactly like a field on an item, the item's own community rating is a row in this register, and the two are one word apart in the model and in the dashboard. The community rating is about the work; this is about one person."
+    },
+    {
+      "field": "AudioStreamIndex",
+      "declaredOn": "MediaBrowser.Controller.Entities.UserItemData",
+      "kinds": "playable",
+      "moves": false,
+      "class": "Structural",
+      "fromTheFile": true,
+      "operatorReason": "The soundtrack you chose for an item stays here. It is a number counting the tracks inside your file, and the other server's file has its own tracks in its own order, so carrying the number over would pick the wrong one.",
+      "reason": "A per-user choice that is also an index into the streams of this server's copy. The peer's file has its own stream order, so the number describes the peer's file and would select something else here."
+    },
+    {
+      "field": "SubtitleStreamIndex",
+      "declaredOn": "MediaBrowser.Controller.Entities.UserItemData",
+      "kinds": "playable",
+      "moves": false,
+      "class": "Structural",
+      "fromTheFile": true,
+      "operatorReason": "The subtitle track you chose stays here, for the same reason as the soundtrack. It counts the tracks in your file and means nothing about anybody else's.",
+      "reason": "The other half of the same per-user choice over this server's own streams, and it fails in exactly the same two ways."
     }
   ]
 }
