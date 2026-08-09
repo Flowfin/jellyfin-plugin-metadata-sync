@@ -285,6 +285,26 @@
       "fromTheFile": true,
       "operatorReason": "When your server first saw its copy stays here. It drives your recently-added list, so taking the other server's value would rewrite your own view of your library with somebody else's history.",
       "reason": "When this server first saw its own copy. It drives the recently-added lists, so moving it would rewrite one operator's view of their own library with the other's history."
+    },
+    {
+      "field": "ImageInfos",
+      "declaredOn": "MediaBrowser.Controller.Entities.BaseItem",
+      "kinds": "all",
+      "moves": false,
+      "class": "Structural",
+      "fromTheFile": false,
+      "operatorReason": "Your posters, backdrops, logos and thumbnails stay yours. Each entry here points at a picture file on your disk, and sending one means sending the file, which is the one thing this plugin will never do. Two servers with different artwork stay that way, and a poster you chose by hand here has to be chosen by hand there too.",
+      "reason": "The item's list of image records, each naming a file this server holds. Moving one means moving the bytes behind it, which is file replication under another name and a permanent non-goal of this family of plugins rather than a scope decision a later release revisits. It is not in the from-the-file class because an image is a file of its own rather than the media file, and it never moves for its own reason."
+    },
+    {
+      "field": "PrimaryImagePath",
+      "declaredOn": "MediaBrowser.Controller.Entities.BaseItem",
+      "kinds": "all",
+      "moves": false,
+      "class": "Structural",
+      "fromTheFile": false,
+      "operatorReason": "Where your main picture for an item sits on your disk stays here. It is a path on your machine, so it would mean nothing on the other server even if the picture were sent, and the picture is not sent either.",
+      "reason": "The derived path to the item's primary image on this server's disk. It names a location on this machine, so it is meaningless on the peer, and it is the second way to reach the same bytes the row above refuses."
     }
   ]
 }

@@ -239,6 +239,80 @@ public class FieldRegisterTests
     }
 
     /// <summary>
+    /// Every image field the item type carries has a row, and no row that has
+    /// one moves. Image bytes are a permanent non-goal rather than a scope
+    /// decision, so the register declares the refusal instead of leaving it to
+    /// the absence of a row.
+    /// </summary>
+    /// <remarks>
+    /// The set is read back off the server rather than written here, which is
+    /// what makes this catch the case it exists for: an image field the server
+    /// adds later arrives with no row, and a register that is silent about it
+    /// reads exactly like one that refuses it. What it cannot catch is an image
+    /// reached through something that is not a property on the item, which is
+    /// the surface <c>ImageBytesTests</c> refuses by name instead.
+    /// <para>
+    /// Two properties spelled with the word are allowed to have no row, and
+    /// they are named below with the reason rather than filtered out by a
+    /// pattern. A pattern excusing everything beginning with <c>Supports</c>
+    /// would excuse the next such name too, and the point of the leg is that a
+    /// name arriving later is decided by somebody rather than by a prefix.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void EveryImageFieldOnTheItemTypeHasARowAndNoneOfThemMove()
+    {
+        // Neither carries an image or a location of one. They answer what this
+        // item kind is capable of, which is a property of the type rather than
+        // a value that could be written onto one item, and there is nothing for
+        // a row to declare about either.
+        var notAField = new[] { "SupportsInheritedParentImages", "SupportsRemoteImageDownloading" };
+
+        var onTheServer = typeof(BaseItem)
+            .GetProperties()
+            .Select(p => p.Name)
+            .Where(n => n.Contains("Image", StringComparison.Ordinal))
+            .Where(n => !notAField.Contains(n, StringComparer.Ordinal))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.NotEmpty(onTheServer);
+
+        var undeclared = onTheServer.Where(n => FieldRegister.Find(n) is null).ToList();
+        var moving = onTheServer.Where(n => FieldRegister.Find(n)?.Moves == true).ToList();
+
+        Assert.Empty(undeclared);
+        Assert.Empty(moving);
+
+        // The excused names are the server's own. A line that renames one turns
+        // the exclusion above into a name nothing matches, which would silently
+        // widen what this leg is looking at rather than narrowing it.
+        var properties = typeof(BaseItem).GetProperties().Select(p => p.Name).ToHashSet(StringComparer.Ordinal);
+        Assert.All(notAField, n => Assert.Contains(n, properties));
+    }
+
+    /// <summary>
+    /// Asking to move an image field is refused when it is asked, with the row's
+    /// own reason rather than with a general one, so the caller reads the
+    /// argument instead of going to look for a missing row.
+    /// </summary>
+    [Theory]
+    [InlineData("ImageInfos")]
+    [InlineData("PrimaryImagePath")]
+    public void AnImageFieldIsRefusedWithTheReasonItsRowCarries(string field)
+    {
+        var row = FieldRegister.Find(field);
+        Assert.NotNull(row);
+        Assert.False(row.Moves);
+
+        var refused = Assert.Throws<FieldNotDeclaredException>(
+            () => FieldMover.Move(field, new Movie(), new Movie()));
+
+        Assert.Contains(row.Reason, refused.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// A field derived from the media file describes this server's copy, so the
     /// peer's value is a false statement about ours whatever else is true of it.
     /// No row in that class may move, ever.

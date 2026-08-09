@@ -73,6 +73,8 @@ groups are written out below.
 | `Height` | playable | no | Descriptive | yes | The other half of the same measurement of this server's copy. |
 | `Path` | playable | no | Structural | yes | Names a file on this server's disk. #28 refuses to read identity out of a path and this row refuses to write one, which are the two halves of the same rule. |
 | `DateCreated` | all | no | Structural | yes | When this server first saw its own copy. It drives the recently-added lists, so moving it would rewrite one operator's view of their own library with the other's history. |
+| `ImageInfos` | all | no | Structural | no | The item's list of image records, each naming a file this server holds. Moving one means moving the bytes behind it, which is file replication under another name and a permanent non-goal of this family of plugins rather than a scope decision a later release revisits. It is not in the from-the-file class because an image is a file of its own rather than the media file, and it never moves for its own reason. |
+| `PrimaryImagePath` | all | no | Structural | no | The derived path to the item's primary image on this server's disk. It names a location on this machine, so it is meaningless on the peer, and it is the second way to reach the same bytes the row above refuses. |
 <!-- end rendered -->
 
 ## The kind groups
@@ -126,6 +128,8 @@ when a server line renames a property.
 | `Height` | `MediaBrowser.Controller.Entities.BaseItem` | - |
 | `Path` | `MediaBrowser.Controller.Entities.BaseItem` | - |
 | `DateCreated` | `MediaBrowser.Controller.Entities.BaseItem` | - |
+| `ImageInfos` | `MediaBrowser.Controller.Entities.BaseItem` | - |
+| `PrimaryImagePath` | `MediaBrowser.Controller.Entities.BaseItem` | - |
 <!-- end rendered -->
 
 ## What each row means for your library
@@ -166,6 +170,8 @@ in that file rather than derived from the class.
 | `Height` | no | The picture height stays here, for the same reason as the width. |
 | `Path` | no | Where the file sits on your disk stays here, and this plugin neither reads identity out of a path nor writes one. |
 | `DateCreated` | no | When your server first saw its copy stays here. It drives your recently-added list, so taking the other server's value would rewrite your own view of your library with somebody else's history. |
+| `ImageInfos` | no | Your posters, backdrops, logos and thumbnails stay yours. Each entry here points at a picture file on your disk, and sending one means sending the file, which is the one thing this plugin will never do. Two servers with different artwork stay that way, and a poster you chose by hand here has to be chosen by hand there too. |
+| `PrimaryImagePath` | no | Where your main picture for an item sits on your disk stays here. It is a path on your machine, so it would mean nothing on the other server even if the picture were sent, and the picture is not sent either. |
 <!-- end rendered -->
 
 ## Which lock governs a row
@@ -211,6 +217,8 @@ and it refuses before it reaches the writer.
 | `Height` | the item-level lock only |
 | `Path` | the item-level lock only |
 | `DateCreated` | the item-level lock only |
+| `ImageInfos` | the item-level lock only |
+| `PrimaryImagePath` | the item-level lock only |
 <!-- end rendered -->
 
 ## What this register does not do
@@ -235,8 +243,13 @@ change that. What is missing is the mark: an entry created by a sync has to
 carry one, there is nowhere yet to keep it, and until there is, a resolution is
 something a plan can show rather than something a pass performs.
 
-It does not cover images. Image bytes are a separate refusal with a separate
-reason, and #14 is where the rows for them are written.
+It does not carry the identity an image could be fetched from. The two image
+rows above refuse the bytes, and what could move in their place is a provider
+identifier the receiving server's own image provider fetches its own copy with.
+No row above is that identifier. The identifiers this plugin knows about are in
+`ProviderIds`, which is declared as a row that does not move because the
+resolver reads it to decide which local item a payload is about, and whether an
+image identifier moves separately from that is not settled here.
 
 It does not record a lock refusal. A lock stops the write and nothing writes
 down that it did, because there is nowhere yet to write it; #48 is the conflict
@@ -259,7 +272,16 @@ will not do, in any release, because doing it would be wrong. A scope decision
 is something 1.0 does not do, with a stated condition that would let a later
 release do it.
 
-Image bytes are the permanent non-goal. Their rows and the reason are #14.
+Image bytes are the permanent non-goal, and the two rows above are where that
+is declared rather than described. `ImageInfos` is the item's own list of image
+records and `PrimaryImagePath` is the derived path to one of them, so between
+them they are every image field the item type carries. The suite reads the
+server's item type back and fails if it grows a third, because an image field
+the register does not name is one this document would be silent about.
+
+The cost is real and is stated rather than hidden. Two servers that have
+different artwork stay that way. An operator who curated a poster by hand on one
+server has to do it again on the other.
 
 Collection membership and playlist membership are scope decisions.
 
