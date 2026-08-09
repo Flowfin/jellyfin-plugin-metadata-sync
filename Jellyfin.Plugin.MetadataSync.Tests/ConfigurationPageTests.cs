@@ -113,18 +113,20 @@ public class ConfigurationPageTests
     }
 
     /// <summary>
-    /// Reads the page out of the assembly, at the path the plugin computes for
-    /// the server rather than at one written here, so a namespace change moves
-    /// both together.
+    /// Reads the page out of the assembly, at the path the plugin declares to
+    /// the server rather than at one worked out again here.
     /// </summary>
+    /// <remarks>
+    /// This used to rebuild the path from the plugin's namespace, which is the
+    /// expression the declaration uses, so the two moved together on a namespace
+    /// change and separately on a change to the declaration. A page declared at
+    /// a path the assembly does not carry is exactly what an operator meets as a
+    /// configuration page that will not load, and it left this scan reading a
+    /// page nothing serves.
+    /// </remarks>
     private static string ThePageTheServerServes()
     {
-        var name = string.Format(
-            CultureInfo.InvariantCulture,
-            "{0}.Configuration.configPage.html",
-            typeof(Plugin).Namespace);
-
-        using var resource = typeof(Plugin).Assembly.GetManifestResourceStream(name);
+        using var resource = typeof(Plugin).Assembly.GetManifestResourceStream(DeclaredPages.ConfigurationPagePath());
         Assert.NotNull(resource);
 
         using var reader = new StreamReader(resource);
