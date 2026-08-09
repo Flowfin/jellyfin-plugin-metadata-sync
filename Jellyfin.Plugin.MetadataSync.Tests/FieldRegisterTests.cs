@@ -206,18 +206,26 @@ public class FieldRegisterTests
     /// run time and not only in review, because review is where the last one of
     /// these got through.
     /// </summary>
+    /// <remarks>
+    /// <c>SortName</c> is the field used here because it is the near-miss
+    /// somebody actually writes: it is a real property on the item, the
+    /// register carries <c>ForcedSortName</c> beside it, and the two are the
+    /// same idea spelled two ways. A register read leniently would answer for
+    /// the row next door.
+    /// </remarks>
     [Fact]
     public void AFieldWithNoRowIsRefusedWhenSomethingAsksToMoveIt()
     {
         var from = new Movie();
         var to = new Movie();
 
-        Assert.Null(FieldRegister.Find("PlaybackPositionTicks"));
+        Assert.NotNull(typeof(BaseItem).GetProperty("SortName"));
+        Assert.Null(FieldRegister.Find("SortName"));
 
         var refused = Assert.Throws<FieldNotDeclaredException>(
-            () => FieldMover.Move("PlaybackPositionTicks", from, to));
+            () => FieldMover.Move("SortName", from, to));
 
-        Assert.Contains("PlaybackPositionTicks", refused.Message, StringComparison.Ordinal);
+        Assert.Contains("SortName", refused.Message, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -310,6 +318,97 @@ public class FieldRegisterTests
             () => FieldMover.Move(field, new Movie(), new Movie()));
 
         Assert.Contains(row.Reason, refused.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Every field the server's per-user record carries has a row, and none of
+    /// them moves. What a server holds about a person is the sibling plugin's
+    /// work and never this one's, and the register says so by name rather than
+    /// by having nothing to say.
+    /// </summary>
+    /// <remarks>
+    /// The set is read back off the server's own record type rather than
+    /// written here, so a server line adding a tenth field turns this red
+    /// instead of leaving the register quietly incomplete. Two members are
+    /// excused by name below because they identify the record rather than
+    /// describe anybody's viewing.
+    /// <para>
+    /// This is a register leg and not a reachability one. That the plugin
+    /// assembly cannot name the surface at all is <c>UserDataSurfaceTests</c>,
+    /// and neither leg makes the other redundant: one keeps the code away from
+    /// the data, this one keeps the document honest about what was decided.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void EveryFieldOnThePerUserRecordHasARowAndNoneOfThemMove()
+    {
+        // The key and the user are what the record is filed under. Neither says
+        // anything about what somebody watched, and there is nothing for a row
+        // to declare about a record's own identity.
+        var notAField = new[] { "Key", "UserId" };
+
+        var record = ResolveServerType("MediaBrowser.Controller.Entities.UserItemData");
+        Assert.NotNull(record);
+
+        var onTheServer = record.GetProperties()
+            .Select(p => p.Name)
+            .Where(n => !notAField.Contains(n, StringComparer.Ordinal))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.NotEmpty(onTheServer);
+
+        var undeclared = onTheServer.Where(n => FieldRegister.Find(n) is null).ToList();
+        var moving = onTheServer.Where(n => FieldRegister.Find(n)?.Moves == true).ToList();
+
+        Assert.Empty(undeclared);
+        Assert.Empty(moving);
+
+        var properties = record.GetProperties().Select(p => p.Name).ToHashSet(StringComparer.Ordinal);
+        Assert.All(notAField, n => Assert.Contains(n, properties));
+    }
+
+    /// <summary>
+    /// Asking to move a user-scoped field is refused when it is asked, with the
+    /// row's own reason. The personal rating is the row this group exists for,
+    /// so it is asserted beside the community rating that does move.
+    /// </summary>
+    [Theory]
+    [InlineData("Played")]
+    [InlineData("PlaybackPositionTicks")]
+    [InlineData("IsFavorite")]
+    [InlineData("Rating")]
+    public void AUserScopedFieldIsRefusedWithTheReasonItsRowCarries(string field)
+    {
+        var row = FieldRegister.Find(field);
+        Assert.NotNull(row);
+        Assert.False(row.Moves);
+
+        var refused = Assert.Throws<FieldNotDeclaredException>(
+            () => FieldMover.Move(field, new Movie(), new Movie()));
+
+        Assert.Contains(row.Reason, refused.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The near-miss the personal rating exists next to. A register that read
+    /// the two ratings as one row would refuse the item's own community rating
+    /// under the per-user reason, or move the per-user one under the item's.
+    /// They are separate rows, on separate types, and only one of them is about
+    /// a person.
+    /// </summary>
+    [Fact]
+    public void ThePersonalRatingAndTheCommunityRatingAreSeparateRows()
+    {
+        var personal = FieldRegister.Find("Rating");
+        var community = FieldRegister.Find("CommunityRating");
+
+        Assert.NotNull(personal);
+        Assert.NotNull(community);
+        Assert.Equal("MediaBrowser.Controller.Entities.UserItemData", personal.DeclaredOn);
+        Assert.Equal("MediaBrowser.Controller.Entities.BaseItem", community.DeclaredOn);
+        Assert.NotEqual(personal.Reason, community.Reason);
     }
 
     /// <summary>

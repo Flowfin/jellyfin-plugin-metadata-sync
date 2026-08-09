@@ -75,6 +75,15 @@ groups are written out below.
 | `DateCreated` | all | no | Structural | yes | When this server first saw its own copy. It drives the recently-added lists, so moving it would rewrite one operator's view of their own library with the other's history. |
 | `ImageInfos` | all | no | Structural | no | The item's list of image records, each naming a file this server holds. Moving one means moving the bytes behind it, which is file replication under another name and a permanent non-goal of this family of plugins rather than a scope decision a later release revisits. It is not in the from-the-file class because an image is a file of its own rather than the media file, and it never moves for its own reason. |
 | `PrimaryImagePath` | all | no | Structural | no | The derived path to the item's primary image on this server's disk. It names a location on this machine, so it is meaningless on the peer, and it is the second way to reach the same bytes the row above refuses. |
+| `Played` | all | no | Structural | no | Played state is held per user behind the server's own user-data surface, and this plugin reconciles what a library says about a work rather than what a server holds about a person. It is the sibling plugin's functionality, and keeping it unreachable is what lets a review of this plugin's exposure stop at the item. |
+| `PlayCount` | all | no | Structural | no | The same per-user state one step finer than the played mark. A guard or a register that named only the mark would leave the count as a second route to the same account of what one person watched. |
+| `PlaybackPositionTicks` | all | no | Structural | no | A resume point is per user and it is also a position inside this server's own copy, so it is wrong on both counts. Two servers holding different encodings of one work do not share an offset. |
+| `LastPlayedDate` | all | no | Structural | no | Per-user viewing history with a time attached, which is the most disclosing entry in this group. It also orders the server's own lists, so a value from elsewhere would rewrite one household's view of its own habits. |
+| `IsFavorite` | all | no | Descriptive | no | A favourite is a statement by one person about their own library and not a property of the work, so there is no sense in which the peer's answer is right here. |
+| `Likes` | all | no | Descriptive | no | The same per-user opinion in a second spelling. It sits beside the favourite on the same record and is reached the same way, so a register naming one and not the other would declare half a refusal. |
+| `Rating` | all | no | Descriptive | no | This is the row the whole group exists to keep separate. A personal rating looks exactly like a field on an item, the item's own community rating is a row in this register, and the two are one word apart in the model and in the dashboard. The community rating is about the work; this is about one person. |
+| `AudioStreamIndex` | playable | no | Structural | yes | A per-user choice that is also an index into the streams of this server's copy. The peer's file has its own stream order, so the number describes the peer's file and would select something else here. |
+| `SubtitleStreamIndex` | playable | no | Structural | yes | The other half of the same per-user choice over this server's own streams, and it fails in exactly the same two ways. |
 <!-- end rendered -->
 
 ## The kind groups
@@ -130,6 +139,15 @@ when a server line renames a property.
 | `DateCreated` | `MediaBrowser.Controller.Entities.BaseItem` | - |
 | `ImageInfos` | `MediaBrowser.Controller.Entities.BaseItem` | - |
 | `PrimaryImagePath` | `MediaBrowser.Controller.Entities.BaseItem` | - |
+| `Played` | `MediaBrowser.Controller.Entities.UserItemData` | - |
+| `PlayCount` | `MediaBrowser.Controller.Entities.UserItemData` | - |
+| `PlaybackPositionTicks` | `MediaBrowser.Controller.Entities.UserItemData` | - |
+| `LastPlayedDate` | `MediaBrowser.Controller.Entities.UserItemData` | - |
+| `IsFavorite` | `MediaBrowser.Controller.Entities.UserItemData` | - |
+| `Likes` | `MediaBrowser.Controller.Entities.UserItemData` | - |
+| `Rating` | `MediaBrowser.Controller.Entities.UserItemData` | - |
+| `AudioStreamIndex` | `MediaBrowser.Controller.Entities.UserItemData` | - |
+| `SubtitleStreamIndex` | `MediaBrowser.Controller.Entities.UserItemData` | - |
 <!-- end rendered -->
 
 ## What each row means for your library
@@ -172,6 +190,15 @@ in that file rather than derived from the class.
 | `DateCreated` | no | When your server first saw its copy stays here. It drives your recently-added list, so taking the other server's value would rewrite your own view of your library with somebody else's history. |
 | `ImageInfos` | no | Your posters, backdrops, logos and thumbnails stay yours. Each entry here points at a picture file on your disk, and sending one means sending the file, which is the one thing this plugin will never do. Two servers with different artwork stay that way, and a poster you chose by hand here has to be chosen by hand there too. |
 | `PrimaryImagePath` | no | Where your main picture for an item sits on your disk stays here. It is a path on your machine, so it would mean nothing on the other server even if the picture were sent, and the picture is not sent either. |
+| `Played` | no | Whether you have watched something is about you rather than about the film, and it stays on the server you watched it on. Moving watch history between two servers is what the watch sync plugin is for, and installing this one gets you library reconciliation and nothing about anybody's viewing. |
+| `PlayCount` | no | How many times you have watched something stays on the server you watched it on, for the same reason as the played mark. It counts what a person did rather than describing the work. |
+| `PlaybackPositionTicks` | no | Where you stopped watching stays here. It is a position in your copy of the file, and the other server holds a different file, so a resume point carried across would drop you somewhere nobody chose. |
+| `LastPlayedDate` | no | When you last watched something stays here. It orders your own lists of what you have been watching, and it says what a person in this house did and when. |
+| `IsFavorite` | no | Your favourites are yours. A heart you put on something on one server says what you like, not what the film is, so it stays where you put it. |
+| `Likes` | no | The thumbs up or thumbs down you gave something stays here, for the same reason as your favourites. It records an opinion of yours rather than anything about the work. |
+| `Rating` | no | The score you gave something yourself stays here. Read this row next to the community rating: they look alike in the dashboard and one is what everybody thinks while this one is what you think. |
+| `AudioStreamIndex` | no | The soundtrack you chose for an item stays here. It is a number counting the tracks inside your file, and the other server's file has its own tracks in its own order, so carrying the number over would pick the wrong one. |
+| `SubtitleStreamIndex` | no | The subtitle track you chose stays here, for the same reason as the soundtrack. It counts the tracks in your file and means nothing about anybody else's. |
 <!-- end rendered -->
 
 ## Which lock governs a row
@@ -219,6 +246,15 @@ and it refuses before it reaches the writer.
 | `DateCreated` | the item-level lock only |
 | `ImageInfos` | the item-level lock only |
 | `PrimaryImagePath` | the item-level lock only |
+| `Played` | the item-level lock only |
+| `PlayCount` | the item-level lock only |
+| `PlaybackPositionTicks` | the item-level lock only |
+| `LastPlayedDate` | the item-level lock only |
+| `IsFavorite` | the item-level lock only |
+| `Likes` | the item-level lock only |
+| `Rating` | the item-level lock only |
+| `AudioStreamIndex` | the item-level lock only |
+| `SubtitleStreamIndex` | the item-level lock only |
 <!-- end rendered -->
 
 ## What this register does not do
@@ -283,6 +319,31 @@ The cost is real and is stated rather than hidden. Two servers that have
 different artwork stay that way. An operator who curated a poster by hand on one
 server has to do it again on the other.
 
+What this server holds about a person is the second permanent non-goal. Played
+state, play count, resume position, last played date, favourites, likes, a
+personal rating and the audio and subtitle tracks somebody chose are all rows
+above, all declared as never moving, and they are the whole of the per-user
+record the server keeps against an item. They are named rather than left out
+because leaving them out is how a plugin ends up with one of them: a personal
+rating looks exactly like a field on an item, the item's own community rating is
+a row that this register carries, and the two are one word apart in the model
+and in the dashboard.
+
+The cost here is smaller and it is still a cost. Watch history does not follow
+an operator between two servers because of anything in this plugin. What does
+move it is [jellyfin-plugin-watch-sync](https://github.com/Flowfin/jellyfin-plugin-watch-sync),
+which is a separate install and a separate decision, so an operator who wanted
+metadata reconciliation and not watch-history transfer gets exactly the one they
+asked for.
+
+Two of the nine are refused twice over, and it is worth reading why. The audio
+track and the subtitle track somebody chose are per-user answers that are also
+indexes into the streams of this server's own copy. The other server holds a
+different file with its own streams in its own order, so even with the per-user
+refusal set aside the number would select something else here. Those two rows
+carry `yes` in the from-the-file column for that reason, and they are the only
+rows in this group that do.
+
 Collection membership and playlist membership are scope decisions.
 
 Neither is a field on an item. A collection and a playlist are items whose
@@ -296,8 +357,8 @@ in this space ships that behaviour and documents it as a caveat rather than
 designing it away.
 
 Playlists carry a second reason of their own. A playlist usually belongs to a
-user, and what this plugin may hold and move about a user is decided in #18
-rather than here.
+user, and nothing this server holds about a user moves, which the nine rows
+above now declare.
 
 The condition that would let a later release carry collections is the unmatched
 register in #29 being good enough that a partial collection can explain itself.

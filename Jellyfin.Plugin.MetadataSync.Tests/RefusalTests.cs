@@ -95,7 +95,7 @@ public class RefusalTests
                  nameof(FieldRegisterTests.AFieldWithNoRowIsRefusedWhenSomethingAsksToMoveIt),
                  nameof(FieldRegisterTests.ADeclaredFieldIsWrittenOntoTheItem),
                  "the field has a row",
-                 () => FieldRegister.RequireMovable("PlaybackPositionTicks")),
+                 () => FieldRegister.RequireMovable("SortName")),
 
             ["Fields/FieldRegister.cs -> throw new FieldNotDeclaredException(ARowThatRefuses(row));"] =
                 (nameof(FieldRegisterTests),
