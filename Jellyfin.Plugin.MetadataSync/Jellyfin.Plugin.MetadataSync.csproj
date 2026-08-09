@@ -44,4 +44,13 @@
     <EmbeddedResource Include="Fields\field-register.json" LogicalName="Jellyfin.Plugin.MetadataSync.Fields.field-register.json" />
   </ItemGroup>
 
+  <!-- The conflict rules ship inside the assembly for the third time the same
+       reason applies: a rule an operator can edit per installation is not a
+       rule. It matters more here than for the other two, because these rows
+       decide whose value survives when two libraries disagree. -->
+  <ItemGroup>
+    <None Remove="Conflicts\conflict-rules.json" />
+    <EmbeddedResource Include="Conflicts\conflict-rules.json" LogicalName="Jellyfin.Plugin.MetadataSync.Conflicts.conflict-rules.json" />
+  </ItemGroup>
+
 </Project>

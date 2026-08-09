@@ -65,6 +65,14 @@
     <None Include="..\docs\provider-identifiers.md" Link="provider-identifiers.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The conflict rules are declared once, in the table the plugin embeds, and
+       the document under docs/ carries both a rendering of it and the fixture
+       rows the rule set is argued from. ConflictRuleTests reads the document,
+       so it is copied here for the same reason the field register is. -->
+  <ItemGroup>
+    <None Include="..\docs\conflicts.md" Link="conflicts.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- The endpoint authorization table is declared once, in the document a
        person reads, and EndpointAuthorizationTests holds the plugin's
        controllers against it. It is copied here for the same reason the field

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Jellyfin.Plugin.MetadataSync.Configuration;
+using Jellyfin.Plugin.MetadataSync.Conflicts;
 using Jellyfin.Plugin.MetadataSync.Fields;
 using Jellyfin.Plugin.MetadataSync.Matching;
 using MediaBrowser.Controller.Entities.Movies;
@@ -150,6 +151,41 @@ public class RefusalTests
                  nameof(ProviderIdentifierTests.TheTableThatShipsInTheAssemblyLoads),
                  "the text describes a table",
                  () => ProviderIdentifiers.Parse("null")),
+
+            ["Conflicts/ConflictRules.cs -> using var stream = assembly.GetManifestResourceStream(resourceName) ?? throw new InvalidOperationException(NoRulesEmbedded(resourceName));"] =
+                (nameof(ConflictRuleTests),
+                 nameof(ConflictRuleTests.ARuleTableThatIsNotEmbeddedIsRefused),
+                 nameof(ConflictRuleTests.TheRuleTableThatShipsInTheAssemblyLoads),
+                 "the assembly carries a rule table under that name",
+                 () => ConflictRules.Load("Jellyfin.Plugin.MetadataSync.Conflicts.no-such-rules.json")),
+
+            ["Conflicts/ConflictRules.cs -> var read = JsonSerializer.Deserialize<RuleFile>(text, _json) ?? throw new InvalidOperationException(NothingToRead());"] =
+                (nameof(ConflictRuleTests),
+                 nameof(ConflictRuleTests.RuleTextThatDescribesNoRuleSetIsRefused),
+                 nameof(ConflictRuleTests.TheRuleTableThatShipsInTheAssemblyLoads),
+                 "the text describes a rule set",
+                 () => ConflictRules.Parse("null")),
+
+            ["Conflicts/ConflictRules.cs -> throw new InvalidOperationException(NoSuchOutcome(row));"] =
+                (nameof(ConflictRuleTests),
+                 nameof(ConflictRuleTests.ARuleProducingAnOutcomeNothingDeclaresIsRefused),
+                 nameof(ConflictRuleTests.TheRuleTableThatShipsInTheAssemblyLoads),
+                 "the outcome the rule produces is one the closed set carries",
+                 () => ConflictRules.Parse(ConflictRuleTests.UndeclaredOutcomeRules)),
+
+            ["Conflicts/ConflictRules.cs -> throw new InvalidOperationException(NotArgued(row));"] =
+                (nameof(ConflictRuleTests),
+                 nameof(ConflictRuleTests.ARuleWithNoReasonIsRefused),
+                 nameof(ConflictRuleTests.TheRuleTableThatShipsInTheAssemblyLoads),
+                 "the rule says why it is right as well as when it fires",
+                 () => ConflictRules.Parse(ConflictRuleTests.UnarguedRules)),
+
+            ["Conflicts/ConflictRules.cs -> throw new InvalidOperationException(TwoRulesUnderOneName(row));"] =
+                (nameof(ConflictRuleTests),
+                 nameof(ConflictRuleTests.TwoRulesUnderOneNameAreRefused),
+                 nameof(ConflictRuleTests.TheRuleTableThatShipsInTheAssemblyLoads),
+                 "each rule carries its own name",
+                 () => ConflictRules.Parse(ConflictRuleTests.DuplicateNameRules)),
         };
 
     /// <summary>
