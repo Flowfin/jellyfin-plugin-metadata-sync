@@ -57,8 +57,8 @@
       "lock": "Genres",
       "class": "Descriptive",
       "fromTheFile": false,
-      "operatorReason": "Stays where it is for now. A genre you do not have would have to be created here as a new genre, which grows your library rather than editing one item, and nobody has decided yet whether this plugin may do that.",
-      "reason": "A genre the receiving server has never seen becomes a genre entity there, which is growth of that library rather than a value on one item. Whether that may happen is decision 5 in #1 and is held by #15, and a row that moved this field before the answer exists would settle it."
+      "operatorReason": "Does not travel yet. A genre the other server has and you do not would be created here as a new genre, which grows your library rather than editing one item. That is allowed, but only once every entry this plugin creates is marked as its own, so that removing a pairing can take them out again. Until the mark exists your genre list is left alone.",
+      "reason": "A genre the receiving server has never seen becomes a genre entity there, which is growth of that library rather than a value on one item. Decision 5 in #1 permits that growth on one condition, that every entry created this way carries a mark saying where it came from, and #15 holds the resolution and the mark. The row moves when they land and not before: a genre created without the mark cannot be told from one the operator wrote, and decision 7 needs to take it out again."
     },
     {
       "field": "Tags",
@@ -79,8 +79,8 @@
       "lock": "Studios",
       "class": "Descriptive",
       "fromTheFile": false,
-      "operatorReason": "Stays where it is for now, for the same reason as genres: a studio you do not have would be created here as a new studio.",
-      "reason": "A studio the receiving server has never seen becomes a studio entity there. Same condition as genres: decision 5 in #1, held by #15."
+      "operatorReason": "Does not travel yet, for the same reason as genres: a studio you do not have would be created here as a new studio, and that is allowed only once the plugin marks what it created.",
+      "reason": "A studio the receiving server has never seen becomes a studio entity there. Same answer and same condition as genres: decision 5 in #1 permits the growth, the mark is what makes it reversible, and #15 holds both."
     },
     {
       "field": "ProductionLocations",
@@ -101,8 +101,8 @@
       "lock": "Cast",
       "class": "Descriptive",
       "fromTheFile": false,
-      "operatorReason": "Cast and crew stay where they are for now. A person you do not have would be created here as a new person, and matching people by name across two servers is how one actor becomes two records spelled differently.",
-      "reason": "People are entities of their own reached through the library rather than a property on the item, and a person the receiving server has never seen is created there. Same condition as genres and studios: decision 5 in #1, held by #15."
+      "operatorReason": "Cast and crew do not travel yet. A person you do not have would be created here as a new person, which is allowed once the plugin marks what it created. It also needs a stated rule for when two spellings of a name are the same person, because matching by name across two servers is how one actor becomes two records with an accent between them.",
+      "reason": "People are entities of their own reached through the library rather than a property on the item, and a person the receiving server has never seen is created there. Decision 5 in #1 permits it with the same mark, and this row carries a second condition the other two do not: the comparison that decides a person is already here has to be declared before anything creates one, or the same actor becomes two records spelled differently. #15 holds both."
     },
     {
       "field": "OfficialRating",
