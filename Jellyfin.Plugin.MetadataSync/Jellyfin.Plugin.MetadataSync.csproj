@@ -53,4 +53,13 @@
     <EmbeddedResource Include="Conflicts\conflict-rules.json" LogicalName="Jellyfin.Plugin.MetadataSync.Conflicts.conflict-rules.json" />
   </ItemGroup>
 
+  <!-- The reference comparison table ships inside the assembly for the fourth
+       time the same reason applies. This one decides whether two spellings of
+       one person's name are one person, which is not a thing to leave editable
+       per installation. -->
+  <ItemGroup>
+    <None Remove="References\reference-comparison.json" />
+    <EmbeddedResource Include="References\reference-comparison.json" LogicalName="Jellyfin.Plugin.MetadataSync.References.reference-comparison.json" />
+  </ItemGroup>
+
 </Project>
