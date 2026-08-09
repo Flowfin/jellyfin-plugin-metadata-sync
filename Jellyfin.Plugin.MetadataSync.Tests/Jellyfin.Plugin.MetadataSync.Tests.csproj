@@ -65,6 +65,16 @@
     <None Include="..\docs\provider-identifiers.md" Link="provider-identifiers.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The endpoint authorization table is declared once, in the document a
+       person reads, and EndpointAuthorizationTests holds the plugin's
+       controllers against it. It is copied here for the same reason the field
+       register is: reading it out of the repository by walking up from the test
+       binary would answer a different question on a machine where the tests run
+       from somewhere else. -->
+  <ItemGroup>
+    <None Include="..\docs\endpoints.md" Link="endpoints.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- This project file is what HeadlessPolicyTests reads, so the suite can
        refuse a dependency that would need a display, a running server or the
        network. Reading the resolved package graph instead would answer a
