@@ -1,0 +1,46 @@
+{
+  "rules": [
+    {
+      "id": "item-locked-here",
+      "condition": "The item carries the server's item-level lock on this server.",
+      "outcome": "KeepLocal",
+      "reason": "The operator has claimed the whole item. It is the coarsest claim the server offers and the only one that covers a field the server has no lock for, so it is read before anything else and nothing below it can reach past it."
+    },
+    {
+      "id": "field-locked-here",
+      "condition": "The register names a server lock for this field and it is set on the item here.",
+      "outcome": "KeepLocal",
+      "reason": "A lock is one operator's claim on one field, and this plugin arrives from a machine they do not administer. Read after any rule that can write, it would be advisory rather than a lock."
+    },
+    {
+      "id": "values-agree",
+      "condition": "The two values are equal.",
+      "outcome": "KeepLocal",
+      "reason": "There is nothing to decide. It is a row rather than an early return because it is the outcome of almost every field on almost every pass, and a rule set that leaves it out describes a fraction of what the resolver does while reading as if it described all of it."
+    },
+    {
+      "id": "peer-value-absent",
+      "condition": "The peer has no value for this field and this server has one.",
+      "outcome": "KeepLocal",
+      "reason": "An absent value is absence of information rather than information. The peer's provider finding nothing is not a statement that the text here is wrong, and a rule set without this row overwrites a written overview with emptiness on the first pass."
+    },
+    {
+      "id": "local-value-absent",
+      "condition": "This server has no value for this field and the peer has one.",
+      "outcome": "TakePeer",
+      "reason": "Nothing here is lost, because there is nothing here. This is the row that does the work on a first sync, and the only one that writes without needing to know who wrote what before."
+    },
+    {
+      "id": "local-unchanged-since-this-plugin-wrote-it",
+      "condition": "The values differ, and this server's value is the one this plugin last wrote for this field on this item.",
+      "outcome": "TakePeer",
+      "reason": "Nobody here has expressed an opinion on the value since it arrived, so this is the peer's own value moving on rather than two operators disagreeing. It is the row that separates an update from a conflict, and it is decidable only where #47 recorded what was written."
+    },
+    {
+      "id": "peer-field-locked",
+      "condition": "The values differ and the peer reports the lock that governs this field as set on their side.",
+      "outcome": "Refuse",
+      "reason": "A lock is a defensive claim on one library and never authority over the other. Taking the locked value because it cannot move would let one operator's lock decide what the other's library says, which is the authoritative server that decision 3 in #1 refused. It is refused under its own name rather than left to the residual, because the operator can be told which side cannot move and the residual cannot tell them that."
+    }
+  ]
+}
