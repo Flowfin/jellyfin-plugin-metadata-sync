@@ -9,6 +9,7 @@ using Jellyfin.Plugin.MetadataSync.Configuration;
 using Jellyfin.Plugin.MetadataSync.Conflicts;
 using Jellyfin.Plugin.MetadataSync.Fields;
 using Jellyfin.Plugin.MetadataSync.Matching;
+using Jellyfin.Plugin.MetadataSync.References;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Model.Entities;
 using Xunit;
@@ -186,6 +187,76 @@ public class RefusalTests
                  nameof(ConflictRuleTests.TheRuleTableThatShipsInTheAssemblyLoads),
                  "each rule carries its own name",
                  () => ConflictRules.Parse(ConflictRuleTests.DuplicateNameRules)),
+
+            ["References/ReferenceResolver.cs -> ArgumentNullException.ThrowIfNull(incoming);"] =
+                (nameof(ReferenceResolutionTests),
+                 nameof(ReferenceResolutionTests.ResolvingAReferenceThatIsNotThereIsRefused),
+                 nameof(ReferenceResolutionTests.AGenreThisServerAlreadyHoldsResolvesToIt),
+                 "the reference to resolve is there",
+                 () => ReferenceResolver.ResolveGenre(null!, Array.Empty<string>())),
+
+            ["References/ReferenceResolver.cs -> ArgumentNullException.ThrowIfNull(here);"] =
+                (nameof(ReferenceResolutionTests),
+                 nameof(ReferenceResolutionTests.ResolvingAgainstEntriesThatAreNotThereIsRefused),
+                 nameof(ReferenceResolutionTests.AGenreThisServerAlreadyHoldsResolvesToIt),
+                 "the entries to resolve against are there",
+                 () => ReferenceResolver.ResolveGenre("Comedy", null!)),
+
+            ["References/ReferenceResolver.cs -> using var stream = assembly.GetManifestResourceStream(resourceName) ?? throw new InvalidOperationException(NoTableEmbedded(resourceName));"] =
+                (nameof(ReferenceResolutionTests),
+                 nameof(ReferenceResolutionTests.ATableThatIsNotEmbeddedIsRefused),
+                 nameof(ReferenceResolutionTests.TheTableThatShipsInTheAssemblyLoads),
+                 "the assembly carries a table under that name",
+                 () => ReferenceResolver.Load("Jellyfin.Plugin.MetadataSync.References.no-such-table.json")),
+
+            ["References/ReferenceResolver.cs -> var read = JsonSerializer.Deserialize<TableFile>(text, _json) ?? throw new InvalidOperationException(NothingToRead());"] =
+                (nameof(ReferenceResolutionTests),
+                 nameof(ReferenceResolutionTests.TableTextThatDescribesNoTableIsRefused),
+                 nameof(ReferenceResolutionTests.TheTableThatShipsInTheAssemblyLoads),
+                 "the text describes a table",
+                 () => ReferenceResolver.Parse("null")),
+
+            ["References/ReferenceResolver.cs -> throw new InvalidOperationException(NoSuchKind(row));"] =
+                (nameof(ReferenceResolutionTests),
+                 nameof(ReferenceResolutionTests.ARowNamingAKindThisPluginDoesNotResolveIsRefused),
+                 nameof(ReferenceResolutionTests.TheTableThatShipsInTheAssemblyLoads),
+                 "the kind the row answers for is one this plugin resolves",
+                 () => ReferenceResolver.Parse(ReferenceResolutionTests.UnknownKindTable)),
+
+            ["References/ReferenceResolver.cs -> throw new InvalidOperationException(NoSuchProperty(row));"] =
+                (nameof(ReferenceResolutionTests),
+                 nameof(ReferenceResolutionTests.ARowNamingAWayOfDifferingThatNothingDeclaresIsRefused),
+                 nameof(ReferenceResolutionTests.TheTableThatShipsInTheAssemblyLoads),
+                 "the way of differing the row answers for is one that is declared",
+                 () => ReferenceResolver.Parse(ReferenceResolutionTests.UnknownPropertyTable)),
+
+            ["References/ReferenceResolver.cs -> throw new InvalidOperationException(NoSuchAnswer(row));"] =
+                (nameof(ReferenceResolutionTests),
+                 nameof(ReferenceResolutionTests.ARowGivingAnAnswerOutsideTheClosedSetIsRefused),
+                 nameof(ReferenceResolutionTests.TheTableThatShipsInTheAssemblyLoads),
+                 "the answer the row gives is one the closed set carries",
+                 () => ReferenceResolver.Parse(ReferenceResolutionTests.UnknownAnswerTable)),
+
+            ["References/ReferenceResolver.cs -> throw new InvalidOperationException(NotArgued(row));"] =
+                (nameof(ReferenceResolutionTests),
+                 nameof(ReferenceResolutionTests.ARowWithNoReasonIsRefused),
+                 nameof(ReferenceResolutionTests.TheTableThatShipsInTheAssemblyLoads),
+                 "the row says why its answer is right as well as what it is",
+                 () => ReferenceResolver.Parse(ReferenceResolutionTests.UnarguedTable)),
+
+            ["References/ReferenceResolver.cs -> throw new InvalidOperationException(TwoRowsForOnePair(row));"] =
+                (nameof(ReferenceResolutionTests),
+                 nameof(ReferenceResolutionTests.TwoRowsForOnePairAreRefused),
+                 nameof(ReferenceResolutionTests.TheTableThatShipsInTheAssemblyLoads),
+                 "one row answers each pair of kind and difference",
+                 () => ReferenceResolver.Parse(ReferenceResolutionTests.DoubleAnsweredTable)),
+
+            ["References/ReferenceResolver.cs -> throw new InvalidOperationException(NoRowForPair(kind, property));"] =
+                (nameof(ReferenceResolutionTests),
+                 nameof(ReferenceResolutionTests.ATableLeavingAPairUnansweredIsRefused),
+                 nameof(ReferenceResolutionTests.TheTableThatShipsInTheAssemblyLoads),
+                 "every pair of kind and difference has a row",
+                 () => ReferenceResolver.Parse(ReferenceResolutionTests.IncompleteTable)),
         };
 
     /// <summary>

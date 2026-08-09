@@ -224,9 +224,16 @@ the field moves at all and writes it if so. Enforcing the kind belongs with the
 planner that knows what kind of item it is holding, and until that exists this
 paragraph is the whole of the disclosure.
 
-It does not decide what happens to a value the receiving server has never seen.
-Three rows wait on that question and say so in their reason. Nothing here
-settles it.
+It does not decide whether the target of a reference is already here. Genres,
+studios and people name something the server holds separately, so writing one
+of those rows means finding that thing here or making it. Which two spellings
+are one entry, and which pair is too close for this plugin to decide either way,
+is declared in `docs/references.md` and not in a row above.
+
+The three rows still say they do not move, and the comparison landing does not
+change that. What is missing is the mark: an entry created by a sync has to
+carry one, there is nowhere yet to keep it, and until there is, a resolution is
+something a plan can show rather than something a pass performs.
 
 It does not cover images. Image bytes are a separate refusal with a separate
 reason, and #14 is where the rows for them are written.
