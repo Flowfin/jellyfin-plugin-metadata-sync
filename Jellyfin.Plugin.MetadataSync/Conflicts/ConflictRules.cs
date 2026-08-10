@@ -15,11 +15,17 @@ namespace Jellyfin.Plugin.MetadataSync.Conflicts;
 /// two against each other.
 /// </summary>
 /// <remarks>
-/// The rules are data and the resolver is not written yet, which is the order
-/// this was planned in rather than an accident. A rule set derived from an
-/// implementation is a description of what somebody wrote; a rule set the
-/// implementation is derived from is something a reviewer can disagree with
-/// before any of it is built.
+/// The rules are data and they were declared before the resolver was written,
+/// which is the order this was planned in rather than an accident. A rule set
+/// derived from an implementation is a description of what somebody wrote; a
+/// rule set the implementation is derived from is something a reviewer can
+/// disagree with before any of it is built.
+/// <para>
+/// The order these rows are in is part of the declaration and not a detail of
+/// whoever evaluates them. <see cref="ConflictResolver"/> reads the sequence
+/// out of this list on every call, so moving a row here changes what the plugin
+/// does.
+/// </para>
 /// <para>
 /// It is an embedded resource for the same reason the field register is. A
 /// plugin directory is a place an operator can edit, and a conflict rule an
