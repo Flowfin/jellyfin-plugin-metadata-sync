@@ -55,6 +55,20 @@ public class RefusalTests
                  "the delegate is there",
                  () => new PluginConfigurationProvider(null!)),
 
+            ["Configuration/ConfigurationValidation.cs -> ArgumentNullException.ThrowIfNull(configuration);"] =
+                (nameof(ConfigurationValidationTests),
+                 nameof(ConfigurationValidationTests.ValidatingAConfigurationThatIsNotThereIsRefused),
+                 nameof(ConfigurationValidationTests.ADefaultConfigurationHasNothingToRefuse),
+                 "the configuration being read is there",
+                 () => ConfigurationValidation.Validate(null!, Array.Empty<Guid>())),
+
+            ["Configuration/ConfigurationValidation.cs -> ArgumentNullException.ThrowIfNull(librariesTheServerHolds);"] =
+                (nameof(ConfigurationValidationTests),
+                 nameof(ConfigurationValidationTests.ValidatingAgainstALibrarySetThatIsNotThereIsRefused),
+                 nameof(ConfigurationValidationTests.ADefaultConfigurationHasNothingToRefuse),
+                 "the set the libraries are checked against is there, even when it is empty",
+                 () => ConfigurationValidation.Validate(new PluginConfiguration(), null!)),
+
             ["Fields/FieldMover.cs -> ArgumentNullException.ThrowIfNull(from);"] =
                 (nameof(FieldRegisterTests),
                  nameof(FieldRegisterTests.MovingFromAnItemThatIsNotThereIsRefused),
