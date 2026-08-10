@@ -40,12 +40,37 @@ public class ConfigurationShapeTests
 {
     /// <summary>
     /// The properties the configuration is allowed to carry, and why each one
-    /// is here. It is empty, and that is the current answer rather than a
-    /// placeholder: the settings this plugin will hold are still being designed
-    /// and a property that ships before it is designed is a surface an operator
-    /// can set and the plugin never reads.
+    /// is here. Four, and each is a thing an operator decides that this plugin
+    /// then acts on, with a validation rule that can refuse it.
+    /// <list type="bullet">
+    /// <item><description>
+    /// PairingId. Which pairing this configuration is for. An identifier the
+    /// operator picks from what the pairing plugin holds, not an address and
+    /// not a credential.
+    /// </description></item>
+    /// <item><description>
+    /// Direction. Which way metadata moves. One value belonging to the pairing,
+    /// so it is a choice with one member rather than a column per field.
+    /// </description></item>
+    /// <item><description>
+    /// ParticipatingLibraries. Which libraries take part, by the identifier the
+    /// server already holds them under. Identifiers rather than names, because
+    /// a name is a thing an operator renames.
+    /// </description></item>
+    /// <item><description>
+    /// ExcludedFields. Which of the fields the register allows to move this
+    /// operator does not want moved. Field names, which are this plugin's own
+    /// vocabulary rather than anything out of a library.
+    /// </description></item>
+    /// </list>
     /// </summary>
-    private static readonly HashSet<string> AllowedProperties = new(StringComparer.Ordinal);
+    private static readonly HashSet<string> AllowedProperties = new(StringComparer.Ordinal)
+    {
+        nameof(PluginConfiguration.PairingId),
+        nameof(PluginConfiguration.Direction),
+        nameof(PluginConfiguration.ParticipatingLibraries),
+        nameof(PluginConfiguration.ExcludedFields),
+    };
 
     /// <summary>
     /// A property of a shape that is a choice. Anything else is data.
