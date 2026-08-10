@@ -202,6 +202,22 @@ public class RefusalTests
                  "each rule carries its own name",
                  () => ConflictRules.Parse(ConflictRuleTests.DuplicateNameRules)),
 
+            ["Conflicts/ConflictResolver.cs -> ArgumentNullException.ThrowIfNull(rules);"] =
+                (nameof(ConflictResolverTests),
+                 nameof(ConflictResolverTests.NoRuleSetIsRefused),
+                 nameof(ConflictResolverTests.TheEvaluationOrderComesFromTheDeclaredTable),
+                 "the rule set to walk is there",
+                 () => ConflictResolver.Resolve(ConflictResolverTests.NothingOnEitherSide(), null!)),
+
+            ["Conflicts/ConflictResolver.cs -> throw new InvalidOperationException(NoConditionFor(rule));"] =
+                (nameof(ConflictResolverTests),
+                 nameof(ConflictResolverTests.ARuleWithNoConditionIsRefused),
+                 nameof(ConflictResolverTests.TheEvaluationOrderComesFromTheDeclaredTable),
+                 "every rule in the set has a condition behind it",
+                 () => ConflictResolver.Resolve(
+                     ConflictResolverTests.NothingOnEitherSide(),
+                     ConflictRules.Parse(ConflictResolverTests.RuleWithNoConditionHere))),
+
             ["References/ReferenceResolver.cs -> ArgumentNullException.ThrowIfNull(incoming);"] =
                 (nameof(ReferenceResolutionTests),
                  nameof(ReferenceResolutionTests.ResolvingAReferenceThatIsNotThereIsRefused),

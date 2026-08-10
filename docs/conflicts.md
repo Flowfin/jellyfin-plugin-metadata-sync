@@ -1,8 +1,8 @@
 # The conflict rules
 
 These are the rules that decide what happens when this server and the peer hold
-different values for a field that may move. They are written down before the
-resolver exists, so the fixtures are derived from this document rather than from
+different values for a field that may move. They were written down before the
+resolver was, so the fixtures are derived from this document rather than from
 somebody's implementation, and so a rule can be disagreed with without reading
 code.
 
@@ -65,7 +65,10 @@ This is also the invariant #44 states in its own words: the resolver never
 returns a value that is not one of its inputs. A union row and that invariant
 cannot both hold, and the invariant is the one worth keeping, because it is the
 only thing that makes an outcome explainable to the operator whose library it
-lands in.
+lands in. The resolver hands back one of the two values it was given and has
+nowhere else to get one from, and the suite holds that by reference rather than
+by equality, so a value rebuilt out of the two fails even where it compares
+equal to one of them.
 
 ## The rules, in evaluation order
 
@@ -115,6 +118,10 @@ Both servers hold a value, the two differ, and this plugin did not write either
 of them. Two operators have disagreed, and no reading of the two values says
 which of them is right.
 
+The resolver arrives here by running out of rules, and it answers with a refusal
+that names no rule at all rather than with a rule whose name would have to be
+invented. What that answer owes an operator is #45.
+
 ## The fixture table
 
 Every row here is a case the rule set has to answer, with the rule that answers
@@ -162,8 +169,20 @@ fixture's expected outcome is the outcome its rule declares. A fixture that
 names no rule is required to expect a refusal, so the fail-closed floor is held
 by the suite rather than by this sentence.
 
-What is not checked is the only thing that matters in the end: none of these
-fixtures is run against a resolver, because there is no resolver. That is #44,
-and it is what turns this table from a set of claims into a set of tests. Until
-it lands, this document is a design somebody can disagree with and not a
-guarantee about behaviour.
+Every row is also run against the resolver, which landed under #44. The row is
+handed over as inputs, and the outcome and the rule name that come back are
+compared against the last two columns. The name is compared as well as the
+outcome because three rules keep the local value and two take the peer's, so an
+outcome on its own would pass with the wrong rule firing, and four of the rows
+above exist to tell exactly those apart. The evaluation order is read out of the
+declared table on every call rather than written into the resolver, and a
+fixture proves it by lifting one row above another and watching the same inputs
+answer differently.
+
+What is not checked is what happens after the answer. Nothing chains the
+register, this table and the writer into a pass: nothing carries a decision to
+an item, nothing records one, and no field on any real library has been through
+any of it. So a green run here says this rule set decides the cases above as
+this document writes them, and it says nothing yet about a library. The pass is
+#35 and #39, the record an entry belongs in is #48, and the refusal a residual
+owes an operator is #45.

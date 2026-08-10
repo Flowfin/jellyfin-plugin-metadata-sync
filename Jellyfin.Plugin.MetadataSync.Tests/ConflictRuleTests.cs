@@ -14,14 +14,13 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// them and against the fixture table that argues them.
 /// </summary>
 /// <remarks>
-/// What this file can prove today stops short of the thing that matters. There
-/// is no resolver, so no fixture below is run against one: what is held is that
-/// the document is the rule table, that every rule is argued by at least one
-/// case, and that every case expects the outcome its rule declares. The step
-/// that turns these rows into tests of behaviour is #44, and until it lands the
-/// suite is checking a design for consistency rather than a plugin for
-/// correctness. Saying so here is cheaper than a reader inferring the opposite
-/// from a green run.
+/// What this file holds is the design and never the behaviour: that the
+/// document is the rule table, that every rule is argued by at least one case,
+/// and that every case expects the outcome its rule declares. Running those
+/// cases against something is <see cref="ConflictResolverTests"/>, which reads
+/// the same rows through the same reader. The split is worth keeping, because a
+/// failure here says the table and the document disagree and a failure there
+/// says the plugin and the table do.
 /// </remarks>
 public class ConflictRuleTests
 {
@@ -50,8 +49,6 @@ public class ConflictRuleTests
             { "id": "values-agree", "condition": "The two values are equal.", "outcome": "KeepLocal", "reason": "There is nothing to decide." },
             { "id": "values-agree", "condition": "Neither side has a value.", "outcome": "KeepLocal", "reason": "There is nothing to decide here either." } ] }
         """;
-
-    private const string FixtureHeader = "| Case | This server | The peer | This plugin last wrote | Locks | Rule | Outcome |";
 
     private static readonly string _document = Path.Combine(AppContext.BaseDirectory, "conflicts.md");
 
@@ -341,34 +338,13 @@ public class ConflictRuleTests
         return text[start..end];
     }
 
-    /// <summary>
-    /// Every row of the fixture table, as the document writes it.
-    /// </summary>
-    private static IReadOnlyList<string[]> Fixtures()
-    {
-        var lines = File.ReadAllLines(_document);
-        var start = Array.FindIndex(lines, l => string.Equals(l.Trim(), FixtureHeader, StringComparison.Ordinal));
-        Assert.True(start >= 0, "The document has no fixture table.");
-
-        var rows = new List<string[]>();
-        for (var i = start + 2; i < lines.Length; i++)
-        {
-            var line = lines[i].Trim();
-            if (!line.StartsWith('|'))
-            {
-                break;
-            }
-
-            var cells = line.Trim('|').Split('|').Select(c => c.Trim()).ToArray();
-            Assert.Equal(7, cells.Length);
-            rows.Add(cells);
-        }
-
-        Assert.NotEmpty(rows);
-        return rows;
-    }
+    // The fixture table is read by ConflictFixtures, which is also what hands
+    // the rows to the resolver. One reader rather than two: a second parser
+    // here would agree with that one until the day the table changed shape, and
+    // then one of the two files would still be green.
+    private static IReadOnlyList<string[]> Fixtures() => ConflictFixtures.Rows();
 
     // The document writes a value, a rule and an outcome inside backticks, so a
     // reader can see where a value that is only whitespace begins and ends.
-    private static string Unquote(string cell) => cell.Trim().Trim('`');
+    private static string Unquote(string cell) => ConflictFixtures.Unquote(cell);
 }
