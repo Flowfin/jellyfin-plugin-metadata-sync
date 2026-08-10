@@ -224,6 +224,17 @@ declared table on every call rather than written into the resolver, and a
 fixture proves it by lifting one row above another and watching the same inputs
 answer differently.
 
+The rules are also taken away, which is the only arrangement under which a
+default is visible at all. A resolver holding one would answer every row above
+correctly, because a declared rule would answer first and the default would sit
+underneath all seven of them. So every row, and every combination of the six
+values a conflict is decided from, is run against a resolver with nothing to
+walk, and each one has to come back refused, naming no rule, holding the value
+this server already had. The sweep is over the input surface rather than over
+the fields, and those are the same statement here: a rule is handed no field and
+no item, so there is nothing it could read that would tell one field from
+another.
+
 What is not checked is what happens after the answer. Nothing chains the
 register, this table and the writer into a pass: nothing carries a decision to
 an item, nothing records one, and no field on any real library has been through
