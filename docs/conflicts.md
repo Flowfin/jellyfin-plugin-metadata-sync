@@ -106,6 +106,51 @@ comparing it, because a rule that trimmed would be deciding that two values
 differing only in trailing space are the same, and that decision belongs to
 whoever declares the field rather than to the conflict rules.
 
+## No rule turns on a clock
+
+The obvious rule is that the more recent change wins, and it is the one rule
+this plugin does not get to have. Two servers in two households share no time
+source that anything here can establish. If one of them is an hour ahead, the
+more recent change is always that one's, on every field, for as long as both
+keep running, and nothing reports it. The failure is silent, permanent, and
+indistinguishable from the plugin working.
+
+The timestamps the server carries would not settle it even between two clocks
+that agreed. They record when the item was saved and not when a field was
+changed, so an item saved for an unrelated reason looks newer in everything it
+holds.
+
+What is used instead is causal rather than temporal.
+`local-unchanged-since-this-plugin-wrote-it` knows what this plugin last wrote
+for the field, so it knows whether the value here has been touched since it
+arrived. That is the question the clock was being reached for, and it is
+answered from a record this plugin made rather than from a machine's opinion
+about the time. A difference that rule does not settle, and that no other row
+settles either, is refused and recorded rather than handed to a weaker rule.
+
+This is not shut forever. The pairing plane injects a clock and fixes a skew
+policy of its own, so it may be able to hand a consumer an observed offset and a
+bound on it. That is asked for in #26 and is unanswered. If it comes back yes, a
+time-based rule becomes arguable, with the bound as an explicit input and a
+refusal rather than a decision wherever the bound is exceeded. It would be a new
+row here, argued like every other row, and never a default arriving underneath
+them.
+
+Two checks hold this, from opposite ends. `ConflictClockTests` reads the
+resolver's whole input surface and refuses anything that is not one of the two
+shapes a conflict input is made of, so a clock cannot arrive under a name nobody
+anticipated or as a count of ticks. The same file reads the conditions in the
+declared table and refuses one that fires on which side is more recent. Each is
+proved against the rule this plan rejected by name and accepted against the
+causal rule that stands in its place. A third guard, the invariant lint, refuses
+the spellings a clock arrives under in the plugin's own source text, and it says
+in its own record what it cannot catch.
+
+What none of the three reaches is a comparison built out of two values that
+arrived as ordinary strings. Nothing in this tree tells a date somebody typed
+into a field from any other text, so a rule comparing two of those would pass
+every check here. That one is held by this argument and by review.
+
 ## When no rule fires
 
 Nothing is written, on either side, and the difference is recorded for an
