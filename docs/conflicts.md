@@ -196,7 +196,7 @@ empty rule cell means no rule fires and the case falls to the refusal above.
 | the peer holds this field locked and this server has nothing | | `"Theirs, and locked"` | | field on the peer | `local-value-absent` | `TakePeer` |
 | both sides carry a value this plugin never wrote and they differ | `"Ours"` | `"Theirs"` | | none | | `Refuse` |
 
-Four of those rows are near misses rather than cases. The item lock is asserted
+Four of the fixture rows are near misses rather than cases. The item lock is asserted
 where nothing would have been written anyway, because a resolver that checked
 locks last would pass every other lock row. The one-character difference from
 what this plugin wrote is the row that separates an update from a conflict, and
@@ -205,6 +205,50 @@ correctly. The peer's lock with nothing on this side proves the order of rules 5
 and 7. The peer having nothing while this server holds what this plugin wrote
 proves the order of rules 4 and 6, which is the pair most likely to be swapped
 by somebody reading rule 6 first.
+
+## What each rule is holding up
+
+The table above says a case is answered by a rule. It does not say the rule is
+why. A resolver in which one row never fires answers most of these cases the
+same way, because another row underneath it produces the same outcome, and a
+fixture table alone cannot tell the two apart.
+
+So each rule is also taken out on its own, with the other six left where they
+are, and this table declares what the same case answers once it is gone. The
+declaration is the point: it is a prediction about the resolver rather than a
+description of it, and the suite compares the prediction with what comes back.
+
+An empty rule cell means no rule fires and the case falls to the refusal, the
+same spelling the fixture table uses.
+
+| Rule | Proved on | Rule once it is gone | Outcome once it is gone |
+| --- | --- | --- | --- |
+| `item-locked-here` | the operator locked the whole item | | `Refuse` |
+| `field-locked-here` | the operator locked this field | | `Refuse` |
+| `values-agree` | both sides already say the same thing | | `Refuse` |
+| `peer-value-absent` | the peer has nothing and this server holds what this plugin wrote | `local-unchanged-since-this-plugin-wrote-it` | `TakePeer` |
+| `local-value-absent` | this server has nothing and the peer has text | | `Refuse` |
+| `local-unchanged-since-this-plugin-wrote-it` | the local value is exactly what this plugin last wrote | | `Refuse` |
+| `peer-field-locked` | the peer holds this field locked and the values differ | | `Refuse` |
+
+Two rows are worth reading rather than counting.
+
+`peer-value-absent` is the only rule whose removal writes something. Every other
+row here loses a refusal, which is a pass that stops short and says so. Take
+this one out and the row below it fires instead, because a local value that is
+still exactly what this plugin wrote is a local value nobody here has an opinion
+on, and the peer's value is taken. The peer's value is nothing. So the case that
+looks like the mildest row in the table, a peer with no value at all, is the one
+whose rule stands between a written overview and an empty one, and it is the
+reason that row exists rather than an early return.
+
+`peer-field-locked` is the only rule whose removal does not change the outcome.
+The case refuses either way. What moves is the name: with the rule, an operator
+is told the peer's lock is what stopped the field, and without it they are told
+nothing fired. That is the sentence the rule's own reason ends on, and it is
+what this row proves, so the rule is held up by what it explains rather than by
+what it decides. A reading of this table that counted outcomes would call it
+dead.
 
 ## What is checked here today, and what is not
 
@@ -223,6 +267,22 @@ above exist to tell exactly those apart. The evaluation order is read out of the
 declared table on every call rather than written into the resolver, and a
 fixture proves it by lifting one row above another and watching the same inputs
 answer differently.
+
+Each rule is also taken out on its own, with the other six left in the order
+they are declared in, and the answer that comes back is compared against the row
+this document declares for it. That is what separates a rule from a rule nobody
+needs. Being answered by a rule is not evidence that the rule is why: three rules
+keep the local value and two take the peer's, so a row that never fired would
+leave its cases to a row underneath it that produces the same outcome, and every
+fixture above would stay green. The comparison is on the outcome and the rule
+together, because one of the seven refuses either way and is held up by what an
+operator is told rather than by what is written.
+
+What that does not reach is a rule that stops being declared. Removing a row
+from the rule table removes the obligation to prove it along with it, so the set
+that is walked is the set that exists rather than the set anybody intended. That
+is a change to the declaration and a reader of the diff is what stands in the way
+of it.
 
 The rules are also taken away, which is the only arrangement under which a
 default is visible at all. A resolver holding one would answer every row above
