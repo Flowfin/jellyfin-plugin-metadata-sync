@@ -40,6 +40,18 @@
   color: "d73a4a"
   description: "Something isn't working"
 
+- name: "changelog: conflict-rule"
+  color: "d93f0b"
+  description: "Changes how a disagreement between two servers is decided"
+
+- name: "changelog: contract"
+  color: "0052cc"
+  description: "Changes the consumer contract, its purpose, its payload or its version"
+
+- name: "changelog: field-register"
+  color: "006b75"
+  description: "Changes which fields move and which never do"
+
 - name: "ci"
   color: "ededed"
   description: ""

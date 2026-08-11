@@ -1,0 +1,73 @@
+# The changelog's classes, in the form the drafter reads them.
+#
+# `docs/changelog.md` is where each class is argued and where an example of each
+# is written. This file is the machine-readable half of the same table: one
+# category per class, keyed on the label that routes a pull request into it.
+# `ChangelogTests` holds the two against each other in both directions, so a
+# class added in one place and not the other reddens the suite rather than
+# quietly dropping entries out of a release.
+#
+# The three classes at the top are the reason this repository has its own
+# configuration at all. A drafter's default categories sort a change by whether
+# it is a feature or a fix, and this plan's expensive changes are neither: a
+# change to the contract this plugin codes against, to which fields may move, or
+# to how a conflict is decided is a change an operator has to read before
+# upgrading, and it can arrive spelled as a fix. Sorting by that distinction is
+# what the classes are for.
+#
+# Labels are not invented here. Every label below is declared in
+# `.github/labels.yaml`, which is the authority for which labels exist on this
+# board, and the suite refuses a category naming one that file does not carry.
+#
+# What this file does not do is make the drafting route work. The route is
+# `.github/workflows/changelog.yaml`, its header says what else it waits on, and
+# nothing here changes that. The categories are the part #84 owes.
+
+name-template: '$RESOLVED_VERSION-stable'
+tag-template: '$RESOLVED_VERSION-stable'
+
+# The tag shape is `X.Y.Z-stable` and it is fixed in `docs/RELEASING.md`, where
+# the release that a person cuts by hand is described. A drafter writing `v1.2.3`
+# beside a publish route that refuses anything not ending in `-stable` would
+# produce two spellings of one release, so the templates above follow the
+# document rather than the drafter's default.
+
+categories:
+  - title: 'Contract change'
+    labels:
+      - 'changelog: contract'
+
+  - title: 'Field register change'
+    labels:
+      - 'changelog: field-register'
+
+  - title: 'Conflict rule change'
+    labels:
+      - 'changelog: conflict-rule'
+
+  - title: 'Security'
+    labels:
+      - 'security'
+
+  - title: 'Added'
+    labels:
+      - 'enhancement'
+
+  - title: 'Fixed'
+    labels:
+      - 'bug'
+
+  - title: 'Documentation'
+    labels:
+      - 'documentation'
+
+# A pull request carrying none of the labels above lands here rather than being
+# dropped. An entry nobody classified is still an entry, and a drafter that
+# silently omits it produces a release note that reads as complete.
+exclude-labels: []
+
+change-template: '- $TITLE (#$NUMBER)'
+no-changes-template: '- No entry was classified for this release.'
+
+template: |
+  $CHANGES
