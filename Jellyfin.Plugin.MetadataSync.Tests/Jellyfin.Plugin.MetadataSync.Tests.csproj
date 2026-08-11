@@ -101,6 +101,17 @@
     <None Include="..\docs\endpoints.md" Link="endpoints.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The changelog's classes are carried by three files: the document a person
+       reads, the drafter configuration a machine reads, and the label file that
+       is the authority for which labels exist at all. ChangelogTests holds the
+       three against each other, so all three are copied here for the same reason
+       the field register is. -->
+  <ItemGroup>
+    <None Include="..\docs\changelog.md" Link="changelog.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\.github\release-drafter.yml" Link="release-drafter.yml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\.github\labels.yaml" Link="labels.yaml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- This project file is what HeadlessPolicyTests reads, so the suite can
        refuse a dependency that would need a display, a running server or the
        network. Reading the resolved package graph instead would answer a

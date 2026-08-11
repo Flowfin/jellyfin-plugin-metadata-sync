@@ -10,6 +10,19 @@ and it must be exactly the `version` in `build.yaml`, written the same way, with
 same number of parts. The `-stable` suffix lives only in the tag and in the release
 name.
 
+## The release note is written from the issues
+
+Every change on this board starts as an issue that says what is wrong, what the
+evidence is and what done means, so the entry for it is a sentence out of that
+issue rather than a reading of the diff. A note written from the diff describes
+what moved in the tree, which `git log` already does better, and it gives the
+change an operator has to act on the same voice and the same size as the one
+they will never notice.
+
+`docs/changelog.md` holds the classes an entry carries and an example of each.
+Three of them exist to mark the changes an operator has to read before
+upgrading, because those arrive spelled as a fix as often as not.
+
 ## Cutting a release
 
 1. Update `version` in `build.yaml` on the release branch and merge it.
