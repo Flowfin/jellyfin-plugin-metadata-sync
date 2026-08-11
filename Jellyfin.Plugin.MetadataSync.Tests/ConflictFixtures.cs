@@ -51,11 +51,28 @@ internal static class ConflictFixtures
     /// Every row of the fixture table, as the document writes it.
     /// </summary>
     /// <returns>The rows, each split into its seven cells.</returns>
-    public static IReadOnlyList<string[]> Rows()
+    public static IReadOnlyList<string[]> Rows() => RowsUnder(FixtureHeader, 7);
+
+    /// <summary>
+    /// Every row of one hand-written table in the document, found by its header
+    /// line.
+    /// </summary>
+    /// <remarks>
+    /// The document carries more than one table the suite reads, and they are
+    /// parsed here rather than each in its own reader, so the strictness below
+    /// is one decision instead of several that drift apart. A header nobody
+    /// finds fails rather than returning nothing, because a table renamed in the
+    /// document would otherwise turn every test over it into a test over an
+    /// empty set.
+    /// </remarks>
+    /// <param name="header">The table's header line, as the document writes it.</param>
+    /// <param name="cells">How many cells a row of that table has.</param>
+    /// <returns>The rows, each split into its cells.</returns>
+    public static IReadOnlyList<string[]> RowsUnder(string header, int cells)
     {
         var lines = File.ReadAllLines(_document);
-        var start = Array.FindIndex(lines, l => string.Equals(l.Trim(), FixtureHeader, StringComparison.Ordinal));
-        Assert.True(start >= 0, "The document has no fixture table.");
+        var start = Array.FindIndex(lines, l => string.Equals(l.Trim(), header, StringComparison.Ordinal));
+        Assert.True(start >= 0, "The document has no table headed " + header);
 
         var rows = new List<string[]>();
         for (var i = start + 2; i < lines.Length; i++)
@@ -66,9 +83,9 @@ internal static class ConflictFixtures
                 break;
             }
 
-            var cells = line.Trim('|').Split('|').Select(c => c.Trim()).ToArray();
-            Assert.Equal(7, cells.Length);
-            rows.Add(cells);
+            var split = line.Trim('|').Split('|').Select(c => c.Trim()).ToArray();
+            Assert.Equal(cells, split.Length);
+            rows.Add(split);
         }
 
         Assert.NotEmpty(rows);
