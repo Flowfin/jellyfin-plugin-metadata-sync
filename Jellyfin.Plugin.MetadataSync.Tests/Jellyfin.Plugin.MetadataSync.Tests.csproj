@@ -82,6 +82,15 @@
     <None Include="..\docs\references.md" Link="references.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The two-step rule for an item identified by its parent and an ordinal is
+       declared in the plugin, and docs/matching.md carries both a rendering of
+       what each answer means and the fixture rows the suite runs.
+       OrdinalResolutionTests reads the document, so it is copied here for the
+       same reason the field register is. -->
+  <ItemGroup>
+    <None Include="..\docs\matching.md" Link="matching.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- The endpoint authorization table is declared once, in the document a
        person reads, and EndpointAuthorizationTests holds the plugin's
        controllers against it. It is copied here for the same reason the field

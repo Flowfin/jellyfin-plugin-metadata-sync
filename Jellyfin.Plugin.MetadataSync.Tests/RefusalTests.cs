@@ -167,6 +167,43 @@ public class RefusalTests
                  "the text describes a table",
                  () => ProviderIdentifiers.Parse("null")),
 
+            ["Matching/OrdinalIdentity.cs -> ArgumentNullException.ThrowIfNull(parentIdentifiers);"] =
+                (nameof(OrdinalResolutionTests),
+                 nameof(OrdinalResolutionTests.AnIdentityWithNoParentIdentifierDictionaryIsRefused),
+                 nameof(OrdinalResolutionTests.AnOrdinalIsSpelledTheWayTheDocumentSpellsIt),
+                 "the parent's identifier dictionary is there",
+                 () => new OrdinalIdentity(null!, 1, 5, null, null)),
+
+            ["Matching/OrdinalResolver.cs -> ArgumentNullException.ThrowIfNull(here);"] =
+                (nameof(OrdinalResolutionTests),
+                 nameof(OrdinalResolutionTests.ResolvingWithNoItemIsRefused),
+                 nameof(OrdinalResolutionTests.TheOnlyRemainingCandidateIsNotTaken),
+                 "the item being resolved is there",
+                 () => OrdinalResolver.Resolve(null!, Array.Empty<OrdinalIdentity>())),
+
+            ["Matching/OrdinalResolver.cs -> ArgumentNullException.ThrowIfNull(there);"] =
+                (nameof(OrdinalResolutionTests),
+                 nameof(OrdinalResolutionTests.ResolvingWithNoCandidatesIsRefused),
+                 nameof(OrdinalResolutionTests.TheOnlyRemainingCandidateIsNotTaken),
+                 "the candidate set is there, even when it is empty",
+                 () => OrdinalResolver.Resolve(
+                     new OrdinalIdentity(new Dictionary<string, string>(StringComparer.Ordinal), 1, 5, null, null),
+                     null!)),
+
+            ["Matching/OrdinalResolver.cs -> ArgumentNullException.ThrowIfNull(identity);"] =
+                (nameof(OrdinalResolutionTests),
+                 nameof(OrdinalResolutionTests.SpellingNoItemIsRefused),
+                 nameof(OrdinalResolutionTests.AnOrdinalIsSpelledTheWayTheDocumentSpellsIt),
+                 "the item being spelled is there",
+                 () => OrdinalResolver.Spelled(null!)),
+
+            ["Matching/OrdinalResolver.cs -> _ => throw new ArgumentOutOfRangeException(nameof(verdict), verdict, NoStatement()),"] =
+                (nameof(OrdinalResolutionTests),
+                 nameof(OrdinalResolutionTests.AVerdictWithNoDeclaredSentenceIsRefused),
+                 nameof(OrdinalResolutionTests.TheDocumentSaysExactlyWhatTheResolverSays),
+                 "the verdict is one the plugin declares a sentence for",
+                 () => OrdinalResolver.Statement((OrdinalVerdict)99)),
+
             ["Conflicts/ConflictRules.cs -> using var stream = assembly.GetManifestResourceStream(resourceName) ?? throw new InvalidOperationException(NoRulesEmbedded(resourceName));"] =
                 (nameof(ConflictRuleTests),
                  nameof(ConflictRuleTests.ARuleTableThatIsNotEmbeddedIsRefused),
