@@ -179,32 +179,40 @@ A value is written in quotes, and an empty cell is no value at all. The locks
 column is one of `none`, `item here`, `field here` or `field on the peer`. An
 empty rule cell means no rule fires and the case falls to the refusal above.
 
-| Case | This server | The peer | This plugin last wrote | Locks | Rule | Outcome |
-| --- | --- | --- | --- | --- | --- | --- |
-| the operator locked the whole item | `"Kept by hand"` | `"From the peer"` | | item here | `item-locked-here` | `KeepLocal` |
-| the item is locked here and the values already agree | `"A description"` | `"A description"` | | item here | `item-locked-here` | `KeepLocal` |
-| the operator locked this field | `"Kept by hand"` | `"From the peer"` | | field here | `field-locked-here` | `KeepLocal` |
-| both sides already say the same thing | `"A description"` | `"A description"` | | none | `values-agree` | `KeepLocal` |
-| neither side has a value | | | | none | `values-agree` | `KeepLocal` |
-| the peer has nothing and this server has text | `"A description"` | | | none | `peer-value-absent` | `KeepLocal` |
-| the peer's value is whitespace only | `"A description"` | `" "` | | none | `peer-value-absent` | `KeepLocal` |
-| the peer has nothing and this server holds what this plugin wrote | `"An older description"` | | `"An older description"` | none | `peer-value-absent` | `KeepLocal` |
-| this server has nothing and the peer has text | | `"From the peer"` | | none | `local-value-absent` | `TakePeer` |
-| the local value is exactly what this plugin last wrote | `"An older description"` | `"A newer description"` | `"An older description"` | none | `local-unchanged-since-this-plugin-wrote-it` | `TakePeer` |
-| the local value differs from what this plugin wrote by one character | `"An older description."` | `"A newer description"` | `"An older description"` | none | | `Refuse` |
-| the peer holds this field locked and the values differ | `"Kept by hand"` | `"Theirs, and locked"` | | field on the peer | `peer-field-locked` | `Refuse` |
-| the peer holds this field locked and this server has nothing | | `"Theirs, and locked"` | | field on the peer | `local-value-absent` | `TakePeer` |
-| both sides carry a value this plugin never wrote and they differ | `"Ours"` | `"Theirs"` | | none | | `Refuse` |
+| Case | This server | The peer | This plugin last wrote | Locks | Rule | Outcome | The mistake it would catch |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| the operator locked the whole item | `"Kept by hand"` | `"From the peer"` | | item here | `item-locked-here` | `KeepLocal` | Reading the item lock after a rule that can write, which makes the coarsest claim the server offers advisory. |
+| the item is locked here and the values already agree | `"A description"` | `"A description"` | | item here | `item-locked-here` | `KeepLocal` | Not reading the item lock at all, which this row alone does not show because the rule below it answers the same way. |
+| the operator locked this field | `"Kept by hand"` | `"From the peer"` | | field here | `field-locked-here` | `KeepLocal` | Reading only the item lock, so an operator who claimed one field is told it was not a claim. |
+| both sides already say the same thing | `"A description"` | `"A description"` | | none | `values-agree` | `KeepLocal` | An early return for equal values, which takes almost every field on almost every pass out of the declared table. |
+| neither side has a value | | | | none | `values-agree` | `KeepLocal` | Reading two absences as a difference, which turns every unset field on every item into a refusal. |
+| the peer has nothing and this server has text | `"A description"` | | | none | `peer-value-absent` | `KeepLocal` | Treating absence as information, which writes emptiness over a description on the first pass. |
+| the peer's value is whitespace only | `"A description"` | `" "` | | none | `peer-value-absent` | `KeepLocal` | Reading whitespace as text, so a provider that found nothing replaces a description with a space. |
+| the peer has nothing and this server holds what this plugin wrote | `"An older description"` | | `"An older description"` | none | `peer-value-absent` | `KeepLocal` | Reading rule 6 before rule 4, which takes the peer's absence because nobody here has touched the value since it arrived. |
+| this server has nothing and the peer has text | | `"From the peer"` | | none | `local-value-absent` | `TakePeer` | A first sync that writes nothing, because an empty field and a disagreement were not told apart. |
+| the local value is exactly what this plugin last wrote | `"An older description"` | `"A newer description"` | `"An older description"` | none | `local-unchanged-since-this-plugin-wrote-it` | `TakePeer` | Reaching for a clock to answer whether the value here has been edited since it arrived. |
+| the local value differs from what this plugin wrote by one character | `"An older description."` | `"A newer description"` | `"An older description"` | none | | `Refuse` | Comparing what this plugin wrote loosely, so an operator who changed one character is read as not having edited it. |
+| the peer holds this field locked and the values differ | `"Kept by hand"` | `"Theirs, and locked"` | | field on the peer | `peer-field-locked` | `Refuse` | Taking the locked value because it cannot move, which makes one operator's lock authority over the other's library. |
+| the peer holds this field locked and this server has nothing | | `"Theirs, and locked"` | | field on the peer | `local-value-absent` | `TakePeer` | Reading rule 7 before rule 5, which refuses a field this server holds nothing in. |
+| both sides carry a value this plugin never wrote and they differ | `"Ours"` | `"Theirs"` | | none | | `Refuse` | A default underneath the table, answering what no declared rule answered. |
 
-Four of the fixture rows are near misses rather than cases. The item lock is asserted
-where nothing would have been written anyway, because a resolver that checked
-locks last would pass every other lock row. The one-character difference from
-what this plugin wrote is the row that separates an update from a conflict, and
-a resolver comparing loosely answers it wrongly while answering its neighbour
-correctly. The peer's lock with nothing on this side proves the order of rules 5
-and 7. The peer having nothing while this server holds what this plugin wrote
-proves the order of rules 4 and 6, which is the pair most likely to be swapped
-by somebody reading rule 6 first.
+The last column is why each row is here. A fixture that could not have failed
+proves less than one that nearly did, so every row names the mistake somebody
+would actually make and this table would catch, in the row rather than in a
+paragraph beside it. Two of them name each other: reading rule 6 before rule 4,
+and reading rule 7 before rule 5, are the two orderings a reader arrives at by
+starting from the rule that interests them, and each is caught by one row and
+by nothing else.
+
+Two rows are worth reading together. The item lock asserted where nothing would
+have been written anyway is the row that says the lock is read first, and it is
+the one row whose own answer does not show it, because the rule below it answers
+the same way. The one-character difference from what this plugin wrote is the row
+that separates an update from a conflict, and a resolver comparing loosely
+answers it wrongly while answering its neighbour correctly.
+
+No two rows name the same mistake, and the suite holds that. A line copied from
+the row above is the shape a row takes when it was added for the count.
 
 ## What each rule is holding up
 
@@ -257,6 +265,13 @@ fixture, every fixture names a declared rule and a declared outcome, and every
 fixture's expected outcome is the outcome its rule declares. A fixture that
 names no rule is required to expect a refusal, so the fail-closed floor is held
 by the suite rather than by this sentence.
+
+Every fixture also names the mistake it would catch, in its own row, and the
+suite refuses a row that names none, one that names the same mistake as another
+row, and one holding a rule name where a sentence belongs. What no check reads is
+whether the sentence is true of the row it sits on. A row could name a mistake it
+would not catch and every route here would pass it, so the column is held by the
+same reader who holds the prose.
 
 Every row is also run against the resolver, which landed under #44. The row is
 handed over as inputs, and the outcome and the rule name that come back are

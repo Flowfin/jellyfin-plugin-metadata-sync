@@ -248,6 +248,46 @@ public class ConflictRuleTests
     }
 
     /// <summary>
+    /// Every case says which mistake it would catch. A fixture that could not
+    /// have failed proves less than one that nearly did, and the only way to
+    /// tell the two apart later is that the row said which it was.
+    /// </summary>
+    /// <remarks>
+    /// It is a cell per row rather than a paragraph beside the table, because a
+    /// paragraph covers the rows somebody remembered and the rows it leaves out
+    /// are the ones nobody argued for. The sentence is required to be a sentence:
+    /// a cell holding a rule name would name where the mistake happens and never
+    /// what the mistake is.
+    /// </remarks>
+    [Fact]
+    public void EveryCaseNamesTheMistakeItWouldCatch()
+    {
+        foreach (var fixture in Fixtures())
+        {
+            var mistake = ConflictFixtures.MistakeFor(fixture);
+
+            Assert.False(mistake.Length == 0, fixture[0] + " names no mistake.");
+            Assert.EndsWith(".", mistake, StringComparison.Ordinal);
+            Assert.Contains(" ", mistake, StringComparison.Ordinal);
+            Assert.DoesNotContain("`", mistake, StringComparison.Ordinal);
+            Assert.NotEqual(fixture[0], mistake, StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>
+    /// No two cases name the same mistake. A line copied from the row above is
+    /// the shape a row takes when it was added for the count rather than for the
+    /// mistake, and it is the one failure this column cannot report about itself.
+    /// </summary>
+    [Fact]
+    public void NoTwoCasesNameTheSameMistake()
+    {
+        var mistakes = Fixtures().Select(ConflictFixtures.MistakeFor).ToList();
+
+        Assert.Equal(mistakes.Count, mistakes.ToHashSet(StringComparer.OrdinalIgnoreCase).Count);
+    }
+
+    /// <summary>
     /// The fixture table keeps its near misses. A table that lost them would
     /// still pass every row it kept, and the rows it kept are the easy ones.
     /// </summary>
