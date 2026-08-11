@@ -1,0 +1,108 @@
+# Coverage of the decision code, reported per area.
+#
+# Two runs of the suite rather than one, and the order is the whole design. The
+# first run is measured: the collector inside Microsoft.NET.Test.Sdk writes a
+# cobertura report, pointed at the plugin module alone by coverage.runsettings.
+# The second run reads that report back with the suite's own reader, so the thing
+# that judges the numbers is code under test rather than a script in this file.
+#
+# What it refuses. A run whose collector matched nothing writes a report claiming
+# perfect rates and carrying no count at all, and that is indistinguishable from
+# a clean result unless something reads it. The reader refuses it, and refuses a
+# class no declared area claims, so a namespace added to the plugin is measured on
+# purpose. CoverageReportTests carries those refusals against constructed reports
+# and this file is where they meet a real one.
+#
+# What it does not do. It is not in the required set for this branch, so a red run
+# here does not block a merge; the ruleset is the authority for what is required
+# and changing it is not this workflow's business. The report is an artefact of the
+# run and no number from it is written into a document, so nothing here drifts.
+name: Coverage by area
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ "**" ]
+  workflow_dispatch:
+
+# Explicit deny-all at workflow level; the job below grants only what it needs.
+permissions: {}
+
+# An audit run rather than a publish, so cancelling a superseded run is safe.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage:
+    name: Decision code coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      # The collector failed to start on two of five runs on the machine where
+      # these numbers were first taken, with "vstest.console process failed to
+      # connect to datacollector process after 90 seconds". Whether that is local
+      # or general is not established, so the wait is raised rather than the
+      # failure being called flaky.
+      VSTEST_CONNECTION_TIMEOUT: 240
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+      DOTNET_CLI_UI_LANGUAGE: en
+      REPORT_DIR: ${{ github.workspace }}/artifacts/coverage
+    steps:
+      - name: Check out the commit under review
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        # No dependency cache. A cache entry written by another run is not
+        # something a measurement of this commit should be able to read.
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Run the suite with the collector on
+        run: |
+          set -euo pipefail
+          dotnet test Jellyfin.Plugin.MetadataSync.Tests/Jellyfin.Plugin.MetadataSync.Tests.csproj \
+            --settings coverage.runsettings \
+            --results-directory "${REPORT_DIR}"
+
+      - name: Read the report and hold the decision code to the bar
+        env:
+          METADATASYNC_COVERAGE_REPORT: ${{ github.workspace }}/artifacts/coverage
+        # The same suite, the same build, one class of it. With the directory in
+        # the environment the reading leg has a report to read; without it that
+        # leg reads nothing and passes, which is why this step exists and why the
+        # suite refuses a version of this file that drops it.
+        run: |
+          set -euo pipefail
+          dotnet test Jellyfin.Plugin.MetadataSync.Tests/Jellyfin.Plugin.MetadataSync.Tests.csproj \
+            --no-build \
+            --filter "FullyQualifiedName~CoverageReportTests"
+
+      - name: Put the report where the run is read
+        if: always()
+        # The reading writes the rendered report before it asserts anything, so a
+        # run that failed the bar still says which lines were not reached.
+        run: |
+          set -euo pipefail
+          rendered="${REPORT_DIR}/coverage-by-area.md"
+          if [ ! -f "${rendered}" ]; then
+            echo "::error::No report was rendered at ${rendered}, so this run establishes nothing about coverage."
+            exit 1
+          fi
+          cat "${rendered}" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Keep the report as an artefact of this run
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-by-area
+          path: ${{ github.workspace }}/artifacts/coverage
+          if-no-files-found: error
+          retention-days: 30

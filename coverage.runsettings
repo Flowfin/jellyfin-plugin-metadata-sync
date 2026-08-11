@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The collector that ships inside Microsoft.NET.Test.Sdk, which the suite
+     already takes. Measuring therefore adds no package to the suite, nothing to
+     widen in HeadlessPolicyTests and no second runtime.
+
+     The module filter is the whole reason this file exists. Without it the run
+     measures the suite alongside the plugin and answers a different question:
+     the denominator then moves when a test is added rather than when a decision
+     is, and a suite that grew would read as a plugin that got safer.
+
+     Cobertura rather than the collector's own format, because the report is read
+     afterwards by CoverageReport in the suite and cobertura is the shape it
+     parses. CoverageReportTests holds this file to both choices, so a filter
+     removed here reddens rather than quietly widening what is measured. -->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <CodeCoverage>
+            <ModulePaths>
+              <Include>
+                <ModulePath>.*Jellyfin\.Plugin\.MetadataSync\.dll$</ModulePath>
+              </Include>
+            </ModulePaths>
+          </CodeCoverage>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
