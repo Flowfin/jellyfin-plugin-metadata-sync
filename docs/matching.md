@@ -92,14 +92,139 @@ That register is what makes this refusal liveable rather than merely correct. An
 operator who can see which items did not resolve, and why, can act on it. An
 operator who sees a sync that quietly covered two thirds of a library cannot.
 
+## An item identified by its parent and an ordinal
+
+A film usually carries its own provider identifiers. An episode often does not:
+on many setups the identifier dictionary on the episode itself is empty, and
+what identifies it is the series it belongs to plus its position inside that
+series.
+
+That makes it a two-step resolution, and the steps are named because they fail
+differently.
+
+The first step is the parent. The series resolves by its own provider
+identifiers, through the comparison in `provider-identifiers.md` that every
+other item uses. Nothing under a parent that did not resolve is looked at, and
+that is an ordering rather than an optimisation: an ordinal counts within a
+series, so `S01E05` on its own names an episode in every series at once.
+
+The second step is the ordinal, decided inside the resolved parent. It compares
+a season and a number against the items under that parent, and it answers only
+where exactly one of them carries both.
+
+The rule is written for the shape and not for episodes. A season inside a series
+is the same shape, and so is anything else whose identity is its parent plus a
+count. Writing it once for the shape is what keeps the answer the same when the
+next such kind arrives.
+
+`OrdinalResolver` in the plugin is where this lives. It reads two identities and
+nothing else, so every case below is decidable with nothing running.
+
+## Nothing resolves by proximity
+
+There is no nearest, no next, no only remaining candidate and no range that
+contains a number. Each of those is a fallback some published matcher takes, and
+each of them writes one episode's metadata onto another while reporting a
+successful sync.
+
+The one that is easiest to write by accident is the only remaining candidate. A
+series has resolved, one item is left unmatched on each side, and taking the pair
+looks like arithmetic rather than like a guess. It is a guess, and the two
+libraries disagreeing about how many episodes a season has is the ordinary case
+rather than the strange one.
+
+## What each answer means
+
+One row per answer the resolver may give. The sentences are declared in
+`OrdinalResolver.Statement` and rendered here, so this table is a reading of the
+code rather than a second copy of it, and the suite compares the two character
+for character.
+
+| Verdict | Step | What it says |
+| --- | --- | --- |
+| `Resolved` | `Ordinal` | The parent resolved on its own provider identifiers and exactly one item under it carries this season and this number. |
+| `ParentDidNotResolve` | `Parent` | No candidate's parent is the same work as this item's parent, so the ordinal was never read. An ordinal counts within a series and means nothing until the series is known. |
+| `NotNumbered` | `Ordinal` | The item carries no season and number pair and no absolute number either, so it has nothing to be resolved by once its own identifiers have failed to answer. |
+| `AbsoluteNumbering` | `Ordinal` | The item is numbered absolutely and carries no season and number pair. An absolute number counts through a series as one provider divided it into seasons, so reading it as a position needs that provider's season lengths, which is the thing that differs between two libraries built from different providers. |
+| `CoversMoreThanOneEpisode` | `Ordinal` | The item's ordinal is a range, which is what a file holding more than one episode carries. It is not one episode, so no single item on the peer is the one it is the same as, and taking the item at either end of the range would write two episodes' metadata onto one. |
+| `SeasonZero` | `Ordinal` | The item is in season zero, which is the bucket for everything a provider did not place in a numbered season. A special's position inside that bucket is assigned by whichever provider each server used, so two servers agreeing on a number there is not evidence they mean one episode. |
+| `NothingAtThatOrdinal` | `Ordinal` | The parent resolved and nothing under it carries this season and this number. What lies nearest to it is not consulted, and an only remaining candidate is not taken. |
+| `OrdinalHeldTwice` | `Ordinal` | The parent resolved and more than one item under it carries this season and this number. Which of them a value would be written against is not decidable from the numbering, so nothing is written. |
+
+Only the first names a match. Every other row is an item written into the
+unmatched register, and the step it carries is what an operator acts on: a
+series that did not resolve is one thing to fix and it fixes every episode
+under it, while an episode that did not resolve inside a series that did is a
+different thing at the other end of the library.
+
+## What the three awkward numberings cost
+
+The three refusals above are worth reading as costs rather than as rules,
+because each of them is a real library that syncs less than an operator might
+expect.
+
+An absolutely numbered series does not sync by ordinal at all. On a library
+where the episodes carry no identifiers of their own and the numbering is
+absolute, that is the whole series. The fix is a provider that identifies the
+episodes, and never a conversion here: converting an absolute number to a season
+and a number needs the season lengths of whichever provider assigned it, and
+those are what the two servers disagree about in the first place.
+
+Specials do not sync by ordinal. Season zero is where a server puts everything a
+provider declined to place in a numbered season, so two servers with different
+providers hold different things there in a different order, and the number is a
+position in a list rather than a name.
+
+A file holding two episodes does not resolve, in either direction. Neither does
+a single episode whose number falls inside a peer's range. The two libraries have
+split their files differently, which is the case this plugin exists for, and
+there is no one item on either side that the other is the same as.
+
+In all three the item is recorded as unresolved with its reason, which is what
+makes them liveable. An operator can read them and act; they do not disappear
+into a count of items that synced.
+
+## The fixture table
+
+Every row is a test. The rows are read out of this document by the suite rather
+than restated in it, so a row added here is run and a row whose expectation
+changes here changes what the suite asserts.
+
+An item is written as its parent's identifiers, then a space, then its ordinal.
+`Tvdb=121361 S01E05` is episode five of season one of that series, `S01E05-E06`
+is a file covering two, `A137` is an absolute number, and `-` in either position
+is nothing there. The peer's cell holds the candidates it offered, separated by
+semicolons, and an empty cell is a peer that offered none.
+
+The last column is what makes a row worth its line. A near-miss that could not
+have failed proves less than one that nearly did, so every row names the mistake
+somebody would actually make and this table would catch. The suite refuses a row
+that names none and refuses two rows that name the same one, which is the shape a
+row takes when it was added for the count and its cell was copied from the row
+above. What no check reads is whether the sentence is true of the row it sits on.
+
+| Case | This server | The peer | Outcome | The mistake it would catch |
+| --- | --- | --- | --- | --- |
+| an episode the peer holds at exactly this ordinal | `Tvdb=121361 S01E05` | `Tvdb=121361 S01E04; Tvdb=121361 S01E05; Tvdb=121361 S01E06` | `Resolved` | A resolver that never answers, which would leave every refusing row below green while nothing ever synced. |
+| the ordinal offered under two series, one of which is this one | `Tvdb=121361 S01E05` | `Tvdb=305288 S01E05; Tvdb=121361 S01E05` | `Resolved` | Narrowing by ordinal before narrowing by parent, which takes whichever series was offered first. |
+| a series the peer does not hold | `Tvdb=121361 S01E05` | `Tvdb=305288 S01E05` | `ParentDidNotResolve` | Reading the ordinal first and matching S01E05 in whatever series happened to be offered. |
+| a peer that offered nothing at all | `Tvdb=121361 S01E05` | | `ParentDidNotResolve` | Reporting an empty candidate set as an episode the peer is missing, when what is not known is whether the series is there. |
+| a series carrying no identifiers on this server | `- S01E05` | `Tvdb=121361 S01E05` | `ParentDidNotResolve` | Letting a series with nothing to compare pass the first step, after which the ordinal matches in every series at once. |
+| the episode before and the episode after, but not this one | `Tvdb=121361 S01E05` | `Tvdb=121361 S01E04; Tvdb=121361 S01E06` | `NothingAtThatOrdinal` | Taking the nearest number when the exact one is absent. |
+| one unmatched episode left under a series that resolved | `Tvdb=121361 S01E05` | `Tvdb=121361 S01E09` | `NothingAtThatOrdinal` | Pairing the only remaining candidate, which reads as arithmetic and is a guess. |
+| the same number in a different season | `Tvdb=121361 S02E05` | `Tvdb=121361 S01E05` | `NothingAtThatOrdinal` | Comparing the episode number and forgetting the season it counts within. |
+| a peer file covering the number this episode carries | `Tvdb=121361 S01E05` | `Tvdb=121361 S01E05-E06` | `NothingAtThatOrdinal` | Reading a range that contains a number as an item that carries it. |
+| the peer holding this ordinal twice under one series | `Tvdb=121361 S01E05` | `Tvdb=121361 S01E05; Tvdb=121361 S01E05` | `OrdinalHeldTwice` | Taking the first of two candidates that carry the same numbering. |
+| a file on this server covering two episodes | `Tvdb=121361 S01E05-E06` | `Tvdb=121361 S01E05; Tvdb=121361 S01E06` | `CoversMoreThanOneEpisode` | Resolving a double file to the episode its range begins at, which writes two episodes' metadata onto one. |
+| an episode numbered absolutely against a peer numbered by season | `Tvdb=121361 A137` | `Tvdb=121361 S07E12` | `AbsoluteNumbering` | Counting season lengths to convert an absolute number into a season and a number. |
+| an absolute number on both sides | `Tvdb=121361 A137` | `Tvdb=121361 A137` | `AbsoluteNumbering` | Resolving on an absolute number because both sides happen to carry one, when neither says which provider counted. |
+| a special in season zero the peer numbers the same way | `Tvdb=121361 S00E02` | `Tvdb=121361 S00E02` | `SeasonZero` | Treating season zero as a season, where the number is a position two providers assign differently. |
+| an episode carrying no numbering at all | `Tvdb=121361 -` | `Tvdb=121361 S01E05` | `NotNumbered` | Reading an absent number as zero and matching whatever the peer put first. |
+
 ## What is not written here yet
 
-The two-step rule for an item whose identity is its parent plus an ordinal, which
-is how most episodes are identified, and the stated outcome for absolute
-numbering, for season zero and for a file covering more than one episode. That is
-#30, and it is deliberately absent rather than sketched: each of those cases
-needs a stated outcome and a fixture row, and a paragraph here that guessed at
-one would be read as the answer.
-
-A reader should take episode resolution as undecided rather than as covered
-somewhere else.
+What happens to an item that did not resolve, beyond that it is recorded. The
+register itself, its reason per item and what an operator does with it are #29,
+and the two-step failure above is written to be recorded in it: the step is
+carried on every answer so the register can say which of the two failed rather
+than that something did.
