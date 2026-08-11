@@ -169,6 +169,7 @@ on it.
 | `command-dispatch.yaml` | Came in with the plugin template. It turns a comment into a workflow run, which is a write surface the target does not carry. Nothing on this board has argued for keeping it. |
 | `command-rebase.yaml` | Came in with the plugin template, and is the one command the dispatcher above routes to. It stands or falls with that row. |
 | `sync-labels.yaml` | Came in with the plugin template pointed at the upstream label file, where it deleted this board's own labels. That defect was #11 and it is closed: the workflow now syncs from this repository's own `.github/labels.yaml`. The workflow stays, and the row is here because the target has no equivalent. |
+| `coverage.yml` | Added by #74. It measures the plugin module, reports per area with the decision code as its own area, and refuses a run whose collector produced nothing. The list above carries no coverage workflow on the target, so there is nothing here to compare it against. It is not in this repository's required set. |
 
 ## What this document does not say
 

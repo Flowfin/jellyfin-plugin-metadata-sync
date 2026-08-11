@@ -102,6 +102,18 @@
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The two files the coverage route is made of. CoverageReportTests holds the
+       run settings to the module filter they exist for, and holds the workflow to
+       collecting and then reading the report, because the reading leg has nothing
+       to read on a run that does not point it at one. Both are copied for the same
+       reason the manifest is: reading them by walking up from the test binary
+       would answer a different question on a machine where the tests run from
+       somewhere else. -->
+  <ItemGroup>
+    <None Include="..\coverage.runsettings" Link="coverage.runsettings" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\.github\workflows\coverage.yml" Link="coverage.yml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- DefaultLevelLoggingTests reads the plugin's source text, because the rule
        it holds up is about what a logging call was written to say. The compiled
        assembly cannot answer that: a message template is a constant in the
