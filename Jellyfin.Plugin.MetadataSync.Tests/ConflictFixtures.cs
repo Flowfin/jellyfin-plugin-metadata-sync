@@ -25,7 +25,7 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// </remarks>
 internal static class ConflictFixtures
 {
-    private const string FixtureHeader = "| Case | This server | The peer | This plugin last wrote | Locks | Rule | Outcome |";
+    private const string FixtureHeader = "| Case | This server | The peer | This plugin last wrote | Locks | Rule | Outcome | The mistake it would catch |";
 
     private static readonly string _document = Path.Combine(AppContext.BaseDirectory, "conflicts.md");
 
@@ -50,8 +50,26 @@ internal static class ConflictFixtures
     /// <summary>
     /// Every row of the fixture table, as the document writes it.
     /// </summary>
-    /// <returns>The rows, each split into its seven cells.</returns>
-    public static IReadOnlyList<string[]> Rows() => RowsUnder(FixtureHeader, 7);
+    /// <returns>The rows, each split into its eight cells.</returns>
+    public static IReadOnlyList<string[]> Rows() => RowsUnder(FixtureHeader, 8);
+
+    /// <summary>
+    /// The mistake a row says it would catch.
+    /// </summary>
+    /// <remarks>
+    /// It is a cell rather than a paragraph beside the table because a paragraph
+    /// covers the rows somebody remembered to mention, and the rows it leaves
+    /// out are the ones nobody argued for. A cell is owed by every row, and the
+    /// suite refuses one that is empty.
+    /// </remarks>
+    /// <param name="row">The row.</param>
+    /// <returns>The sentence.</returns>
+    public static string MistakeFor(string[] row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+
+        return row[7];
+    }
 
     /// <summary>
     /// Every row of one hand-written table in the document, found by its header
