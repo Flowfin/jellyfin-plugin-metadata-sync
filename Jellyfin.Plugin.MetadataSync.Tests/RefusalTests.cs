@@ -5,10 +5,12 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using Jellyfin.Plugin.MetadataSync.Configuration;
 using Jellyfin.Plugin.MetadataSync.Conflicts;
 using Jellyfin.Plugin.MetadataSync.Fields;
 using Jellyfin.Plugin.MetadataSync.Matching;
+using Jellyfin.Plugin.MetadataSync.Reconciliation;
 using Jellyfin.Plugin.MetadataSync.References;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Model.Entities;
@@ -289,6 +291,27 @@ public class RefusalTests
                  nameof(ReferenceResolutionTests.TheTableThatShipsInTheAssemblyLoads),
                  "the kind the row answers for is one this plugin resolves",
                  () => ReferenceResolver.Parse(ReferenceResolutionTests.UnknownKindTable)),
+
+            ["Reconciliation/Planner.cs -> ArgumentNullException.ThrowIfNull(request);"] =
+                (nameof(PlannerTests),
+                 nameof(PlannerTests.PlanningFromARequestThatIsNotThereIsRefused),
+                 nameof(PlannerTests.AnEmptyRequestIsAnEmptyPlan),
+                 "the request is there, even when it asks for nothing",
+                 () => Planner.Plan(null!)),
+
+            ["Reconciliation/Applier.cs -> ArgumentNullException.ThrowIfNull(target);"] =
+                (nameof(ApplierTests),
+                 nameof(ApplierTests.AnApplierWithNoTargetIsRefused),
+                 nameof(ApplierTests.AnEmptyPlanReachesTheLibraryNotAtAll),
+                 "the route to the library is there",
+                 () => new Applier(null!)),
+
+            ["Reconciliation/Applier.cs -> ArgumentNullException.ThrowIfNull(plan);"] =
+                (nameof(ApplierTests),
+                 nameof(ApplierTests.ApplyingAPlanThatIsNotThereIsRefused),
+                 nameof(ApplierTests.AnEmptyPlanReachesTheLibraryNotAtAll),
+                 "the plan is there, even when it writes nothing",
+                 () => _ = new Applier(new RecordingPlanTarget()).ApplyAsync(null!, CancellationToken.None)),
 
             ["References/ReferenceResolver.cs -> throw new InvalidOperationException(NoSuchProperty(row));"] =
                 (nameof(ReferenceResolutionTests),

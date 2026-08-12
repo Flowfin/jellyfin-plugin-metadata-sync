@@ -13,17 +13,19 @@ written.
 
 ## What does not exist yet
 
-There is no pass. Nothing in this plugin calls the library:
+A pass decides and it does not write. The two halves are in the tree, in
+`Jellyfin.Plugin.MetadataSync/Reconciliation/`, and the second one ends at an
+interface nothing implements. Nothing in this plugin calls the library:
 
     git grep -Iln "ILibraryManager\|UpdateItemAsync\|IItemRepository" -- 'Jellyfin.Plugin.MetadataSync/*.cs'
     # no output, exit 1
 
 So every sentence below about the server was read out of the server, and every
-sentence about this plugin is a decision taken before the code rather than a
-description of code that runs. #35 splits the pass into a planner and an
-applier, #39 makes the write, and #41 defends the window. A reader should take
-this document as the argument those three land against, and not as an account of
-what happens on a library today.
+sentence about this plugin below the planner is a decision taken before the code
+rather than a description of code that runs. #35 landed the split, #39 makes the
+write, and #41 defends the window. A reader should take the rest of this
+document as the argument the remaining two land against, and not as an account
+of what happens on a library today.
 
 ## The one call
 
@@ -272,13 +274,17 @@ next pass picks it up, which is #41 and is not built.
 
 ## What holds this up
 
-Nothing here is refused by a machine, and the reason is that the subject is
-absent rather than that the rule is soft. There is no write for an assembly walk
-to inspect, no constant for a test to assert, and no plan and apply for a
-concurrency fixture to run between.
+Nothing about the write is refused by a machine, and the reason is that the
+subject is absent rather than that the rule is soft. There is no write for an
+assembly walk to inspect and no constant for a test to assert.
+
+The window is a different case now. A plan and an applier exist, so a fixture
+that moves an item between the two has something to run between, and what is
+missing is the re-read it would catch rather than the halves it would run
+against.
 
 #39 owes the update reason as one constant, the test that every write uses it,
 and the walk that fails if a repository type is reachable from a write path.
-#41 owes the re-read, the deferral, and a fixture that moves an item underneath a
-plan that was already made. Until those land, the sentences above are a decision
-somebody can argue with and not a property anything enforces.
+#41 owes the re-read, the deferral, and that fixture. Until those land, the
+sentences above about the write and the window are a decision somebody can argue
+with and not a property anything enforces.
