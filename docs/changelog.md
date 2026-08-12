@@ -105,10 +105,23 @@ parsing YAML, so it answers what the files say and never what the drafter does
 with them. It also cannot judge whether an entry was put in the right class,
 which is what the review is for, or whether the sentence in an entry is true.
 
-Nothing refuses a pull request that carries no class label at all. That is the
-half of #84 that waits on the hygiene gate in #78, and until it lands the class
-on an entry is a convention this document describes rather than a rule anything
-enforces.
+`.github/workflows/pr-hygiene.yml` refuses a pull request that carries no class
+label, and one that carries two. It also refuses a change to the field register
+or to the conflict rules that carries no label of that change's own class, which
+is the case this document is most about: those two arrive spelled as a fix and
+are read as one.
+
+The gate carries the class list rather than reading this table, because it runs
+with nothing checked out. The four legs above hold the two against each other,
+so a class added here and not there is a class the gate would refuse every
+change that carries it, and the suite says so before anybody meets it on a pull
+request.
+
+The contract class is the one the gate cannot key to a subject. There is no
+contract type in this tree for it to watch, and a path written for a file that
+does not exist is a rule pointed at nothing. So a contract change is refused
+only by the leg that asks for a class at all, and which class it belongs in is
+still a convention this document describes.
 
 ## Where the entries end up
 

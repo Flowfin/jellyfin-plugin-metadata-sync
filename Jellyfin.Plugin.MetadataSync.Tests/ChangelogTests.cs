@@ -8,16 +8,23 @@ using Xunit;
 namespace Jellyfin.Plugin.MetadataSync.Tests;
 
 /// <summary>
-/// Holds the changelog's classes together across the three files that carry
+/// Holds the changelog's classes together across the four files that carry
 /// them: the document a person reads, the drafter configuration a machine reads,
-/// and the label file that is the authority for which labels exist at all.
+/// the label file that is the authority for which labels exist at all, and the
+/// hygiene gate that refuses a pull request carrying no class.
 /// </summary>
 /// <remarks>
-/// A class declared in one of the three and missing from another is the failure
+/// A class declared in one of the four and missing from another is the failure
 /// this is for. It is silent in both directions: a class argued in the document
 /// with no category sorts nothing, and a category with no row sorts entries
 /// under a heading nothing explains. Neither shows up until somebody reads a
 /// release note and finds an entry in the wrong place or nowhere at all.
+/// <para>
+/// The gate is the fourth copy and the one furthest from the document. It runs
+/// with nothing checked out, so it carries the list rather than reading it, and
+/// a class added to the document alone would be a class the gate lets a pull
+/// request omit.
+/// </para>
 /// <para>
 /// The bound, stated rather than left to be assumed. These are line scans and
 /// not YAML parses, so they answer what the files say and never what the drafter
@@ -36,6 +43,16 @@ public class ChangelogTests
     private static readonly string _drafter = Path.Combine(AppContext.BaseDirectory, "release-drafter.yml");
 
     private static readonly string _labels = Path.Combine(AppContext.BaseDirectory, "labels.yaml");
+
+    private static readonly string _gate = Path.Combine(AppContext.BaseDirectory, "pr-hygiene.yml");
+
+    // Where a file the gate keys a class to is copied to. The copy is declared
+    // in this project by the same path the gate names it by, so the leg below
+    // is answered by the file rather than by a second list beside it. What the
+    // leg catches is a path added to the gate and copied nowhere. A file that
+    // moved without the project moving never reaches it: the copy refuses
+    // first, as MSB3030, and the build stops there.
+    private static readonly string _subjects = Path.Combine(AppContext.BaseDirectory, "subjects");
 
     /// <summary>
     /// Every class the document argues for has a category the drafter reads. A
@@ -128,15 +145,78 @@ public class ChangelogTests
     }
 
     /// <summary>
-    /// Both scans read something. Every leg above is satisfied by a read that
+    /// Every class the document argues for is one the hygiene gate will accept
+    /// on a pull request. A class added to the document alone is one the gate
+    /// refuses every change that carries it, which reads as the label being
+    /// wrong rather than as the gate being behind.
+    /// </summary>
+    [Fact]
+    public void EveryClassInTheDocumentIsAcceptedByTheGate()
+    {
+        var accepted = GateClassLabels();
+
+        foreach (var row in ClassRows())
+        {
+            Assert.Contains(row.Label, accepted, StringComparer.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// The other direction. A label the gate accepts and the document does not
+    /// argue for lets a change through in a class nothing explains, and the
+    /// drafter has no category to sort it under either.
+    /// </summary>
+    [Fact]
+    public void EveryClassTheGateAcceptsHasARowInTheDocument()
+    {
+        var declared = ClassRows().Select(r => r.Label).ToList();
+
+        foreach (var label in GateClassLabels())
+        {
+            Assert.Contains(label, declared, StringComparer.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// Every file the gate keys a class to is a file in this tree, and the class
+    /// it keys to it is one the document argues for. A rule pointed at a path
+    /// nothing writes to never fires, and it reads exactly like a rule that is
+    /// simply never tripped.
+    /// </summary>
+    [Fact]
+    public void EverySubjectTheGateKeysAClassToIsAPathInThisTree()
+    {
+        var declared = ClassRows().Select(r => r.Label).ToList();
+        var keyed = GateSubjects();
+
+        Assert.NotEmpty(keyed);
+
+        foreach (var (label, paths) in keyed)
+        {
+            Assert.Contains(label, declared, StringComparer.Ordinal);
+            Assert.NotEmpty(paths);
+
+            foreach (var path in paths)
+            {
+                Assert.True(
+                    File.Exists(Path.Combine(_subjects, path.Replace('/', Path.DirectorySeparatorChar))),
+                    "The gate keys a class to a path this tree does not carry: " + path);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Every scan reads something. Every leg above is satisfied by a read that
     /// returned nothing, and a matching test over two empty sets is the shape
     /// that passes for the wrong reason forever.
     /// </summary>
     [Fact]
-    public void BothScansReadSomething()
+    public void EveryScanReadsSomething()
     {
         Assert.NotEmpty(ClassRows());
         Assert.NotEmpty(Categories());
+        Assert.NotEmpty(GateClassLabels());
+        Assert.NotEmpty(GateSubjects());
     }
 
     /// <summary>
@@ -218,6 +298,61 @@ public class ChangelogTests
         }
 
         return categories;
+    }
+
+    // The classes the gate accepts on a pull request, read out of the list it
+    // carries. The scan follows the list's own punctuation and stops at its
+    // close, so a label written anywhere else in the file is not read as one.
+    private static IReadOnlyList<string> GateClassLabels()
+    {
+        return Block("const CLASS_LABELS = [")
+            .Select(line => new Regex(@"^""(.+)"",$").Match(line))
+            .Where(match => match.Success)
+            .Select(match => match.Groups[1].Value)
+            .ToList();
+    }
+
+    // One entry per class the gate keys to a file, holding the paths written
+    // under it. A label opens an entry and the quoted lines after it are its
+    // paths until the next label opens.
+    private static IReadOnlyList<(string Label, IReadOnlyList<string> Paths)> GateSubjects()
+    {
+        var label = new Regex(@"^label: ""(.+)"",$");
+        var path = new Regex(@"^""(.+)"",$");
+
+        var keyed = new List<(string, IReadOnlyList<string>)>();
+        foreach (var line in Block("const CLASS_BY_SUBJECT = ["))
+        {
+            var opened = label.Match(line);
+            if (opened.Success)
+            {
+                keyed.Add((opened.Groups[1].Value, new List<string>()));
+                continue;
+            }
+
+            var named = path.Match(line);
+            if (named.Success && keyed.Count > 0)
+            {
+                ((List<string>)keyed[^1].Item2).Add(named.Groups[1].Value);
+            }
+        }
+
+        return keyed;
+    }
+
+    // The lines of one declaration in the gate, trimmed, from the line that
+    // opens it to the line that closes it. The close is the one punctuation the
+    // nested lists inside a declaration do not use.
+    private static IReadOnlyList<string> Block(string opener)
+    {
+        var lines = File.ReadAllLines(_gate).Select(l => l.Trim()).ToList();
+        var start = lines.FindIndex(l => string.Equals(l, opener, StringComparison.Ordinal));
+        Assert.True(start >= 0, "The gate declares nothing opened by: " + opener);
+
+        var end = lines.FindIndex(start, l => string.Equals(l, "];", StringComparison.Ordinal));
+        Assert.True(end > start, "The declaration opened by " + opener + " is never closed.");
+
+        return lines.GetRange(start + 1, end - start - 1);
     }
 
     private static IReadOnlyCollection<string> DeclaredLabels()
