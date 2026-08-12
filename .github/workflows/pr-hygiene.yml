@@ -104,14 +104,17 @@ jobs:
             // than a simplification. It was first written to skip an author
             // whose `author_association` was not OWNER or MEMBER, on the
             // reasoning that somebody arriving from outside cannot know the
-            // issue numbers this board expects. Measured on a pull request from
-            // this board, the association in the event payload put the change
-            // outside that set and the whole tier turned itself off: a body
-            // naming no issue passed, silently, with nothing in the run saying a
-            // check had been skipped rather than met. A guard that decides
-            // whether to run on a value nobody reads is the shape that passes
-            // for the wrong reason forever, and it is worse than no guard, which
-            // at least does not report success.
+            // issue numbers this board expects.
+            //
+            // What was then observed, on a pull request opened from this board:
+            // the body was edited to name no issue at all, the gate ran on that
+            // edit, and it passed. The refusing tier had turned itself off. The
+            // association it turned on is the only branch that produces that
+            // result, and it was inferred from the run rather than read out of
+            // the payload, because nothing printed it. Both halves of that are
+            // the defect. A guard that decides whether to run on a value nobody
+            // can see is the shape that passes for the wrong reason forever, and
+            // it is worse than no guard, which at least does not report success.
             //
             // So the tier applies to everybody but a bot. What it costs is a red
             // check on a first change from somebody who could not have known the
