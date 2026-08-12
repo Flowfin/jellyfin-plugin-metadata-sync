@@ -75,7 +75,7 @@ internal static class CoverageReport
         new Area(
             "Decision code",
             heldToTheBar: true,
-            namespaces: new[] { "Conflicts", "Fields", "Matching", "References", "Configuration" },
+            namespaces: new[] { "Conflicts", "Fields", "Matching", "References", "Configuration", "Reconciliation" },
             rootTypes: Array.Empty<string>()),
         new Area(
             "Entry point and registration",
