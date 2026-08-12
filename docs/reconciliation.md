@@ -1,7 +1,9 @@
 # What a pass writes, and what it cannot promise
 
-What is settled here is the call a change goes through, and what the server does
-on disk once it is made.
+Two things are settled here. The call a change goes through, and what the server
+does on disk once it is made. And the window between deciding a change and
+making it, which is a property of the design rather than a defect in the code
+that will fill it.
 
 Whether a field moves at all is not this document. `docs/field-register.md`
 decides which fields may move and why, `docs/direction.md` decides which way,
@@ -18,9 +20,10 @@ There is no pass. Nothing in this plugin calls the library:
 
 So every sentence below about the server was read out of the server, and every
 sentence about this plugin is a decision taken before the code rather than a
-description of code that runs. #35 splits the pass into a planner and an applier
-and #39 makes the write. A reader should take this document as the argument they
-land against, and not as an account of what happens on a library today.
+description of code that runs. #35 splits the pass into a planner and an
+applier, #39 makes the write, and #41 defends the window. A reader should take
+this document as the argument those three land against, and not as an account of
+what happens on a library today.
 
 ## The one call
 
@@ -230,6 +233,43 @@ leaves images alone is not a thing the parameter can express.
 and again after them, in the plural call quoted above, so it moves for an item
 with no saver enabled and for an item on a protocol the savers never reach.
 
+## The window between planning and applying
+
+The pass decides first and writes second, which is #35, and the gap between the
+two is real time on a running server. A scheduled library scan, a provider
+refresh, or an operator editing the same field in the web client can all land in
+it.
+
+What the server offers for seeing a refresh is four members, and none of them is
+a lock:
+
+    git grep -n "GetRefreshQueue\|OnRefreshStart\|OnRefreshComplete\|GetRefreshProgress" v10.11.11 -- MediaBrowser.Controller/Providers/IProviderManager.cs
+    v10.11.11:MediaBrowser.Controller/Providers/IProviderManager.cs:212:        HashSet<Guid> GetRefreshQueue();
+    v10.11.11:MediaBrowser.Controller/Providers/IProviderManager.cs:214:        void OnRefreshStart(BaseItem item);
+    v10.11.11:MediaBrowser.Controller/Providers/IProviderManager.cs:218:        void OnRefreshComplete(BaseItem item);
+    v10.11.11:MediaBrowser.Controller/Providers/IProviderManager.cs:220:        double? GetRefreshProgress(Guid id);
+
+Two of them are reads and two are notifications a component makes about itself.
+Nothing there takes an item exclusively for the length of a write, and nothing
+in `ILibraryManager` does either, so a pass cannot ask the server to hold an item
+still.
+
+What narrows the window is re-reading the item immediately before applying and
+comparing its last-saved stamp against the one the plan was made from. That
+comparison is sound because the stamp moves on every update through the
+supported call, whether or not a saver ran, which is the paragraph above rather
+than an assumption. Two bounds on it. The comparison has to be against an item
+fetched again, not against the instance the plan carries, because the call
+mutates the instance it is given. And it detects a save, not an intent, so an
+item a component is part way through refreshing looks unchanged until that
+component saves.
+
+This document does not claim the window is closed. What is left after the
+re-read is the interval between the comparison and the write, this plugin cannot
+make it zero, and a pass that reported otherwise would be reporting on a race it
+lost. An item that loses the comparison is deferred rather than failed, and the
+next pass picks it up, which is #41 and is not built.
+
 ## What holds this up
 
 Nothing here is refused by a machine, and the reason is that the subject is
@@ -239,5 +279,6 @@ concurrency fixture to run between.
 
 #39 owes the update reason as one constant, the test that every write uses it,
 and the walk that fails if a repository type is reachable from a write path.
-Until that lands, the sentences above are a decision somebody can argue with and
-not a property anything enforces.
+#41 owes the re-read, the deferral, and a fixture that moves an item underneath a
+plan that was already made. Until those land, the sentences above are a decision
+somebody can argue with and not a property anything enforces.
