@@ -80,21 +80,29 @@ turns the suite red.
 Identifiers are written `Provider=Value`, several separated by `;`, and an empty
 cell is an empty dictionary.
 
-| Case | This server | The peer | Outcome |
-| --- | --- | --- | --- |
-| a clean single-provider match | `Tmdb=550` | `Tmdb=550` | `Match` |
-| agreement across two providers | `Tmdb=550;Imdb=tt0137523` | `Imdb=tt0137523;Tmdb=550` | `Match` |
-| disagreement across two providers | `Tmdb=550;Imdb=tt0137523` | `Tmdb=550;Imdb=tt0111161` | `Disagreement` |
-| an identifier differing only in case, where the row says the identifier is opaque | `Anidb=Ab12` | `Anidb=aB12` | `Disagreement` |
-| an identifier differing only in case, where the row says case carries no value | `MusicBrainzAlbum=8F468C1B-1B4F-4E9C-9D5A-1E0BD1FCF9AA` | `MusicBrainzAlbum=8f468c1b-1b4f-4e9c-9d5a-1e0bd1fcf9aa` | `Match` |
-| an identifier differing only in whitespace | `Tmdb= 550 ` | `Tmdb=550` | `Match` |
-| a provider name differing only in case | `tmdb=550` | `Tmdb=550` | `Match` |
-| a numeric identifier zero-padded on one side | `Tvdb=0075978` | `Tvdb=75978` | `Match` |
-| a zero-padded identifier where the row declares no such normalisation | `Anidb=007` | `Anidb=7` | `Disagreement` |
-| an item with an empty dictionary | | `Tmdb=550` | `NoBasis` |
-| both sides empty | | | `NoBasis` |
-| no provider in common | `Imdb=tt0137523` | `Tmdb=550` | `NoBasis` |
-| one provider agrees and another is present on one side only | `Tmdb=550;Imdb=tt0137523` | `Tmdb=550` | `Match` |
+The last column is what the row is for. A fixture that could never have failed
+proves less than one that nearly did, and once both are green there is nothing
+left to tell them apart except the sentence the row wrote down. It names the
+implementation this row refuses rather than the behaviour it wants, because the
+wanted behaviour is already the outcome column and writing it twice says nothing
+new. The suite refuses an empty cell, a cell holding an outcome name where a
+sentence belongs, and two rows naming one mistake.
+
+| Case | This server | The peer | Outcome | The mistake it would catch |
+| --- | --- | --- | --- | --- |
+| a clean single-provider match | `Tmdb=550` | `Tmdb=550` | `Match` | A comparison that never answers a match at all, which leaves every pair of items undecided and resolves nothing anywhere. |
+| agreement across two providers | `Tmdb=550;Imdb=tt0137523` | `Imdb=tt0137523;Tmdb=550` | `Match` | Pairing the two dictionaries by position rather than by provider name, so a TMDb number is held against an IMDb string as soon as one side writes them in a different order. |
+| disagreement across two providers | `Tmdb=550;Imdb=tt0137523` | `Tmdb=550;Imdb=tt0111161` | `Disagreement` | Returning as soon as one provider agrees, so a second provider sitting in the same dictionary and saying the items are different is never read. |
+| an identifier differing only in case, where the row says the identifier is opaque | `Anidb=Ab12` | `Anidb=aB12` | `Disagreement` | Comparing every identifier case-insensitively, which assumes a shape for a provider this table has never been shown. |
+| an identifier differing only in case, where the row says case carries no value | `MusicBrainzAlbum=8F468C1B-1B4F-4E9C-9D5A-1E0BD1FCF9AA` | `MusicBrainzAlbum=8f468c1b-1b4f-4e9c-9d5a-1e0bd1fcf9aa` | `Match` | Comparing every identifier ordinally, so a UUID held in upper case on one server reads as a different work from the same UUID held in lower case on the other. |
+| an identifier differing only in whitespace | `Tmdb= 550 ` | `Tmdb=550` | `Match` | Comparing the value exactly as it was stored, so a space around an identifier splits one work into two. |
+| a provider name differing only in case | `tmdb=550` | `Tmdb=550` | `Match` | Looking the provider up by an ordinal dictionary key, so a provider version that wrote its own name in lower case reads as a provider present on one side only. |
+| a numeric identifier zero-padded on one side | `Tvdb=0075978` | `Tvdb=75978` | `Match` | Comparing a decimal identifier as text, so zero padding written by one provider version reads as a different work. |
+| a zero-padded identifier where the row declares no such normalisation | `Anidb=007` | `Anidb=7` | `Disagreement` | Dropping leading zeros from every value that is entirely digits, which repairs an identifier for a provider whose numbering nobody here has checked. |
+| an item with an empty dictionary | | `Tmdb=550` | `NoBasis` | Answering a disagreement where nothing was compared, so an item nobody has run a metadata scan over becomes evidence that the two items are different. |
+| both sides empty | | | `NoBasis` | Starting the comparison from agreement rather than from nothing, which matches two items that carry no identifiers at all. |
+| no provider in common | `Imdb=tt0137523` | `Tmdb=550` | `NoBasis` | Reading a provider present on one side only as a disagreement, which reports two servers with different providers enabled as two different works. |
+| one provider agrees and another is present on one side only | `Tmdb=550;Imdb=tt0137523` | `Tmdb=550` | `Match` | Requiring every provider here to be present on the peer as well, so one extra provider withholds the match the shared provider had already established. |
 
 ## What this table does not do
 
