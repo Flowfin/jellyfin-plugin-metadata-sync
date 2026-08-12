@@ -96,25 +96,31 @@ jobs:
             const changed = files.map((f) => f.filename);
             const labels = (pr.labels || []).map((l) => l.name);
 
-            // Who the refusing tier is for. A bot cannot know a convention, and
-            // somebody arriving from outside this repository has no way to know
-            // the issue numbers this board expects before they file. Refusing
-            // their work on it is a ritual rather than a caught mistake, so the
-            // tier is narrowed by audience and the checks stay as they are.
-            // The linkage is still wanted on an outside change: whoever handles
-            // it supplies the issue, and the annotation below says so where they
-            // will meet it.
+            // Who the refusing tier is for. A bot opens a change with no issue
+            // because it cannot know there is one, so it is the one author the
+            // tier is not for.
+            //
+            // It is not narrowed any further, and that is a correction rather
+            // than a simplification. It was first written to skip an author
+            // whose `author_association` was not OWNER or MEMBER, on the
+            // reasoning that somebody arriving from outside cannot know the
+            // issue numbers this board expects. Measured on a pull request from
+            // this board, the association in the event payload put the change
+            // outside that set and the whole tier turned itself off: a body
+            // naming no issue passed, silently, with nothing in the run saying a
+            // check had been skipped rather than met. A guard that decides
+            // whether to run on a value nobody reads is the shape that passes
+            // for the wrong reason forever, and it is worse than no guard, which
+            // at least does not report success.
+            //
+            // So the tier applies to everybody but a bot. What it costs is a red
+            // check on a first change from somebody who could not have known the
+            // convention. The check says what is missing in one sentence, the
+            // repair is one edit to the body, and whoever handles that change
+            // can supply the issue. That is a cheaper failure than a gate that
+            // reports green without having looked.
             const isBot = pr.user && pr.user.type === "Bot";
-            const inside = ["OWNER", "MEMBER"].includes(pr.author_association || "NONE");
-            const refusingTierApplies = !isBot && inside;
-            if (!isBot && !inside) {
-              advisories.push(
-                "The author is outside this repository (author_association: " +
-                  `${pr.author_association || "NONE"}), so the refusing tier is skipped ` +
-                  "whole. The issue linkage is still wanted: whoever handles this " +
-                  "change supplies it, and files the issue where none exists yet.",
-              );
-            }
+            const refusingTierApplies = !isBot;
 
             // The changelog classes, in the order `docs/changelog.md` argues
             // them. They are written here rather than read from the document
@@ -285,7 +291,25 @@ jobs:
               core.warning(a);
             }
 
+            // What the run read, before what it concluded. A run that judged
+            // less than the whole set has to be distinguishable from one that
+            // judged all of it and found nothing, and the only way to read that
+            // off a green check is for the inputs to be printed beside the
+            // verdict. This is the disclosure the audience narrowing above did
+            // not have when it turned the refusing tier off in silence.
             const summary = core.summary.addHeading("Pull request hygiene", 2);
+            summary.addHeading("What this run read", 3).addList([
+              `author_association: ${pr.author_association || "NONE"}, user type: ${(pr.user && pr.user.type) || "unknown"}`,
+              refusingTierApplies
+                ? "The refusing tier applies to this change."
+                : "The refusing tier is skipped: the author is a bot.",
+              `issue numbers in the body: ${referenced.length === 0 ? "none" : referenced.map((n) => "#" + n).join(", ")}` +
+                `; of those, an issue on this board: ${named.length === 0 ? "none" : named.map((n) => "#" + n).join(", ")}`,
+              `commits read: ${commits.length}`,
+              `changelog class labels carried: ${carried.length === 0 ? "none" : carried.join(", ")}`,
+              `changed files: ${changed.length}, counted lines: ${churn}`,
+            ]);
+
             if (refusals.length === 0 && advisories.length === 0) {
               summary.addRaw("Every check passed.");
             }
