@@ -112,6 +112,30 @@
     <None Include="..\.github\labels.yaml" Link="labels.yaml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The hygiene gate carries a fourth copy of the changelog's classes, because
+       it runs with nothing checked out and cannot read the document. It is
+       copied here so ChangelogTests can hold that copy against the other three.
+
+       The four files below it are the ones the gate keys a class to. Each is
+       copied under the path the gate names it by, so the leg that asserts a
+       keyed path exists is answered by the file rather than by a list beside it.
+
+       The two directions fail in two different places, which is worth knowing
+       before somebody looks for one of them in the wrong one. A path added to
+       the gate and not copied here reaches the leg and reddens the suite. A file
+       that moved and took neither the gate nor this project with it never
+       reaches the leg at all: the copy below refuses first, as MSB3030, and the
+       build stops there. Both were measured rather than supposed. -->
+  <ItemGroup>
+    <None Include="..\.github\workflows\pr-hygiene.yml" Link="pr-hygiene.yml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Jellyfin.Plugin.MetadataSync\Fields\field-register.json"
+          Link="subjects\Jellyfin.Plugin.MetadataSync\Fields\field-register.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Jellyfin.Plugin.MetadataSync\Conflicts\conflict-rules.json"
+          Link="subjects\Jellyfin.Plugin.MetadataSync\Conflicts\conflict-rules.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\docs\field-register.md" Link="subjects\docs\field-register.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\docs\conflicts.md" Link="subjects\docs\conflicts.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- This project file is what HeadlessPolicyTests reads, so the suite can
        refuse a dependency that would need a display, a running server or the
        network. Reading the resolved package graph instead would answer a

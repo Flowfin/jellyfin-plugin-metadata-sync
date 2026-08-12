@@ -93,12 +93,25 @@ decision so neither issue is left waiting on a file that was decided against.
 
 ## What holds any of this up
 
-Nothing in this repository refuses a violation of the three rules above. Each
-one is held by review, which is a person and not a mechanism, and each names
-the issue where the mechanism is argued: the size rule is issue #78, the
-invariant rule is issue #79, and the triage rule is issue #80. Until those
-land, the three sections are prose, and this paragraph is here so that none of
-them is read as something the gate would stop.
+The size rule has a mechanism, and it does not refuse. `.github/workflows/pr-hygiene.yml`
+counts the change and says so on the pull request when it is over the number,
+which that file states next to the command that prints where the number came
+from. It annotates rather than refuses on purpose: no reading of a diff tells a
+scope that was planned badly from one that is a single readable thing, and a
+gate that reds the second teaches people to ignore it on the first. So the
+sentence above about re-planning is still held by review.
+
+The same workflow does refuse three things about a change, and each is written
+at the check in the file rather than restated here. Whether one of its refusals
+holds a merge is a property of the ruleset, printed below and not written down
+anywhere.
+
+Nothing in this repository refuses a violation of the other two rules above.
+Each is held by review, which is a person and not a mechanism, and each names
+the issue where the mechanism is argued: the invariant rule is issue #79 and
+the triage rule is issue #80. Until those land, those two sections are prose,
+and this paragraph is here so that neither is read as something the gate would
+stop.
 
 ## What the gate requires
 

@@ -1,0 +1,302 @@
+# Deterministic checks about the pull request rather than about the code (#78).
+#
+# Every other gate here reasons about what the tree contains. This one reasons
+# about the change: whether it names the issue that produced it, whether the
+# release note will carry it in the class an operator reads, and whether it is
+# small enough to review. That class of failure is invisible to a compiler and
+# to every analyser in this repository.
+#
+# It is implemented here rather than by a service, so a red run is explainable
+# from this file. Every rule below is one a person can predict before pushing.
+#
+# ## The two tiers
+#
+# The refusing tier fails the job. Each of its checks is one where a false
+# positive is close to impossible and the repair is one edit by the person who
+# opened the change.
+#
+# The advisory tier annotates and never fails. Its checks are conventions with
+# real exceptions, and a gate that reds a legitimate change teaches people to
+# ignore it.
+#
+# Whether a red run here holds a merge is decided by the branch ruleset and not
+# by this file. Do not copy the required set into this header, where it would
+# drift unnoticed. Print it:
+#
+#   gh api repos/Flowfin/jellyfin-plugin-metadata-sync/rulesets \
+#     --jq '.[] | select(.name == "gate") | .id'
+#   gh api repos/Flowfin/jellyfin-plugin-metadata-sync/rulesets/<id> \
+#     --jq '[.rules[] | select(.type == "required_status_checks")
+#            | .parameters.required_status_checks[].context]'
+#
+# ## What this gate does not check
+#
+# The changelog has three classes that mark a change an operator has to read
+# before upgrading, and check 4 keys two of them to the files they are about.
+# The third is the consumer contract, and there is no contract type in this tree
+# to key it to. A path written here for a file that does not exist would be a
+# rule pointed at nothing, passing for the wrong reason until somebody creates
+# the path and never noticing if they create a different one. That rule lands
+# with the contract, and until it does the class on a contract change is a
+# convention `docs/changelog.md` describes.
+#
+# Nothing here judges whether a class was chosen correctly, whether an issue
+# reference points at the right issue, or whether a change that touched the
+# suite touched it usefully. Those are what the review is for.
+#
+# ## What a new or edited workflow owes
+#
+# The header of `.github/workflows/zizmor.yml` holds it. This job checks nothing
+# out: every input is the pull request's own metadata read through the API, so
+# there is no working tree to guard and no credential to persist. Untrusted
+# values, the body, the labels and the file names, are read from the API objects
+# and never interpolated into a shell step.
+name: PR Hygiene
+
+on:
+  pull_request:
+    # edited, labeled and unlabeled are here because two of the refusing checks
+    # read the body and the labels. Without them, supplying the thing the gate
+    # asked for leaves the run red until an unrelated push.
+    types: [opened, edited, reopened, synchronize, labeled, unlabeled]
+
+# Explicit deny-all at workflow level; the job below grants only what it reads.
+permissions: {}
+
+# Cancel a superseded run on the same pull request. This is a lint and not a
+# publish, so dropping an obsolete run is safe.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hygiene:
+    name: Deterministic pull request hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read # read the changed files and their patches through the API
+      pull-requests: read # read the body, the labels and the commit list
+      issues: read # confirm the issue a body names is an issue that exists
+    steps:
+      - name: Run the hygiene checks
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const refusals = [];
+            const advisories = [];
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+            const changed = files.map((f) => f.filename);
+            const labels = (pr.labels || []).map((l) => l.name);
+
+            // Who the refusing tier is for. A bot cannot know a convention, and
+            // somebody arriving from outside this repository has no way to know
+            // the issue numbers this board expects before they file. Refusing
+            // their work on it is a ritual rather than a caught mistake, so the
+            // tier is narrowed by audience and the checks stay as they are.
+            // The linkage is still wanted on an outside change: whoever handles
+            // it supplies the issue, and the annotation below says so where they
+            // will meet it.
+            const isBot = pr.user && pr.user.type === "Bot";
+            const inside = ["OWNER", "MEMBER"].includes(pr.author_association || "NONE");
+            const refusingTierApplies = !isBot && inside;
+            if (!isBot && !inside) {
+              advisories.push(
+                "The author is outside this repository (author_association: " +
+                  `${pr.author_association || "NONE"}), so the refusing tier is skipped ` +
+                  "whole. The issue linkage is still wanted: whoever handles this " +
+                  "change supplies it, and files the issue where none exists yet.",
+              );
+            }
+
+            // The changelog classes, in the order `docs/changelog.md` argues
+            // them. They are written here rather than read from the document
+            // because this job checks nothing out. `PullRequestHygieneTests`
+            // holds this list against that document in both directions, so a
+            // class added to one and not the other reddens the suite.
+            const CLASS_LABELS = [
+              "changelog: contract",
+              "changelog: field-register",
+              "changelog: conflict-rule",
+              "security",
+              "enhancement",
+              "bug",
+              "documentation",
+            ];
+
+            // The two classes whose subject is a file in this tree. A change to
+            // one of these files is a change an operator has to read before
+            // upgrading, and it can arrive spelled as a fix.
+            const CLASS_BY_SUBJECT = [
+              {
+                label: "changelog: field-register",
+                subject: "which fields move between two servers",
+                paths: [
+                  "Jellyfin.Plugin.MetadataSync/Fields/field-register.json",
+                  "docs/field-register.md",
+                ],
+              },
+              {
+                label: "changelog: conflict-rule",
+                subject: "how a disagreement between two servers is decided",
+                paths: [
+                  "Jellyfin.Plugin.MetadataSync/Conflicts/conflict-rules.json",
+                  "docs/conflicts.md",
+                ],
+              },
+            ];
+
+            // Check 1. Refuses a change with no route back to the reasoning that
+            // produced it. A number that names nothing is refused too, because a
+            // typo in a reference reads exactly like a link.
+            const body = pr.body || "";
+            const referenced = [
+              ...new Set([...body.matchAll(/(?:^|[^\w])#(\d+)\b/g)].map((m) => Number(m[1]))),
+            ];
+            let named = [];
+            for (const number of referenced) {
+              try {
+                await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: number,
+                });
+                named.push(number);
+              } catch (error) {
+                if (error.status !== 404) {
+                  throw error;
+                }
+              }
+            }
+            if (refusingTierApplies && named.length === 0) {
+              refusals.push(
+                referenced.length === 0
+                  ? "The body names no issue. Name the issue this change is from, as `Closes #123` or `Refs #123`."
+                  : `The body names #${referenced.join(", #")}, and no number among them is an issue on this board.`,
+              );
+            }
+
+            // Check 2. Refuses a commit subject that says what changed without
+            // saying why. Blame, log and bisect show a subject without the pull
+            // request that carried it, so the body reference in check 1 does not
+            // reach the reader who needs it most. The shape is this board's own,
+            // taken from the subjects already on the default branch: the issue in
+            // parentheses at the end.
+            const commits = await github.paginate(github.rest.pulls.listCommits, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+            const unlinked = commits.filter((c) => {
+              const subject = c.commit.message.split("\n")[0];
+              const merge = c.parents.length > 1 || subject.startsWith("Merge ");
+              const byBot =
+                (c.author && c.author.type === "Bot") ||
+                /\[bot\]/.test((c.commit.author && c.commit.author.name) || "");
+              return !merge && !byBot && !/\(#\d+\)\s*$/.test(subject);
+            });
+            if (refusingTierApplies && unlinked.length > 0) {
+              refusals.push(
+                "Commit subjects with no issue reference: " +
+                  unlinked
+                    .map((c) => `${c.sha.slice(0, 7)} ("${c.commit.message.split("\n")[0]}")`)
+                    .join(", ") +
+                  ". Every subject ends with the issue it is from, as `(#123)`.",
+              );
+            }
+
+            // Check 3. Refuses an entry that reaches the release note in no
+            // class, which drops it out of every heading a reader looks under,
+            // and one that claims two, which is two changes in one pull request.
+            const carried = labels.filter((l) => CLASS_LABELS.includes(l));
+            if (refusingTierApplies && carried.length !== 1) {
+              refusals.push(
+                carried.length === 0
+                  ? "No changelog class label. Apply exactly one of: " + CLASS_LABELS.join(", ") + "."
+                  : "Two changelog class labels: " +
+                      carried.join(", ") +
+                      ". An entry belongs to one class, and a change that would carry two is two changes.",
+              );
+            }
+
+            // Check 4. Refuses a change to what moves between two servers, or to
+            // how a disagreement is decided, arriving in the release note as an
+            // ordinary fix. The class is a property of the subject rather than of
+            // the size, so the file that was touched is what decides it.
+            for (const rule of CLASS_BY_SUBJECT) {
+              const touched = rule.paths.filter((p) => changed.includes(p));
+              if (refusingTierApplies && touched.length > 0 && !labels.includes(rule.label)) {
+                refusals.push(
+                  `This change touches ${touched.join(", ")}, which is ${rule.subject}, ` +
+                    `and carries no \`${rule.label}\` label.`,
+                );
+              }
+            }
+
+            // Check 5, advisory. The number is 400 changed lines, and it is the
+            // one the parity target states, which is where this repository's gate
+            // is measured from:
+            //
+            //   gh api repos/iderex/jellyfin-plugin-sso/contents/.github/workflows/pr-hygiene.yml \
+            //     --jq '.content' | base64 -d | grep -n 'WARN_AT = '
+            //
+            // It never refuses. A change over the number is an issue whose scope
+            // was planned wrong, and the repair is to divide that issue rather
+            // than to carve the finished diff in two. No reading of a diff tells
+            // those two apart, so this annotates and a person decides.
+            const generated = (name) =>
+              name.endsWith("packages.lock.json") || name.endsWith(".min.js") || name.endsWith(".min.css");
+            const churn = files
+              .filter((f) => !generated(f.filename))
+              .reduce((sum, f) => sum + f.additions + f.deletions, 0);
+            const SIZE = 400;
+            if (churn >= SIZE) {
+              advisories.push(
+                `This change is ${churn} lines, excluding generated and lock files, against ${SIZE}. ` +
+                  "Divide the issue into sub-issues, each with its own reason to exist, rather than " +
+                  "carving this diff into two halves that only make sense together.",
+              );
+            }
+
+            // Check 6, advisory. Every guard on this board ships with a proof
+            // that it bites, so a change to the plugin that moves no test is
+            // worth a second look. It never refuses, because a comment, a project
+            // file and a pure rename legitimately move none.
+            const pluginChanged = changed.some(
+              (n) => n.startsWith("Jellyfin.Plugin.MetadataSync/") && n.endsWith(".cs"),
+            );
+            const suiteChanged = changed.some((n) => n.startsWith("Jellyfin.Plugin.MetadataSync.Tests/"));
+            if (pluginChanged && !suiteChanged) {
+              advisories.push(
+                "The plugin changed and nothing under Jellyfin.Plugin.MetadataSync.Tests did. " +
+                  "Either the change is genuinely untestable, or the guard it adds has no proof that it bites.",
+              );
+            }
+
+            for (const a of advisories) {
+              core.warning(a);
+            }
+
+            const summary = core.summary.addHeading("Pull request hygiene", 2);
+            if (refusals.length === 0 && advisories.length === 0) {
+              summary.addRaw("Every check passed.");
+            }
+            if (refusals.length > 0) {
+              summary.addHeading("Refused", 3).addList(refusals);
+            }
+            if (advisories.length > 0) {
+              summary.addHeading("Advisory, and never a refusal", 3).addList(advisories);
+            }
+            await summary.write();
+
+            if (refusals.length > 0) {
+              core.setFailed(refusals.join(" | "));
+            }
