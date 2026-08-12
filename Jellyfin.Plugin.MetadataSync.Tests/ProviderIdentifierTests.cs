@@ -19,6 +19,8 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// </remarks>
 public class ProviderIdentifierTests
 {
+    private const string FixtureHeader = "| Case | This server | The peer | Outcome | The mistake it would catch |";
+
     private static readonly string _document = Path.Combine(AppContext.BaseDirectory, "provider-identifiers.md");
 
     /// <summary>
@@ -31,7 +33,7 @@ public class ProviderIdentifierTests
     {
         var data = new TheoryData<string, string, string, string>();
 
-        foreach (var row in TableRows("| Case | This server | The peer | Outcome |"))
+        foreach (var row in TableRows(FixtureHeader))
         {
             data.Add(row[0], row[1], row[2], row[3]);
         }
@@ -65,7 +67,7 @@ public class ProviderIdentifierTests
     [Fact]
     public void TheFixtureTableCoversEveryCaseTheRulesAreAbout()
     {
-        var descriptions = TableRows("| Case | This server | The peer | Outcome |").Select(r => r[0]).ToList();
+        var descriptions = TableRows(FixtureHeader).Select(r => r[0]).ToList();
 
         Assert.Contains(descriptions, d => d.Contains("clean single-provider match", StringComparison.Ordinal));
         Assert.Contains(descriptions, d => d.Contains("agreement across two providers", StringComparison.Ordinal));
@@ -73,6 +75,53 @@ public class ProviderIdentifierTests
         Assert.Contains(descriptions, d => d.Contains("differing only in case", StringComparison.Ordinal));
         Assert.Contains(descriptions, d => d.Contains("differing only in whitespace", StringComparison.Ordinal));
         Assert.Contains(descriptions, d => d.Contains("empty dictionary", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Every fixture row names the mistake it would catch. A row that names none
+    /// is a row nobody argued for, and once the suite is green it cannot be told
+    /// apart from one that could never have failed.
+    /// </summary>
+    /// <remarks>
+    /// It is a cell per row rather than a paragraph beside the table, because a
+    /// paragraph covers the rows somebody remembered to mention and the rows it
+    /// leaves out are the ones nobody argued for.
+    /// </remarks>
+    [Fact]
+    public void EveryFixtureRowNamesAMistake()
+    {
+        var rows = TableRows(FixtureHeader);
+
+        Assert.NotEmpty(rows);
+        Assert.All(rows, row => Assert.True(row[4].Length > 40, row[0]));
+    }
+
+    /// <summary>
+    /// A cell holding an outcome name rather than a sentence says where a
+    /// mistake lands and never what the mistake is, and the outcome column two
+    /// cells to the left already carries it.
+    /// </summary>
+    [Fact]
+    public void AFixtureRowNamingAnOutcomeRatherThanAMistakeIsRefused()
+    {
+        foreach (var row in TableRows(FixtureHeader))
+        {
+            Assert.DoesNotContain(Unquote(row[4]), Enum.GetNames<ProviderIdentifierVerdict>(), StringComparer.Ordinal);
+            Assert.Contains(' ', row[4]);
+        }
+    }
+
+    /// <summary>
+    /// No two rows name the same mistake. A line copied from the row above is
+    /// the shape a row takes when it was added for the count rather than for the
+    /// mistake, and it is the one failure this column cannot report about itself.
+    /// </summary>
+    [Fact]
+    public void NoTwoFixtureRowsNameTheSameMistake()
+    {
+        var mistakes = TableRows(FixtureHeader).Select(r => r[4]).ToList();
+
+        Assert.Equal(mistakes.Count, mistakes.Distinct(StringComparer.Ordinal).Count());
     }
 
     /// <summary>
