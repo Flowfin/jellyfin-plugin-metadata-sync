@@ -11,21 +11,45 @@ and `docs/conflicts.md` decides what happens when both sides differ. This
 document starts after all three have answered and a change is about to be
 written.
 
-## What does not exist yet
+## What exists, and what still does not
 
-A pass decides and it does not write. The two halves are in the tree, in
-`Jellyfin.Plugin.MetadataSync/Reconciliation/`, and the second one ends at an
-interface nothing implements. Nothing in this plugin calls the library:
+The write exists. `LibraryPlanTarget` is the implementation the interface
+between the two halves was waiting for, it calls the member named below and
+nothing else, and the suite reads the compiled instructions rather than the
+source to say so:
 
-    git grep -Iln "ILibraryManager\|UpdateItemAsync\|IItemRepository" -- 'Jellyfin.Plugin.MetadataSync/*.cs'
-    # no output, exit 1
+    git grep -Iln "ILibraryManager" -- 'Jellyfin.Plugin.MetadataSync/*.cs'
+    Jellyfin.Plugin.MetadataSync/Reconciliation/LibraryPlanTarget.cs
 
-So every sentence below about the server was read out of the server, and every
-sentence about this plugin below the planner is a decision taken before the code
-rather than a description of code that runs. #35 landed the split, #39 makes the
-write, and #41 defends the window. A reader should take the rest of this
-document as the argument the remaining two land against, and not as an account
-of what happens on a library today.
+What does not exist is a pass. Nothing reads two servers, nothing turns items
+into the observations a plan is made from, and nothing registers the write path
+as a service, so a plan can be carried out in a test and nowhere else. Every
+sentence below about the server was read out of the server, and the sections on
+the window and on the deferral are still a decision taken before the code:
+#41 defends the window and has not landed.
+
+## What a plan row can carry, and what it cannot
+
+A plan row holds one string per field, and the server holds nine different
+things. Four of the fields the register lets move are strings and the row is the
+value. Two are dates and are read in the round-trip spelling,
+`DateTime.ToString("O")`, strictly: a value in any other spelling is refused
+rather than read under whichever locale the server happens to run in, which is
+how a day silently becomes a month. One is a year and is read as digits with no
+sign, no separator and no space.
+
+The remaining two, `Tags` and `ProductionLocations`, are sets of strings and are
+refused. Any character chosen to separate two entries inside one string is a
+character an operator may have typed inside one entry, so a value written on one
+side comes back as one entry too many or one too few, and nothing anywhere
+declares an escaping that would stop it. Whoever builds the half that reads
+items into observations owns that declaration, because it has to hold on both
+sides of it; until it exists a row for either field is refused loudly and no
+part of the item is written.
+
+The suite holds the two sets against the register in both directions, so a tenth
+row declared to move reds it until somebody has decided which of the two the new
+field is in.
 
 ## The one call
 
@@ -274,17 +298,30 @@ next pass picks it up, which is #41 and is not built.
 
 ## What holds this up
 
-Nothing about the write is refused by a machine, and the reason is that the
-subject is absent rather than that the rule is soft. There is no write for an
-assembly walk to inspect and no constant for a test to assert.
+The write is refused by a machine now, in three places, and each was proved by
+breaking it rather than by being written down.
 
-The window is a different case now. A plan and an applier exist, so a fixture
-that moves an item between the two has something to run between, and what is
-missing is the re-read it would catch rather than the halves it would run
-against.
+The update reason is one constant and every write carries it, which reddens if
+the constant moves. A walk over the compiled assembly starts at the types that
+carry a plan to a library, follows every call into this plugin's own types, and
+fails on a database namespace, a repository type or a member that writes
+underneath the supported call. And the library the suite writes against answers
+two members and throws on every other one, so a path that reached for anything
+else fails with the member's name in it.
 
-#39 owes the update reason as one constant, the test that every write uses it,
-and the walk that fails if a repository type is reachable from a write path.
-#41 owes the re-read, the deferral, and that fixture. Until those land, the
-sentences above about the write and the window are a decision somebody can argue
-with and not a property anything enforces.
+What that walk cannot do is stated where it lives rather than only here. It
+follows calls into this assembly and stops at the edge of it, so what the server
+does after the supported call is outside it on purpose. It refuses a name, so a
+repository reached through an interface with an innocent name, or through
+reflection, spells nothing it can see.
+
+The window is what is left. A plan and an applier exist and a fixture that moves
+an item between them has something to run between, so what is missing is the
+re-read that fixture would catch. #41 owes the re-read, the deferral and that
+fixture, and until they land the section above on the window is a decision
+somebody can argue with rather than a property anything enforces.
+
+One more thing nothing holds. A stopped pass stops within one item, and it
+reports nothing about how far it got: the applier throws where the operator
+asked it to stop. Turning that into a result carrying the items already written
+is the pass's own bound, #37, and its resumption is #38.
