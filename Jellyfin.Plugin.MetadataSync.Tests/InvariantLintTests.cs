@@ -114,6 +114,11 @@ public class InvariantLintTests
             DeclaredBy: "#46",
             Kind: Refusal.AnyOccurrence,
             TokenPatterns: new[] { "DateLastSaved", "DateModified", "DateTime.UtcNow", "DateTime.Now", "DateTimeOffset.UtcNow", "DateTimeOffset.Now" },
+            AllowedIn: new[]
+            {
+                ("LibraryPlanTarget.cs",
+                 "Reads this server's last-saved stamp on an item it fetched, and compares it against the same server's earlier reading of the same item, which is #41. That is one clock held against itself. The rule is about a stamp from one server held against a stamp from the other, and this file cannot make that comparison: the peer's stamp is on no type it can reach. The stamp leaves the file as a string, so nothing downstream can order two of them."),
+            },
             Regression: "if (local.DateLastSaved > peer.DateLastSaved)",
             RegressionIsTheMistakeThat: "is the obvious conflict rule, and it hands every field to whichever server's clock is ahead, permanently and silently.",
             NearMiss: "if (local.LastValueWrittenByThisPlugin is not null)",
@@ -261,6 +266,40 @@ public class InvariantLintTests
     }
 
     /// <summary>
+    /// An allowance names a file that is in the tree and says why. A file name
+    /// that matches nothing is a rule quietly narrowed against a file somebody
+    /// renamed, and it reads exactly like one that is still doing its job.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(RuleIds))]
+    public void EveryAllowanceNamesAFileThatIsThereAndSaysWhy(string id)
+    {
+        var rule = RuleNamed(id);
+        var files = PluginSourceFiles().Select(Path.GetFileName).ToHashSet(StringComparer.Ordinal);
+
+        foreach (var (file, reason) in rule.Allowances)
+        {
+            Assert.Contains(file, files);
+            Assert.True(reason.Length > 80, id + " allows " + file + " with a reason too short to argue with.");
+        }
+    }
+
+    /// <summary>
+    /// An allowance excuses a file and never the pattern. Run against text that
+    /// is not one of the allowed files, every rule still refuses its own
+    /// regression, which is the leg that would catch an allowance written as a
+    /// blanket.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(PatternRuleIds))]
+    public void AnAllowanceDoesNotReachTextFromAnywhereElse(string id)
+    {
+        var rule = RuleNamed(id);
+
+        Assert.NotEmpty(Findings(rule, new[] { ("SomeOtherFile.cs", rule.Regression) }));
+    }
+
+    /// <summary>
     /// The rule the contributing guide states about itself, made into a check
     /// rather than left to a reader. The guide lists the invariants of this
     /// shape in one sentence; this compares that list against the table above
@@ -316,6 +355,11 @@ public class InvariantLintTests
 
         foreach (var (name, text) in sources)
         {
+            if (rule.Allowances.Any(allowed => string.Equals(allowed.File, name, StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
             var number = 0;
             foreach (var raw in text.Split('\n'))
             {
@@ -401,12 +445,21 @@ public class InvariantLintTests
         string RegressionIsTheMistakeThat = "",
         string NearMiss = "",
         string NearMissIsTheNeighbourThat = "",
-        string? RefusedBy = null)
+        string? RefusedBy = null,
+        (string File, string Reason)[]? AllowedIn = null)
     {
         /// <summary>
         /// Gets the token patterns this rule refuses, which is empty for a rule
         /// held somewhere else.
         /// </summary>
         public string[] Tokens { get; } = TokenPatterns ?? Array.Empty<string>();
+
+        /// <summary>
+        /// Gets the files this rule does not read, each with the reason it does
+        /// not. The record above promised this and carried none, so until now a
+        /// legitimate use outside a rule's narrow path had nowhere to be
+        /// declared and the only way past a rule was to weaken its pattern.
+        /// </summary>
+        public (string File, string Reason)[] Allowances { get; } = AllowedIn ?? Array.Empty<(string, string)>();
     }
 }

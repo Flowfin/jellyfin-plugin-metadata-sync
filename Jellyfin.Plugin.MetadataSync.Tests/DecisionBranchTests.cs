@@ -318,6 +318,9 @@ public class DecisionBranchTests
 
         Assert.Contains("library", new ItemNotInLibraryException().Message, StringComparison.OrdinalIgnoreCase);
         Assert.Same(cause, new ItemNotInLibraryException("while fetching an item", cause).InnerException);
+
+        Assert.Contains("wrote the item", new ItemChangedSincePlannedException().Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Same(cause, new ItemChangedSincePlannedException("while comparing a token", cause).InnerException);
     }
 
     private static ProviderIdentifierRule LeadingZeros(bool trimmed) => new(

@@ -41,6 +41,19 @@ public class LibraryPlanTargetTests
     private static readonly string[] _theWholeConversation = { "GetItemById", "UpdateItemAsync" };
 
     /// <summary>
+    /// The token a freshly built item answers with. Every arrangement here
+    /// holds an item nothing has saved, so this is what the plan was made from
+    /// and the comparison at the write is satisfied.
+    /// </summary>
+    private static readonly string _asRead = LibraryPlanTarget.StampOf(new Movie());
+
+    /// <summary>
+    /// What the item answers with after something else has saved it, which is
+    /// a fixed value rather than a reading of this machine.
+    /// </summary>
+    private static readonly DateTime _afterSomethingElseSaved = new(2026, 8, 13, 1, 0, 0, DateTimeKind.Utc);
+
+    /// <summary>
     /// Gets the fields the register lets move that carry a set of strings, so
     /// the refusal is asserted per field rather than once for both.
     /// </summary>
@@ -209,7 +222,7 @@ public class LibraryPlanTargetTests
         var movie = new Movie { Overview = "mine" };
         var (library, _) = LibraryCalls.Holding(_itemId, movie);
 
-        var plan = new ItemPlan { LocalItemId = _itemId, Kind = "Movie" };
+        var plan = new ItemPlan { LocalItemId = _itemId, Kind = "Movie", LastSavedWhenPlanned = _asRead };
         plan.Changes.Add(Row("Overview", "theirs", writes: false));
         plan.Changes.Add(Row("Name", "theirs", writes: true));
 
@@ -361,6 +374,77 @@ public class LibraryPlanTargetTests
     }
 
     /// <summary>
+    /// Something else wrote the item between the plan and the write, so nothing
+    /// on it is written and the item is handed back as deferred. This is the
+    /// guard for the failure an operator sees as a field flipping back and forth
+    /// between a sync and a refresh, with no log explaining it.
+    /// </summary>
+    [Fact]
+    public async Task AnItemSomethingElseWroteSinceThePlanIsDeferred()
+    {
+        var movie = new Movie { Overview = "what a refresh just wrote" };
+        var (library, calls) = LibraryCalls.Holding(_itemId, movie);
+
+        // The plan below was made from the item as it was read. The library now
+        // holds a version something else saved after that.
+        movie.DateLastSaved = _afterSomethingElseSaved;
+
+        await Assert.ThrowsAsync<ItemChangedSincePlannedException>(
+            () => new LibraryPlanTarget(library).WriteAsync(PlanFor("Overview", "theirs"), CancellationToken.None));
+
+        Assert.Equal("what a refresh just wrote", movie.Overview);
+        Assert.Empty(calls.Updates);
+    }
+
+    /// <summary>
+    /// A plan that carries no token cannot answer whether the item moved, and a
+    /// write made without the answer is what this guard exists to stop. It is
+    /// refused as a defect rather than deferred, because nothing about it will
+    /// be different on the next pass.
+    /// </summary>
+    [Fact]
+    public async Task APlanThatCarriesNoTokenIsRefused()
+    {
+        var (library, calls) = LibraryCalls.Holding(_itemId, new Movie());
+
+        var plan = new ItemPlan { LocalItemId = _itemId, Kind = "Movie" };
+        plan.Changes.Add(Row("Overview", "theirs", writes: true));
+
+        await Assert.ThrowsAsync<WriteRefusedException>(
+            () => new LibraryPlanTarget(library).WriteAsync(plan, CancellationToken.None));
+
+        Assert.Empty(calls.Updates);
+    }
+
+    /// <summary>
+    /// The token is derived in one place, so the half that reads items and the
+    /// half that writes them cannot spell it two ways. A token that never
+    /// changed would defer nothing and one that always changed would defer
+    /// everything, so both directions are asserted.
+    /// </summary>
+    [Fact]
+    public void TheTokenChangesWhenTheItemIsSavedAndNotOtherwise()
+    {
+        var movie = new Movie();
+
+        Assert.Equal(LibraryPlanTarget.StampOf(movie), LibraryPlanTarget.StampOf(new Movie()));
+
+        movie.DateLastSaved = _afterSomethingElseSaved;
+
+        Assert.NotEqual(_asRead, LibraryPlanTarget.StampOf(movie));
+    }
+
+    /// <summary>
+    /// Deriving a token from an item that is not there is refused, rather than
+    /// answering with a token that would compare equal to another absence.
+    /// </summary>
+    [Fact]
+    public void TakingATokenFromAnItemThatIsNotThereIsRefused()
+    {
+        Assert.Throws<ArgumentNullException>(() => LibraryPlanTarget.StampOf(null!));
+    }
+
+    /// <summary>
     /// A target with no library is refused when it is built, because a target
     /// that exists and cannot write is a pass reporting that it applied a plan.
     /// </summary>
@@ -429,7 +513,7 @@ public class LibraryPlanTargetTests
 
     private static ItemPlan PlanFor(string field, string? value)
     {
-        var plan = new ItemPlan { LocalItemId = _itemId, Kind = "Movie" };
+        var plan = new ItemPlan { LocalItemId = _itemId, Kind = "Movie", LastSavedWhenPlanned = _asRead };
         plan.Changes.Add(Row(field, value, writes: true));
         return plan;
     }

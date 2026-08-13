@@ -30,6 +30,13 @@ namespace Jellyfin.Plugin.MetadataSync.Reconciliation;
 /// nothing about the time between the two halves.
 /// </para>
 /// <para>
+/// One thing it does decide, and it decides it by type. An item the write path
+/// hands back as deferred is counted and the pass carries on; anything else is
+/// left to the caller. That is not a rule it reads from anywhere, it is the
+/// difference between an event that happens on any library in use and a defect,
+/// and #41 argues it where the deferral is raised.
+/// </para>
+/// <para>
 /// A stopped pass stops within one item and reports nothing about how far it
 /// got. That is the whole of what this type promises: it throws where the
 /// operator asked it to stop, and turning that into a result carrying the
@@ -79,6 +86,7 @@ public sealed class Applier
         var itemsWritten = 0;
         var fieldsWritten = 0;
         var itemsPassedOver = 0;
+        var itemsDeferred = 0;
 
         foreach (var item in plan.Items)
         {
@@ -95,7 +103,21 @@ public sealed class Applier
                 continue;
             }
 
-            await _target.WriteAsync(item, cancellationToken).ConfigureAwait(false);
+            // The one thing this half decides, and it decides it by type rather
+            // than by asking anything. A deferral means the item moved or went
+            // between the two halves of a pass, which is an ordinary event on a
+            // library somebody uses, so the pass carries on and counts it. Every
+            // other failure is a defect and is left to the caller, because a pass
+            // that swallowed one would report a library as synced that is not.
+            try
+            {
+                await _target.WriteAsync(item, cancellationToken).ConfigureAwait(false);
+            }
+            catch (DeferredItemException)
+            {
+                itemsDeferred++;
+                continue;
+            }
 
             itemsWritten++;
             fieldsWritten += item.FieldsToWrite;
@@ -106,6 +128,7 @@ public sealed class Applier
             ItemsWritten = itemsWritten,
             FieldsWritten = fieldsWritten,
             ItemsPassedOver = itemsPassedOver,
+            ItemsDeferred = itemsDeferred,
         };
     }
 }

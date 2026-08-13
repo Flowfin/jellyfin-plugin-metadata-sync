@@ -42,6 +42,25 @@ public sealed class ItemObservation
     public bool ItemLockedHere { get; init; }
 
     /// <summary>
+    /// Gets the token that says which version of this item on this server was
+    /// read, or null where nobody read one.
+    /// </summary>
+    /// <remarks>
+    /// It is a string and not a time, and that is the point rather than an
+    /// accident. The only thing anything does with it is compare it for equality
+    /// against the same item's token at the moment of writing, which is how a
+    /// pass notices that something else wrote the item in between. Nothing orders
+    /// two of them and nothing subtracts them, so there is no clock on the
+    /// planner's input surface and the suite refuses one.
+    /// <para>
+    /// <see cref="LibraryPlanTarget.StampOf"/> is the one place the token is
+    /// derived from an item, so whoever reads items into observations takes it
+    /// from there rather than spelling it a second way.
+    /// </para>
+    /// </remarks>
+    public string? LastSavedHere { get; init; }
+
+    /// <summary>
     /// Gets the fields to consider on this item.
     /// </summary>
     /// <remarks>
