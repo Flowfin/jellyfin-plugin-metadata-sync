@@ -59,6 +59,81 @@ public class LibraryPlanTargetTests
     }
 
     /// <summary>
+    /// Gets one case per field this path can write, with the value a plan row
+    /// carries and the value the item holds afterwards.
+    /// </summary>
+    /// <remarks>
+    /// The null cases are here rather than in a test of their own because they
+    /// are the same question asked of the same writer: a plan row that writes
+    /// and carries nothing is the peer holding none, and the field is cleared
+    /// rather than left alone. A writer that treated null as "no change" would
+    /// keep a value the rules decided against, silently.
+    /// </remarks>
+    public static TheoryData<string, string?, object?> WritableFieldCases
+    {
+        get
+        {
+            var premiere = new DateTime(1979, 5, 25, 9, 30, 0, DateTimeKind.Utc);
+
+            return new TheoryData<string, string?, object?>
+            {
+                { "Name", "theirs", "theirs" },
+                { "Name", null, null },
+                { "Overview", "theirs", "theirs" },
+                { "Tagline", "theirs", "theirs" },
+                { "OfficialRating", "PG", "PG" },
+                { "PremiereDate", premiere.ToString("O", CultureInfo.InvariantCulture), premiere },
+                { "PremiereDate", null, null },
+                { "EndDate", premiere.ToString("O", CultureInfo.InvariantCulture), premiere },
+                { "ProductionYear", "1979", 1979 },
+                { "ProductionYear", null, null },
+            };
+        }
+    }
+
+    /// <summary>
+    /// Every field this path can write is written, and the value that arrives on
+    /// the item is the one the row carried.
+    /// </summary>
+    /// <param name="field">The field, named as the server names it.</param>
+    /// <param name="carried">What the plan row carries.</param>
+    /// <param name="expected">What the item holds afterwards.</param>
+    /// <remarks>
+    /// Read back through the property the register says the field is declared
+    /// on, rather than through a second table here saying which property each
+    /// field is. A second table would be a copy of the writers, and a copy that
+    /// agreed with a wrong writer would pass.
+    /// </remarks>
+    [Theory]
+    [MemberData(nameof(WritableFieldCases))]
+    public async Task EveryFieldThisPathCanWriteArrivesOnTheItem(string field, string? carried, object? expected)
+    {
+        var movie = new Movie();
+        var (library, _) = LibraryCalls.Holding(_itemId, movie);
+
+        await new LibraryPlanTarget(library).WriteAsync(PlanFor(field, carried), CancellationToken.None);
+
+        var property = typeof(BaseItem).GetProperty(field);
+        Assert.NotNull(property);
+        Assert.Equal(expected, property.GetValue(movie));
+    }
+
+    /// <summary>
+    /// Every writer has at least one case above. Without this a writer added
+    /// with no case is a line the suite never runs, and the theory would still
+    /// be green because it only knows the cases it was given.
+    /// </summary>
+    [Fact]
+    public void EveryWriterHasACase()
+    {
+        var covered = WritableFieldCases
+            .Select(row => (string)row[0]!)
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.DoesNotContain(LibraryPlanTarget.WritableFields, field => !covered.Contains(field));
+    }
+
+    /// <summary>
     /// The condition read literally. One item written means one call to the one
     /// supported member, and no other member of the library touched at all.
     /// </summary>
