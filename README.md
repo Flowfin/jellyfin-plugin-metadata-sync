@@ -140,6 +140,39 @@ are, this section says so; until then there is nothing on disk to leave behind.
 
 Nothing this plugin does ever deletes an item.
 
+## Checking that what you downloaded is what this repository built
+
+A release is built by a workflow run here, and that run writes two checksums for
+the archive and signs a provenance statement for it. Three commands check a file
+on your disk against those, and none of them needs anything from this repository
+beyond the release itself.
+
+The sidecars are named after the archive with the `.zip` replaced rather than
+appended, so an archive named `<archive>.zip` has `<archive>.md5` and
+`<archive>.sha256` beside it. Run them from the directory the archive is in:
+
+    md5sum -c <archive>.md5
+    sha256sum -c <archive>.sha256
+
+Those two say the bytes match what the release published. They do not say who
+published it. The provenance does, by tying the archive to the workflow run and
+the commit it was built from:
+
+    gh attestation verify <archive>.zip --repo Flowfin/jellyfin-plugin-metadata-sync
+
+A failure from any of the three means the file is not the one this repository
+built, and the answer to that is to stop rather than to install it and watch.
+
+There is nothing to run them against today. No release exists, which the section
+at the top of this file says and this prints nothing for:
+
+    gh release list --repo Flowfin/jellyfin-plugin-metadata-sync
+
+So the commands above are what a release will be checkable with, and nothing
+here claims that anybody has checked one.
+[docs/RELEASING.md](docs/RELEASING.md) is the other end of the same route and
+says what a run produces and what makes it fail.
+
 ## Security
 
 Report a vulnerability through this repository's private vulnerability
