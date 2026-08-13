@@ -13,9 +13,9 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 //
 // They are several top-level types in one file rather than one type each,
 // against this tree's usual habit, and the reason is the thing being proved. A
-// walk that stops at the first call would still find an image member named in
+// walk that stops at the first call would still find a watched member named in
 // the type it started from, so each fixture is a chain that crosses a type
-// boundary, and a chain split across seven files is a chain nobody can read.
+// boundary, and a chain split a file per link is a chain nobody can read.
 // The entry of each is named for what it demonstrates, because a walk is seeded
 // by type and the seed of each leg has to be nameable on its own.
 
@@ -130,5 +130,30 @@ internal static class ReachabilityEntryThatIsAsynchronous
         await Task.Yield();
 
         return ReachabilitySecondStep.Take(providers, item);
+    }
+}
+
+/// <summary>
+/// An entry that reaches a filename read one type away, for the resolution
+/// walk in <see cref="ResolutionPathTests"/>. It is the mistake every published
+/// attempt at this problem makes: reach for the filename when the provider
+/// identifiers came back empty.
+/// </summary>
+internal static class ReachabilityEntryThatReadsAFilename
+{
+    public static string Start(BaseItem item)
+    {
+        return ReachabilityFilenameStep.Take(item);
+    }
+}
+
+/// <summary>
+/// The far end of that chain, and the only fixture here that reads one.
+/// </summary>
+internal static class ReachabilityFilenameStep
+{
+    public static string Take(BaseItem item)
+    {
+        return System.IO.Path.GetFileNameWithoutExtension(item.Path);
     }
 }
