@@ -29,6 +29,13 @@ namespace Jellyfin.Plugin.MetadataSync.Reconciliation;
 /// window it leaves open. This type applies a plan as it stands and claims
 /// nothing about the time between the two halves.
 /// </para>
+/// <para>
+/// A stopped pass stops within one item and reports nothing about how far it
+/// got. That is the whole of what this type promises: it throws where the
+/// operator asked it to stop, and turning that into a result carrying the
+/// items already written is the pass's own bound, which is #37, and its
+/// resumption, which is #38.
+/// </para>
 /// </remarks>
 public sealed class Applier
 {
@@ -75,6 +82,13 @@ public sealed class Applier
 
         foreach (var item in plan.Items)
         {
+            // Asked here rather than only handed on. A token that reaches the
+            // target still leaves the applier calling it once per item, so a
+            // pass an operator stopped would keep starting work until the last
+            // item in the plan. Asked at the top of the loop, a stopped pass
+            // stops within one item, which is the number that can be stated.
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (!item.Writes)
             {
                 itemsPassedOver++;

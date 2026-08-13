@@ -145,6 +145,32 @@ public class ApplierTests
     }
 
     /// <summary>
+    /// A pass an operator stopped stops within one item. The token reaching the
+    /// target is not enough on its own: the applier decides when to call the
+    /// target at all, so a token it only handed on would leave a stopped pass
+    /// starting work on every remaining item in the plan.
+    /// </summary>
+    /// <remarks>
+    /// The number is one and it is stated rather than implied. The plan here
+    /// carries three items that write and the token is already cancelled, so an
+    /// applier that stopped at the end would hand over three, one that checked
+    /// after each item would hand over one, and this one hands over none. What
+    /// is asserted is the bound rather than the exact count, because an applier
+    /// that finishes the item it is inside is within the same promise.
+    /// </remarks>
+    [Fact]
+    public async Task ACancelledPassStopsWithinOneItem()
+    {
+        var target = new RecordingPlanTarget();
+        var plan = PlanOf(ItemThat(writes: true), ItemThat(writes: true), ItemThat(writes: true));
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => new Applier(target).ApplyAsync(plan, new CancellationToken(canceled: true)));
+
+        Assert.True(target.Written.Count <= 1, "A stopped pass handed over " + target.Written.Count + " items.");
+    }
+
+    /// <summary>
     /// An applier with no route to a library is refused when it is built rather
     /// than when it is first used, because an applier that exists and cannot
     /// write is a pass that reports having applied a plan.
