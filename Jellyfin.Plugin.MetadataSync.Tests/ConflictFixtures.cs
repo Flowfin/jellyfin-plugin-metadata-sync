@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Jellyfin.Plugin.MetadataSync.Conflicts;
 using Xunit;
 
@@ -23,9 +25,16 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// that means nothing.
 /// </para>
 /// </remarks>
-internal static class ConflictFixtures
+internal static partial class ConflictFixtures
 {
     private const string FixtureHeader = "| Case | This server | The peer | This plugin last wrote | Locks | Rule | Outcome | The mistake it would catch |";
+
+    /// <summary>
+    /// How the document names a character it may not carry, as
+    /// <c>&lt;U+200B&gt;</c>. Four to six hexadecimal digits, upper case, so a
+    /// row is read the same way by a person and by this reader.
+    /// </summary>
+    private const string CodepointNotation = "<U+";
 
     private static readonly string _document = Path.Combine(AppContext.BaseDirectory, "conflicts.md");
 
@@ -191,6 +200,10 @@ internal static class ConflictFixtures
     /// Nothing is trimmed inside the quotes. A row exists whose whole point is
     /// that the peer's value is a single space, and a parser that tidied it
     /// would hand the rule set the case next door.
+    /// <para>
+    /// A character the document may not carry is named by its codepoint and
+    /// expanded here. <see cref="Expand"/> says why the naming exists at all.
+    /// </para>
     /// </remarks>
     private static string? Value(string cell)
     {
@@ -202,6 +215,43 @@ internal static class ConflictFixtures
         Assert.StartsWith("`\"", cell, StringComparison.Ordinal);
         Assert.EndsWith("\"`", cell, StringComparison.Ordinal);
 
-        return cell[2..^2];
+        return Expand(cell[2..^2]);
     }
+
+    /// <summary>
+    /// Turns every codepoint the document names into the character it names.
+    /// </summary>
+    /// <remarks>
+    /// A metadata field holds whatever an operator typed, and some of that has
+    /// no glyph. Those characters cannot be typed into the document:
+    /// <c>unicode-guard</c> refuses them in tracked text, for a reason that has
+    /// nothing to do with metadata, so a row carrying the literal would be a row
+    /// nobody could commit. The row names the codepoint instead and the
+    /// character is built here, at the point the value is handed to the rule
+    /// set.
+    /// <para>
+    /// It fails on a notation it does not understand rather than passing the
+    /// text through. A malformed name read literally is a fixture comparing two
+    /// values that differ by an angle bracket while its row says it compares two
+    /// that differ by a character nobody can see, and both refuse, so the row
+    /// would stay green and stop being about anything. That is the silently
+    /// wrong input this reader exists to refuse.
+    /// </para>
+    /// </remarks>
+    /// <param name="value">The value as the document writes it.</param>
+    /// <returns>The value with every named codepoint expanded.</returns>
+    internal static string Expand(string value)
+    {
+        var expanded = Codepoints().Replace(
+            value,
+            match => char.ConvertFromUtf32(
+                int.Parse(match.Groups[1].Value, NumberStyles.HexNumber, CultureInfo.InvariantCulture)));
+
+        Assert.DoesNotContain(CodepointNotation, expanded, StringComparison.Ordinal);
+
+        return expanded;
+    }
+
+    [GeneratedRegex(@"<U\+([0-9A-F]{4,6})>", RegexOptions.CultureInvariant)]
+    private static partial Regex Codepoints();
 }
