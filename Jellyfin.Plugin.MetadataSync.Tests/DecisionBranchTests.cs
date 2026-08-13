@@ -5,6 +5,7 @@ using System.Linq;
 using Jellyfin.Plugin.MetadataSync.Conflicts;
 using Jellyfin.Plugin.MetadataSync.Fields;
 using Jellyfin.Plugin.MetadataSync.Matching;
+using Jellyfin.Plugin.MetadataSync.Reconciliation;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Model.Entities;
@@ -311,6 +312,12 @@ public class DecisionBranchTests
 
         Assert.Contains("register", new FieldNotDeclaredException().Message, StringComparison.OrdinalIgnoreCase);
         Assert.Same(cause, new FieldNotDeclaredException("while refusing a write", cause).InnerException);
+
+        Assert.Contains("value", new WriteRefusedException().Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Same(cause, new WriteRefusedException("while writing an item", cause).InnerException);
+
+        Assert.Contains("library", new ItemNotInLibraryException().Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Same(cause, new ItemNotInLibraryException("while fetching an item", cause).InnerException);
     }
 
     private static ProviderIdentifierRule LeadingZeros(bool trimmed) => new(

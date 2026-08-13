@@ -313,6 +313,65 @@ public class RefusalTests
                  "the plan is there, even when it writes nothing",
                  () => _ = new Applier(new RecordingPlanTarget()).ApplyAsync(null!, CancellationToken.None)),
 
+            ["Reconciliation/Applier.cs -> cancellationToken.ThrowIfCancellationRequested();"] =
+                (nameof(ApplierTests),
+                 nameof(ApplierTests.ACancelledPassStopsWithinOneItem),
+                 nameof(ApplierTests.AnItemThatWritesIsHandedToTheTargetExactlyOnce),
+                 "the operator has not asked the pass to stop",
+                 () => new Applier(new RecordingPlanTarget())
+                     .ApplyAsync(OneItemThatWrites(), new CancellationToken(canceled: true))
+                     .GetAwaiter()
+                     .GetResult()),
+
+            ["Reconciliation/LibraryPlanTarget.cs -> ArgumentNullException.ThrowIfNull(library);"] =
+                (nameof(LibraryPlanTargetTests),
+                 nameof(LibraryPlanTargetTests.ATargetWithNoLibraryIsRefused),
+                 nameof(LibraryPlanTargetTests.AWriteGoesThroughTheSupportedCallAndNothingElse),
+                 "the library the write goes to is there",
+                 () => new LibraryPlanTarget(null!)),
+
+            ["Reconciliation/LibraryPlanTarget.cs -> ArgumentNullException.ThrowIfNull(item);"] =
+                (nameof(LibraryPlanTargetTests),
+                 nameof(LibraryPlanTargetTests.WritingAnItemPlanThatIsNotThereIsRefused),
+                 nameof(LibraryPlanTargetTests.AWriteGoesThroughTheSupportedCallAndNothingElse),
+                 "the item plan is there",
+                 () => _ = TargetOverAnEmptyLibrary().WriteAsync(null!, CancellationToken.None)),
+
+            ["Reconciliation/LibraryPlanTarget.cs -> var found = _library.GetItemById(item.LocalItemId) ?? throw new ItemNotInLibraryException(NoSuchItem(item.LocalItemId));"] =
+                (nameof(LibraryPlanTargetTests),
+                 nameof(LibraryPlanTargetTests.AnItemThatIsNotInTheLibraryIsRefused),
+                 nameof(LibraryPlanTargetTests.AWriteGoesThroughTheSupportedCallAndNothingElse),
+                 "the library still holds the item the plan is about",
+                 () => Carried(TargetOverAnEmptyLibrary(), Writing("Name", "theirs"))),
+
+            ["Reconciliation/LibraryPlanTarget.cs -> throw new WriteRefusedException(ASetInOneString(change.Field));"] =
+                (nameof(LibraryPlanTargetTests),
+                 nameof(LibraryPlanTargetTests.AFieldThatCarriesASetIsRefused),
+                 nameof(LibraryPlanTargetTests.AWriteGoesThroughTheSupportedCallAndNothingElse),
+                 "the field is one the server holds as a single value rather than a set",
+                 () => Carried(TargetOverTheItem(), Writing("Tags", "one, two"))),
+
+            ["Reconciliation/LibraryPlanTarget.cs -> throw new WriteRefusedException(NoWriterFor(change.Field));"] =
+                (nameof(LibraryPlanTargetTests),
+                 nameof(LibraryPlanTargetTests.AFieldWithNoWriterIsRefused),
+                 nameof(LibraryPlanTargetTests.AWriteGoesThroughTheSupportedCallAndNothingElse),
+                 "the field is one the register declares as moving",
+                 () => Carried(TargetOverTheItem(), Writing("SortName", "theirs"))),
+
+            ["Reconciliation/LibraryPlanTarget.cs -> throw new WriteRefusedException(NotADate(field, value));"] =
+                (nameof(LibraryPlanTargetTests),
+                 nameof(LibraryPlanTargetTests.ADateInAnotherSpellingIsRefused),
+                 nameof(LibraryPlanTargetTests.ADateIsReadInTheRoundTripSpelling),
+                 "the date is written in the round-trip spelling",
+                 () => Carried(TargetOverTheItem(), Writing("PremiereDate", "05/06/1979"))),
+
+            ["Reconciliation/LibraryPlanTarget.cs -> throw new WriteRefusedException(NotAYear(value));"] =
+                (nameof(LibraryPlanTargetTests),
+                 nameof(LibraryPlanTargetTests.AYearThatIsNotANumberIsRefused),
+                 nameof(LibraryPlanTargetTests.AYearThatIsANumberIsWritten),
+                 "the year is a plain number",
+                 () => Carried(TargetOverTheItem(), Writing("ProductionYear", "nineteen seventy nine"))),
+
             ["References/ReferenceResolver.cs -> throw new InvalidOperationException(NoSuchProperty(row));"] =
                 (nameof(ReferenceResolutionTests),
                  nameof(ReferenceResolutionTests.ARowNamingAWayOfDifferingThatNothingDeclaresIsRefused),
@@ -482,6 +541,58 @@ public class RefusalTests
         // refusal from somewhere else, and the caller's assertion says which by
         // printing the site it wanted.
         return "no frame inside the plugin carried a source line";
+    }
+
+    /// <summary>
+    /// The item a write-path arrangement is about. It is the same identifier in
+    /// every one of them, so an arrangement over an empty library and one over a
+    /// library holding it differ by the library alone.
+    /// </summary>
+    private static readonly Guid _plannedItem = new("33333333-3333-3333-3333-333333333333");
+
+    private static LibraryPlanTarget TargetOverAnEmptyLibrary()
+    {
+        var (library, _) = LibraryCalls.Empty();
+        return new LibraryPlanTarget(library);
+    }
+
+    private static LibraryPlanTarget TargetOverTheItem()
+    {
+        var (library, _) = LibraryCalls.Holding(_plannedItem, new Movie());
+        return new LibraryPlanTarget(library);
+    }
+
+    /// <summary>
+    /// Runs a write to its end on this thread, so a refusal thrown inside the
+    /// asynchronous half arrives here rather than sitting in a task nobody
+    /// looked at.
+    /// </summary>
+    private static void Carried(LibraryPlanTarget target, ItemPlan plan)
+    {
+        target.WriteAsync(plan, CancellationToken.None).GetAwaiter().GetResult();
+    }
+
+    private static ItemPlan Writing(string field, string value)
+    {
+        var plan = new ItemPlan { LocalItemId = _plannedItem, Kind = "Movie" };
+
+        plan.Changes.Add(new PlannedChange
+        {
+            Field = field,
+            PeerValue = value,
+            Writes = true,
+            ValueToWrite = value,
+            Reason = "arranged to reach a refusal",
+        });
+
+        return plan;
+    }
+
+    private static Plan OneItemThatWrites()
+    {
+        var plan = new Plan();
+        plan.Items.Add(Writing("Name", "theirs"));
+        return plan;
     }
 
     private static bool IsUnder(string root, string file)
