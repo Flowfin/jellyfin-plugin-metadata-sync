@@ -30,15 +30,21 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// <c>IImageProcessor</c> and never naming the provider manager at all. Each
 /// entry below is a way to the same bytes.
 ///
-/// What it cannot catch, stated rather than left to be assumed. It refuses the
-/// naming and never the reachability: the reachability half of #14 asks for a
-/// walk from a reconciliation path, and there is no reconciliation path in this
-/// tree to walk from, so this is the negative half of that condition and not the
-/// condition. A member reached by reflection from a string spells none of these
-/// names. Image removal is a different act and is <c>ItemDeletionTests</c>, not
-/// here. And <c>ImageType</c> is left out of the set on purpose: it names which
-/// image slot is meant and moves no bytes on its own, so refusing it would
-/// refuse a row that only ever said which picture was being talked about.
+/// Two rules over one vocabulary. The naming rules below refuse these members
+/// and types anywhere in the plugin, which is the wider subject and the weaker
+/// property. The reachability rule refuses them where a pass could reach them,
+/// which is the narrower subject and what #14 asks for in the words a code path.
+/// Both are kept: the naming half reds a file that declares an image provider
+/// nothing calls yet, and the reachability half is the one that still says
+/// something on the day a legitimate reason to name one of these appears
+/// somewhere the pass does not go.
+///
+/// What neither catches, stated rather than left to be assumed. A member reached
+/// by reflection from a string spells none of these names, in either half. Image
+/// removal is a different act and is <c>ItemDeletionTests</c>, not here. And
+/// <c>ImageType</c> is left out of the set on purpose: it names which image slot
+/// is meant and moves no bytes on its own, so refusing it would refuse a row
+/// that only ever said which picture was being talked about.
 /// </remarks>
 public class ImageBytesTests
 {
@@ -101,19 +107,136 @@ public class ImageBytesTests
     };
 
     /// <summary>
+    /// The types a pass is made of, and therefore where the walk below starts.
+    /// </summary>
+    private const string ReconciliationPath = "Jellyfin.Plugin.MetadataSync.Reconciliation.";
+
+    /// <summary>
     /// The rule. Nothing in the plugin assembly names a way to read or write
     /// image bytes.
     /// </summary>
     /// <remarks>
-    /// It passes today because the plugin has no reconciliation path at all,
-    /// which is the honest reason and no proof of anything. It is installed
-    /// while the answer is trivially yes so that the first commit that changes
-    /// it is refused by the suite rather than by whoever reviews that change.
+    /// This is the wider of the two rules and the weaker one. It says the
+    /// vocabulary appears nowhere, which is easy to keep true while the plugin
+    /// is small and is not what the issue asks about. The reachability rule
+    /// below is the one written in the issue's own terms.
     /// </remarks>
     [Fact]
     public void ThePluginNamesNoWayToReadOrWriteImageBytes()
     {
         Assert.Empty(ImageMembersNamedBy(typeof(Plugin).Assembly));
+    }
+
+    /// <summary>
+    /// The rule #14 asks for. No code path that starts in a pass arrives at a
+    /// way to read or write image bytes.
+    /// </summary>
+    /// <remarks>
+    /// The walk starts at every method on every type a pass is made of, follows
+    /// each call into the assembly, and collects what the methods it arrives at
+    /// name outside it. So this refuses an image read three helpers deep in a
+    /// file whose own name says nothing about images, which is the shape a
+    /// naming scan cannot tell from a legitimate one.
+    /// </remarks>
+    [Fact]
+    public void NoWayToAnImageIsReachableFromAPass()
+    {
+        var reached = ImagesReachableFrom(typeof(Plugin).Assembly, OnTheReconciliationPath);
+
+        Assert.Empty(reached.MembersAmong(ImageMembers));
+        Assert.Empty(reached.TypesAmong(ImageTypes));
+    }
+
+    /// <summary>
+    /// The walk starts somewhere. A predicate that matched no type would reach
+    /// nothing and pass the rule above on any tree at all, including one where
+    /// the reconciliation namespace had been renamed and the guard left behind.
+    /// </summary>
+    [Fact]
+    public void TheWalkStartsFromThePassThatIsInTheTree()
+    {
+        var reached = ImagesReachableFrom(typeof(Plugin).Assembly, OnTheReconciliationPath);
+
+        Assert.Contains("Jellyfin.Plugin.MetadataSync.Reconciliation.Planner", reached.EntryTypes, StringComparer.Ordinal);
+        Assert.Contains("Jellyfin.Plugin.MetadataSync.Reconciliation.Applier", reached.EntryTypes, StringComparer.Ordinal);
+        Assert.Contains("Jellyfin.Plugin.MetadataSync.Reconciliation.LibraryPlanTarget", reached.EntryTypes, StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// And it decodes bodies. A walk that read no instructions would report an
+    /// empty answer for the same reason a walk with no entry does.
+    /// </summary>
+    [Fact]
+    public void TheWalkReadsInstructionsRatherThanNone()
+    {
+        var reached = ImagesReachableFrom(typeof(Plugin).Assembly, OnTheReconciliationPath);
+
+        Assert.True(reached.MethodsRead > 0);
+        Assert.NotEmpty(reached.Members);
+    }
+
+    /// <summary>
+    /// The bite, executed rather than argued. A fixture entry in this suite
+    /// reaches the act two types away and names it nowhere itself, so a walk
+    /// that stopped at the first call would report nothing and pass.
+    /// </summary>
+    [Fact]
+    public void TheWalkFollowsACallChainAcrossTypes()
+    {
+        var reached = ImagesReachableFrom(
+            typeof(ImageBytesTests).Assembly,
+            name => string.Equals(name, typeof(ReachabilityEntryThatUsesAChain).FullName, StringComparison.Ordinal));
+
+        Assert.Contains("MediaBrowser.Controller.Providers.IProviderManager.SaveImage", reached.MembersAmong(ImageMembers), StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// The leg that says this is a different question from the one the naming
+    /// scan answers, and the reason a second reader was worth building. The same
+    /// assembly names the act, and an entry that cannot reach it is not refused
+    /// for it.
+    /// </summary>
+    [Fact]
+    public void TheWalkDoesNotReportWhatTheAssemblyMerelyNames()
+    {
+        var assembly = typeof(ImageBytesTests).Assembly;
+        var reached = ImagesReachableFrom(
+            assembly,
+            name => string.Equals(name, typeof(ReachabilityQuietEntry).FullName, StringComparison.Ordinal));
+
+        Assert.Contains("MediaBrowser.Controller.Providers.IProviderManager.SaveImage", ImageMembersNamedBy(assembly), StringComparer.Ordinal);
+        Assert.Empty(reached.MembersAmong(ImageMembers));
+    }
+
+    /// <summary>
+    /// Dispatch is followed. The applier writes through a contract and never
+    /// names the type that carries out the write, so a walk stopping at the
+    /// interface member would read the one route to the library as unreachable
+    /// and report a clean answer about a path it never entered.
+    /// </summary>
+    [Fact]
+    public void TheWalkFollowsDispatchToAnImplementation()
+    {
+        var reached = ImagesReachableFrom(
+            typeof(ImageBytesTests).Assembly,
+            name => string.Equals(name, typeof(ReachabilityEntryThatDispatches).FullName, StringComparison.Ordinal));
+
+        Assert.Contains("MediaBrowser.Controller.Providers.IProviderManager.SaveImage", reached.MembersAmong(ImageMembers), StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// And a body the compiler moved into a state machine is read. Every method
+    /// on this plugin's write path is asynchronous, so a walk that read only the
+    /// method as written would read almost none of what it claims to cover.
+    /// </summary>
+    [Fact]
+    public void TheWalkFollowsIntoAnAsynchronousBody()
+    {
+        var reached = ImagesReachableFrom(
+            typeof(ImageBytesTests).Assembly,
+            name => string.Equals(name, typeof(ReachabilityEntryThatIsAsynchronous).FullName, StringComparison.Ordinal));
+
+        Assert.Contains("MediaBrowser.Controller.Providers.IProviderManager.SaveImage", reached.MembersAmong(ImageMembers), StringComparer.Ordinal);
     }
 
     /// <summary>
@@ -226,6 +349,31 @@ public class ImageBytesTests
     private static Func<DynamicImageResponse> TheCarrierThisGuardIsAbout()
     {
         return static () => new DynamicImageResponse();
+    }
+
+    /// <summary>
+    /// Whether a type is one a pass is made of. The reconciliation namespace is
+    /// the whole answer: what a pass reaches beyond it, the register it reads
+    /// and the comparison rules it resolves through, is reached by the walk
+    /// rather than listed here, which is the difference between an entry and a
+    /// subject.
+    /// </summary>
+    /// <param name="name">The full name of a type in the plugin.</param>
+    /// <returns>Whether the walk starts there.</returns>
+    private static bool OnTheReconciliationPath(string name)
+    {
+        return name.StartsWith(ReconciliationPath, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Walks one assembly from the entries a predicate names.
+    /// </summary>
+    /// <param name="assembly">The assembly to walk.</param>
+    /// <param name="isEntryType">Which types the walk starts at.</param>
+    /// <returns>What it reached.</returns>
+    private static AssemblyReachability.Reached ImagesReachableFrom(Assembly assembly, Func<string, bool> isEntryType)
+    {
+        return AssemblyReachability.From(assembly, isEntryType);
     }
 
     /// <summary>
