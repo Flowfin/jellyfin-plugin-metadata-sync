@@ -16,7 +16,7 @@ description: >
   coming: this plugin reads and writes metadata through the server's own
   library calls and carries no file transfer of any kind.
 category: "Metadata"
-owner: "iderex"
+owner: "Flowfin"
 artifacts:
 - "Jellyfin.Plugin.MetadataSync.dll"
 changelog: >
