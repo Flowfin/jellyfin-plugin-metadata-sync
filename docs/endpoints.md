@@ -68,3 +68,38 @@ which grants more than its name suggests is not something any reading of this
 tree judges. It also says nothing about what an endpoint does once the caller is
 past the policy, which is the second half of #54 and needs endpoints to exist
 before it can be written.
+
+## What a page context check leaves behind
+
+Every endpoint here that writes will also refuse a request that did not come
+from this plugin's own page. That check does not exist yet, because no endpoint
+does. What it will and will not be worth is written here now, so it is never
+described later as more than it is.
+
+A check of that shape reads what a request looks like. An origin header, a
+referer, a token minted for the page and handed back with the call: each is a
+property of the request, and each is set by the browser that made it. So it
+separates a call from something that never loaded the page, which is the
+ordinary case of a script somewhere else finding an administrator's session
+cookie useful. That is worth having and it is not nothing.
+
+What it cannot separate is a request an administrator meant to make from one
+made through their browser, in their session, by something that is already
+authenticated as them. Anything running in that browser which can persuade it to
+send the same headers is inside the boundary the check draws, and no property of
+the request tells the server which of the two asked. An administrator whose
+browser is running something hostile has an administrator's rights available to
+it, and this check does not change that.
+
+So the residual risk after the check is the same one that was there before it,
+narrowed rather than removed. What narrows it further is not another property of
+the request. It is the confirmation on every writing action in #57, which asks a
+person for a number they can only have read off the page, and the record of who
+asked that lands beside it. Those are two different defences and neither
+substitutes for the other.
+
+The reason this is written before the endpoints is that it is the half of #54
+that does not need them, and that the sentence a check like this attracts once
+it exists is that requests are now verified to come from the page. That sentence
+would be a positive assurance built out of a negative one, and this section is
+what it has to be read against.
