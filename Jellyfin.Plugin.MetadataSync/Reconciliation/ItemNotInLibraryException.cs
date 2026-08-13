@@ -7,17 +7,19 @@ namespace Jellyfin.Plugin.MetadataSync.Reconciliation;
 /// plan is carried out.
 /// </summary>
 /// <remarks>
-/// A type of its own rather than a message, because this is the one refusal on
-/// the write path that is nobody's defect. The item was there when the plan was
-/// made and it is not there now, which is an operator removing something between
-/// the two halves of a pass and is a normal event on a library somebody uses.
+/// A type of its own rather than a message, because this is one of the two
+/// refusals on the write path that are nobody's defect. The item was there when
+/// the plan was made and it is not there now, which is an operator removing
+/// something between the two halves of a pass and is a normal event on a library
+/// somebody uses.
 /// <para>
-/// It is a refusal here and it should not stay one. #41 turns exactly this case
-/// into a deferral the next pass picks up, and it can tell this apart from a
-/// malformed row by the type rather than by reading a message.
+/// It is a deferral rather than a failure, which is what the base type means. The
+/// difference from its sibling is what the next pass finds: an item that moved is
+/// still there and is written on the next pass, and an item that has gone is
+/// gone, so what is deferred is the decision about it rather than the write.
 /// </para>
 /// </remarks>
-public sealed class ItemNotInLibraryException : InvalidOperationException
+public sealed class ItemNotInLibraryException : DeferredItemException
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="ItemNotInLibraryException"/> class.

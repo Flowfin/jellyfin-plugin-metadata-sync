@@ -290,11 +290,30 @@ mutates the instance it is given. And it detects a save, not an intent, so an
 item a component is part way through refreshing looks unchanged until that
 component saves.
 
+That comparison is made. The stamp travels from the reading, onto the plan, to
+the write, and it travels as a string rather than as a time: the only thing done
+with it is equality, nothing orders two of them, and the planner's input surface
+refuses a clock outright. It is derived in one place, so the half that reads
+items and the half that writes them cannot spell it two ways.
+
+An item that loses the comparison is deferred rather than failed. The pass writes
+nothing on it, counts it apart from the items it decided against, and carries on
+with the rest; an item that has gone entirely is deferred on the same footing,
+because both are ordinary events on a library somebody uses. A plan row that does
+not describe a value is not one of these and stops the pass, because that is a
+defect in whatever produced the row and passing over it would hide it.
+
+The next pass picking a deferred item up is the half that does not exist. There
+is no pass: nothing schedules one, nothing reads two servers into a plan, and the
+count of deferred items is returned to whoever asked for the apply and recorded
+nowhere.
+
 This document does not claim the window is closed. What is left after the
 re-read is the interval between the comparison and the write, this plugin cannot
 make it zero, and a pass that reported otherwise would be reporting on a race it
-lost. An item that loses the comparison is deferred rather than failed, and the
-next pass picks it up, which is #41 and is not built.
+lost. The suite drives an item that moves between planning and applying and
+asserts the deferral, on one thread and between two statements, so what is proved
+is the comparison and the counting and never a race.
 
 ## What holds this up
 
@@ -315,11 +334,20 @@ does after the supported call is outside it on purpose. It refuses a name, so a
 repository reached through an interface with an innocent name, or through
 reflection, spells nothing it can see.
 
-The window is what is left. A plan and an applier exist and a fixture that moves
-an item between them has something to run between, so what is missing is the
-re-read that fixture would catch. #41 owes the re-read, the deferral and that
-fixture, and until they land the section above on the window is a decision
-somebody can argue with rather than a property anything enforces.
+The window is narrowed by a check the suite proves bites. Removing the
+comparison reddens the fixture that moves an item under a plan; removing the
+deferral from the applier reddens the two that carry on past one; widening it to
+catch every failure reddens the one that says a defect stops the pass. What
+nothing holds is the next pass picking a deferred item up, because there is no
+next pass to hold.
+
+One allowance was added to the invariant lint for this, and it is named here
+because a lint quietly narrowed is worse than one that reds. The rule that
+refuses a timestamp compares a stamp from one server against a stamp from the
+other, and the file that writes reads this server's stamp and holds it against
+this server's own earlier reading. The rule's record now carries a file and the
+reason, the rule still refuses that text from anywhere else, and the suite
+refuses an allowance naming a file that is not in the tree.
 
 One more thing nothing holds. A stopped pass stops within one item, and it
 reports nothing about how far it got: the applier throws where the operator

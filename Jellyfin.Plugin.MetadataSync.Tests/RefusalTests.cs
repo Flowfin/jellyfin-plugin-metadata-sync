@@ -344,6 +344,27 @@ public class RefusalTests
                  "the library still holds the item the plan is about",
                  () => Carried(TargetOverAnEmptyLibrary(), Writing("Name", "theirs"))),
 
+            ["Reconciliation/LibraryPlanTarget.cs -> ArgumentNullException.ThrowIfNull(asHeldNow);"] =
+                (nameof(LibraryPlanTargetTests),
+                 nameof(LibraryPlanTargetTests.TakingATokenFromAnItemThatIsNotThereIsRefused),
+                 nameof(LibraryPlanTargetTests.TheTokenChangesWhenTheItemIsSavedAndNotOtherwise),
+                 "the item the token is taken from is there",
+                 () => LibraryPlanTarget.StampOf(null!)),
+
+            ["Reconciliation/LibraryPlanTarget.cs -> var planned = item.LastSavedWhenPlanned ?? throw new WriteRefusedException(NoStampToCompare(item.LocalItemId));"] =
+                (nameof(LibraryPlanTargetTests),
+                 nameof(LibraryPlanTargetTests.APlanThatCarriesNoTokenIsRefused),
+                 nameof(LibraryPlanTargetTests.AWriteGoesThroughTheSupportedCallAndNothingElse),
+                 "the plan carries the token it was made from",
+                 () => Carried(TargetOverTheItem(), WithNoToken())),
+
+            ["Reconciliation/LibraryPlanTarget.cs -> throw new ItemChangedSincePlannedException(SomethingElseWrote(item.LocalItemId));"] =
+                (nameof(LibraryPlanTargetTests),
+                 nameof(LibraryPlanTargetTests.AnItemSomethingElseWroteSinceThePlanIsDeferred),
+                 nameof(LibraryPlanTargetTests.AWriteGoesThroughTheSupportedCallAndNothingElse),
+                 "nothing wrote the item between the plan and the write",
+                 () => Carried(TargetOverTheItemAsSomethingElseLeftIt(), Writing("Name", "theirs"))),
+
             ["Reconciliation/LibraryPlanTarget.cs -> throw new WriteRefusedException(ASetInOneString(change.Field));"] =
                 (nameof(LibraryPlanTargetTests),
                  nameof(LibraryPlanTargetTests.AFieldThatCarriesASetIsRefused),
@@ -574,7 +595,12 @@ public class RefusalTests
 
     private static ItemPlan Writing(string field, string value)
     {
-        var plan = new ItemPlan { LocalItemId = _plannedItem, Kind = "Movie" };
+        var plan = new ItemPlan
+        {
+            LocalItemId = _plannedItem,
+            Kind = "Movie",
+            LastSavedWhenPlanned = LibraryPlanTarget.StampOf(new Movie()),
+        };
 
         plan.Changes.Add(new PlannedChange
         {
@@ -582,6 +608,29 @@ public class RefusalTests
             PeerValue = value,
             Writes = true,
             ValueToWrite = value,
+            Reason = "arranged to reach a refusal",
+        });
+
+        return plan;
+    }
+
+    private static LibraryPlanTarget TargetOverTheItemAsSomethingElseLeftIt()
+    {
+        var moved = new Movie { DateLastSaved = new DateTime(2026, 8, 13, 1, 0, 0, DateTimeKind.Utc) };
+        var (library, _) = LibraryCalls.Holding(_plannedItem, moved);
+        return new LibraryPlanTarget(library);
+    }
+
+    private static ItemPlan WithNoToken()
+    {
+        var plan = new ItemPlan { LocalItemId = _plannedItem, Kind = "Movie" };
+
+        plan.Changes.Add(new PlannedChange
+        {
+            Field = "Name",
+            PeerValue = "theirs",
+            Writes = true,
+            ValueToWrite = "theirs",
             Reason = "arranged to reach a refusal",
         });
 

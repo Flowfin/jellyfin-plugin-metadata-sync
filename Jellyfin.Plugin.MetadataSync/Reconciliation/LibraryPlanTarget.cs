@@ -34,6 +34,15 @@ namespace Jellyfin.Plugin.MetadataSync.Reconciliation;
 /// outright, because a plan row carries one string and no separator is safe
 /// inside a tag somebody typed.
 /// </para>
+/// <para>
+/// It does check one thing the plan already answered, and the reason it is not
+/// the second answer the paragraph above refuses is that it is a different
+/// question. The plan says what should change; this asks whether the item is
+/// still the one the plan was made about. An item another component saved in
+/// between is handed back as deferred, this pass writes nothing on it, and the
+/// next one plans it again. The window is narrowed and not closed, which
+/// <c>docs/reconciliation.md</c> states rather than claims away.
+/// </para>
 /// </remarks>
 public sealed class LibraryPlanTarget : IPlanTarget
 {
@@ -113,6 +122,38 @@ public sealed class LibraryPlanTarget : IPlanTarget
     /// plan row cannot carry a set of strings.
     /// </summary>
     public static IReadOnlyCollection<string> FieldsWithNoSpelling => _setValued;
+
+    /// <summary>
+    /// Returns the token that says which version of an item this server holds.
+    /// </summary>
+    /// <param name="asHeldNow">The item, as this server holds it now.</param>
+    /// <returns>The token, which is compared for equality and nothing else.</returns>
+    /// <remarks>
+    /// This is the one place the token is derived, so the half that reads items
+    /// and the half that writes them cannot spell it two ways. It is the item's
+    /// own last-saved stamp, which is sound for the purpose because the server
+    /// moves it on every update through the supported call whether or not a
+    /// metadata saver ran.
+    /// <para>
+    /// Two bounds go with it. It detects a save and not an intent, so an item a
+    /// component is part way through refreshing looks unchanged until that
+    /// component saves. And it is one server's stamp compared against the same
+    /// server's earlier stamp, which is not the comparison the invariant lint
+    /// refuses: that one holds a stamp from one server against a stamp from the
+    /// other, and nothing establishes those two clocks are comparable. It is
+    /// returned as a string so nothing downstream can order it and start.
+    /// </para>
+    /// </remarks>
+    public static string StampOf(BaseItem asHeldNow)
+    {
+        // The parameter is not named `item` so this refusal is a different line
+        // from the one in the method below it. The suite names a refusal site by
+        // the text of the line that refuses, and two identical lines in one file
+        // would be one entry claiming to have proved two.
+        ArgumentNullException.ThrowIfNull(asHeldNow);
+
+        return asHeldNow.DateLastSaved.ToString("O", CultureInfo.InvariantCulture);
+    }
 
     /// <summary>
     /// The spelling a date is read in, which is the round-trip form.
@@ -201,6 +242,16 @@ public sealed class LibraryPlanTarget : IPlanTarget
         "The plan says to write 'ProductionYear' as '{0}', which is not a plain number. Nothing is written.",
         value);
 
+    private static string NoStampToCompare(Guid id) => string.Format(
+        CultureInfo.InvariantCulture,
+        "The plan for item '{0}' carries no record of when this server had last saved it, so there is no way to tell whether something else has written it since the plan was made. Nothing is written. Whatever produced the plan has to read that stamp with the rest of the item.",
+        id);
+
+    private static string SomethingElseWrote(Guid id) => string.Format(
+        CultureInfo.InvariantCulture,
+        "Something else saved item '{0}' after this plan was made, so nothing on it is written and the item is left for the next pass. A library scan, a provider refresh or an operator editing the same item are all this.",
+        id);
+
     private static string NoSuchItem(Guid id) => string.Format(
         CultureInfo.InvariantCulture,
         "The library holds no item '{0}'. It was there when the plan was made, so something removed it since, and nothing on it is written.",
@@ -212,7 +263,19 @@ public sealed class LibraryPlanTarget : IPlanTarget
         // identifiers and values and never an item, so there is no stale copy
         // here to write back over somebody else's edit, and the two halves of a
         // pass can be days apart without this one caring.
+        //
+        // It also has to be a fresh fetch for the comparison below to mean
+        // anything: the supported call sets the stamp on the object it is given,
+        // so a plan holding its own reference would be compared against a value
+        // this plugin wrote.
         var found = _library.GetItemById(item.LocalItemId) ?? throw new ItemNotInLibraryException(NoSuchItem(item.LocalItemId));
+
+        var planned = item.LastSavedWhenPlanned ?? throw new WriteRefusedException(NoStampToCompare(item.LocalItemId));
+
+        if (!string.Equals(StampOf(found), planned, StringComparison.Ordinal))
+        {
+            throw new ItemChangedSincePlannedException(SomethingElseWrote(item.LocalItemId));
+        }
 
         foreach (var change in item.Changes)
         {

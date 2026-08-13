@@ -61,6 +61,7 @@ public static class Planner
                 LocalItemId = item.LocalItemId,
                 PeerItemId = item.PeerItemId,
                 Kind = item.Kind,
+                LastSavedWhenPlanned = item.LastSavedHere,
             };
 
             foreach (var observation in item.Fields)
