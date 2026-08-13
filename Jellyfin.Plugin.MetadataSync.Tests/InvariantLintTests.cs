@@ -124,6 +124,24 @@ public class InvariantLintTests
             NearMiss: "if (local.LastValueWrittenByThisPlugin is not null)",
             NearMissIsTheNeighbourThat: "answers the same question causally instead of temporally, which is the mechanism #16 provides in place of a clock.",
             CannotCatch: "the comparison itself. It refuses the ingredients rather than the dish, so two timestamps obtained under other names and compared would pass, and an injected clock read through an interface spells none of these tokens."),
+
+        new Rule(
+            Id: "no-direction-comparison-outside-the-direction-type",
+            GuidePhrase: "no direction comparison outside the direction type",
+            Invariant: "One type holds which way metadata moves for a pairing, and nothing else names a member of it, because a direction read in four places disagrees with itself in one of them.",
+            DeclaredBy: "#34",
+            Kind: Refusal.AnyOccurrence,
+            TokenPatterns: new[] { "SyncDirection." },
+            AllowedIn: new[]
+            {
+                ("SyncDirection.cs",
+                 "Is the type the invariant is about, so a member named inside it is the declaration rather than a second reading of it. The allowance is written for the file the rule exists to permit rather than left implicit, because a rule whose scope is every plugin source would otherwise refuse its own subject the moment that file carries an example in a remark."),
+            },
+            Regression: "if (request.Direction == SyncDirection.TwoWay)",
+            RegressionIsTheMistakeThat: "asks which way a pairing moves at the place that happens to need the answer, which is how a direction check ends up in four places and how one of them keeps the old answer after the model gains a member.",
+            NearMiss: "if (!Enum.IsDefined(configuration.Direction))",
+            NearMissIsTheNeighbourThat: "is the legitimate reading the validator already makes: it asks whether the value is a direction this plugin declares at all and never which one it is, so it names no member and takes no branch on one.",
+            CannotCatch: "a comparison that names no member. The value cast to its underlying number and compared against a literal spells none of this, and so does a direction obtained through a helper that returns a bool. It also has nothing to say about whether the one place that reads a direction reads it correctly, which is the second condition of #34 and needs a pass rather than a pattern."),
     };
 
     /// <summary>
