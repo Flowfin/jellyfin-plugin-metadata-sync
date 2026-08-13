@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -155,5 +156,32 @@ internal static class ReachabilityFilenameStep
     public static string Take(BaseItem item)
     {
         return System.IO.Path.GetFileNameWithoutExtension(item.Path);
+    }
+}
+
+/// <summary>
+/// An entry that reaches a transport one type away, for the walk in
+/// <see cref="TransportReachabilityTests"/>. It is the shape this plugin
+/// refuses: a pass that talks to a peer itself instead of handing a payload and
+/// a purpose to the pairing plugin.
+/// </summary>
+internal static class ReachabilityEntryThatReachesATransport
+{
+    public static Task<string> StartAsync(string address)
+    {
+        return ReachabilityTransportStep.TakeAsync(address);
+    }
+}
+
+/// <summary>
+/// The far end of that chain, and the only fixture here that names one.
+/// </summary>
+internal static class ReachabilityTransportStep
+{
+    public static async Task<string> TakeAsync(string address)
+    {
+        using var client = new System.Net.Http.HttpClient();
+
+        return await client.GetStringAsync(new Uri(address)).ConfigureAwait(false);
     }
 }
