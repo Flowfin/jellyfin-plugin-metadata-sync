@@ -106,6 +106,44 @@ comparing it, because a rule that trimmed would be deciding that two values
 differing only in trailing space are the same, and that decision belongs to
 whoever declares the field rather than to the conflict rules.
 
+## A character an operator can type and nobody can see
+
+A metadata field holds whatever somebody typed, and some of what can be typed
+has no glyph. A zero-width space arrives in an overview pasted from a web page.
+It changes the bytes and it shows nothing on either server, so an operator
+comparing the two libraries by eye sees two identical descriptions.
+
+That reaches two of the rules above from opposite sides, so each is a row in
+the table below rather than a sentence here.
+
+Two values differing only by such a character differ. `values-agree` compares
+ordinally and repairs nothing, which is the paragraph above applied to a
+character rather than to a space, so the pair is a difference no declared rule
+settles and it is refused. A resolver that stripped the character before
+comparing would answer that the two agree, keep the local value, and produce no
+entry saying it had decided anything.
+
+A value made of nothing but such a character is a value. That is the runtime's
+answer rather than a choice taken here: `string.IsNullOrWhiteSpace` reads a
+zero-width space as text, because Unicode files it as a format character rather
+than as a space. So `peer-value-absent` does not fire on it, the two sides
+differ, and the case is refused. Reading it as an absence instead would be this
+rule set repairing a value in the case where repairing is easiest to argue for,
+which is the case worth refusing it in.
+
+Both answers write nothing. A value nobody can read is a difference for an
+operator to look at, and neither library moves while they do.
+
+Two things are worth saying about how far this reaches. The character is named
+by its codepoint in the table because `unicode-guard` is a required check here
+and refuses these characters in tracked text, on a threat that has nothing to do
+with metadata: source that renders differently from how it runs hides logic from
+a reviewer. A row carrying the literal would be a row nobody could commit. And
+the set these two rows are about is wider than the set that check names. A field
+can hold a character no check here has an opinion on, and the answer above is
+the same for all of them, because it comes from comparing ordinally rather than
+from a list of characters.
+
 ## No rule turns on a clock
 
 The obvious rule is that the more recent change wins, and it is the one rule
@@ -179,6 +217,11 @@ A value is written in quotes, and an empty cell is no value at all. The locks
 column is one of `none`, `item here`, `field here` or `field on the peer`. An
 empty rule cell means no rule fires and the case falls to the refusal above.
 
+A character with no glyph is written as its codepoint, `<U+200B>`, and the
+reader builds the character from it before the rule set sees the value. Two
+rows need one, and the section above says why the name is there instead of the
+character.
+
 | Case | This server | The peer | This plugin last wrote | Locks | Rule | Outcome | The mistake it would catch |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | the operator locked the whole item | `"Kept by hand"` | `"From the peer"` | | item here | `item-locked-here` | `KeepLocal` | Reading the item lock after a rule that can write, which makes the coarsest claim the server offers advisory. |
@@ -188,6 +231,8 @@ empty rule cell means no rule fires and the case falls to the refusal above.
 | neither side has a value | | | | none | `values-agree` | `KeepLocal` | Reading two absences as a difference, which turns every unset field on every item into a refusal. |
 | the peer has nothing and this server has text | `"A description"` | | | none | `peer-value-absent` | `KeepLocal` | Treating absence as information, which writes emptiness over a description on the first pass. |
 | the peer's value is whitespace only | `"A description"` | `" "` | | none | `peer-value-absent` | `KeepLocal` | Reading whitespace as text, so a provider that found nothing replaces a description with a space. |
+| the peer's value is one character with no glyph | `"A description"` | `"<U+200B>"` | | none | | `Refuse` | Reading a format character as whitespace, so a peer value the runtime counts as text is taken for an absence and the row above answers a case it was not written for. |
+| the two values differ only by a character with no glyph | `"A description<U+200B>"` | `"A description"` | | none | | `Refuse` | Repairing a value before comparing it, so a difference neither operator can see is answered as agreement and nobody is ever told. |
 | the peer has nothing and this server holds what this plugin wrote | `"An older description"` | | `"An older description"` | none | `peer-value-absent` | `KeepLocal` | Reading rule 6 before rule 4, which takes the peer's absence because nobody here has touched the value since it arrived. |
 | this server has nothing and the peer has text | | `"From the peer"` | | none | `local-value-absent` | `TakePeer` | A first sync that writes nothing, because an empty field and a disagreement were not told apart. |
 | the local value is exactly what this plugin last wrote | `"An older description"` | `"A newer description"` | `"An older description"` | none | `local-unchanged-since-this-plugin-wrote-it` | `TakePeer` | Reaching for a clock to answer whether the value here has been edited since it arrived. |
