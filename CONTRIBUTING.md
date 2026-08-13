@@ -43,8 +43,9 @@ is the only point at which the size of the work is still a choice.
 Several rules in this plan are a pattern a lint can refuse in a second: no
 file-system property in the resolution path, no transport type reachable from
 a reconciliation path, no static instance outside the entry point, no second
-contract version literal, no timestamp from one server compared against the
-other's, no direction comparison outside the direction type.
+contract version literal, no second purpose literal, no timestamp from one
+server compared against the other's, no direction comparison outside the
+direction type.
 
 An issue that declares another invariant of that shape, and adds no rule to
 the lint that refuses it, is caught in review and sent back. The rule and the

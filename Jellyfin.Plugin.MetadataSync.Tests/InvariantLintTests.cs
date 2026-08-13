@@ -108,6 +108,20 @@ public class InvariantLintTests
             CannotCatch: "a version number written on a line that does not name the constant at all, and the whole question of whether the one declared number is the right one."),
 
         new Rule(
+            Id: "one-purpose-literal",
+            GuidePhrase: "no second purpose literal",
+            Invariant: "One constant declares the purpose this plugin registers for, and nothing else restates the string, because a purpose is the key a payload is routed by and a second spelling of it is a second consumer.",
+            DeclaredBy: "#24",
+            Kind: Refusal.EveryOccurrenceAfterTheFirst,
+            TokenPatterns: new[] { "Purpose" },
+            LiteralOnly: true,
+            Regression: "public const string Purpose = \"flowfin.metadata-sync\";\nprivate const string LegacyPurpose = \"flowfin.metadatasync\";",
+            RegressionIsTheMistakeThat: "keeps a second purpose for a peer that registered under an older spelling, so this plugin answers under two routing keys and the separation the contract asserts between two sync plugins on one server stops holding.",
+            NearMiss: "public const string Purpose = \"flowfin.metadata-sync\";\nprivate static bool RegisteredFor(string offered) => string.Equals(offered, Purpose, StringComparison.Ordinal);",
+            NearMissIsTheNeighbourThat: "names the constant on the second line instead of restating the string, which is the one-word difference between the mistake and the correct line.",
+            CannotCatch: "a purpose written on a line naming no constant, and whether the one string declared is the one the peer registers for. It says nothing about registration either: the plugin registers for nothing today, and what a registration asks for is a call rather than a spelling."),
+
+        new Rule(
             Id: "no-timestamp-from-one-server-against-the-other",
             GuidePhrase: "no timestamp from one server compared against the other's",
             Invariant: "No rule compares a timestamp from one server against a timestamp from the other, because nothing establishes that the two clocks are comparable.",
