@@ -31,10 +31,12 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// type, follows each call, construction and token load to a method defined in
 /// the same assembly, and collects the names of everything outside the assembly
 /// that any reached method refers to. Nested types travel with the type that
-/// declares them, which is what carries the walk into an asynchronous state
-/// machine, an iterator and a lambda: each of those is a nested type the
-/// compiler wrote, and the calls a reader cares about are in there rather than
-/// in the method as written.
+/// declares them, at the seed and again wherever the walk arrives, which is what
+/// carries it into an asynchronous state machine, an iterator and a lambda: each
+/// of those is a nested type the compiler wrote, and the calls a reader cares
+/// about are in there rather than in the method as written. Doing that only at
+/// the seed reads the whole of a type the walk started at and almost none of one
+/// it arrived at through a call.
 /// </para>
 /// <para>
 /// Dispatch is followed one step further than the instruction says. A call to an
@@ -115,16 +117,36 @@ internal static class AssemblyReachability
             }
         }
 
+        var expanded = new HashSet<TypeDefinitionHandle>();
+
         while (pending.Count > 0)
         {
             var handle = pending.Dequeue();
             var definition = metadata.GetMethodDefinition(handle);
 
+            var declaring = definition.GetDeclaringType();
+
+            // A nested type travels with the type that declares it, here as
+            // well as at the seed. The body of an asynchronous method is in a
+            // state machine the compiler nested in the declaring type, and the
+            // method as written only starts it, so a walk that entered nested
+            // types only where it started would read the whole of a seeded type
+            // and almost none of one it arrived at through a call.
+            if (expanded.Add(declaring))
+            {
+                foreach (var nested in Nested(metadata, declaring))
+                {
+                    foreach (var method in metadata.GetTypeDefinition(nested).GetMethods())
+                    {
+                        Enqueue(method);
+                    }
+                }
+            }
+
             // A method of the same name on a type that derives from or
             // implements the one declaring this method is reachable through it,
             // because the call site names the declaration and the runtime picks
             // the override.
-            var declaring = definition.GetDeclaringType();
             if (subtypes.TryGetValue(declaring, out var below))
             {
                 var wanted = metadata.GetString(definition.Name);
@@ -281,6 +303,25 @@ internal static class AssemblyReachability
         var name = metadata.GetString(definition.Name);
 
         return string.IsNullOrEmpty(space) ? name : space + "." + name;
+    }
+
+    /// <summary>
+    /// Every type nested inside one, to any depth.
+    /// </summary>
+    /// <param name="metadata">The assembly's metadata.</param>
+    /// <param name="handle">The type to look inside.</param>
+    /// <returns>The nested types.</returns>
+    private static IEnumerable<TypeDefinitionHandle> Nested(MetadataReader metadata, TypeDefinitionHandle handle)
+    {
+        foreach (var inner in metadata.GetTypeDefinition(handle).GetNestedTypes())
+        {
+            yield return inner;
+
+            foreach (var deeper in Nested(metadata, inner))
+            {
+                yield return deeper;
+            }
+        }
     }
 
     /// <summary>
