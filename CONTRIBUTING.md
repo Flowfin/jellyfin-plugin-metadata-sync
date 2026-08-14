@@ -73,7 +73,7 @@ opens.
 This rule is here rather than in the workflow that runs the analysis, because
 what it governs is what a person does after a finding exists. The workflow
 decides what is scanned and with which token scopes, and it says so in its own
-header. Neither half is the other.
+header.
 
 ## The two rules that were routed elsewhere
 
@@ -89,8 +89,8 @@ violation, where somebody editing a workflow file is already reading. A
 contributing guide is not where that person is looking.
 
 Both of those sentences were asked for here by the issues that raised them.
-Both are better where they are, and this section is the record of that
-decision so neither issue is left waiting on a file that was decided against.
+Both are better where they are, and neither issue is left waiting on a file
+that was decided against.
 
 ## What holds any of this up
 
@@ -110,9 +110,8 @@ anywhere.
 Nothing in this repository refuses a violation of the other two rules above.
 Each is held by review, which is a person and not a mechanism, and each names
 the issue where the mechanism is argued: the invariant rule is issue #79 and
-the triage rule is issue #80. Until those land, those two sections are prose,
-and this paragraph is here so that neither is read as something the gate would
-stop.
+the triage rule is issue #80. Until those land, those two sections are prose
+and the gate stops neither of them.
 
 ## What the gate requires
 
