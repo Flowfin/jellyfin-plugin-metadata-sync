@@ -32,11 +32,11 @@ expect any of it to run yet.
 
 ## What this plugin refuses to do
 
-**It never copies a media file.** No video, no audio, no subtitle sidecar, no
-file of any kind moves between the two servers. This plugin reconciles what a
+No video, no audio, no subtitle sidecar, no file of any kind moves between the
+two servers. This plugin reconciles what a
 library says about a work, and moving the work itself is a different program.
 
-**It never copies image bytes.** Not posters, not backdrops, not logos, not
+Image bytes stay where they are: not posters, not backdrops, not logos, not
 thumbnails, not people's photographs. An image is a file, and copying one is
 copying media by another name.
 
@@ -48,9 +48,9 @@ posters stay that way. An operator who curated a poster by hand on one server
 has to do it again on the other, and this plugin will not tell them the two
 disagree.
 
-**It never moves watch history, or anything else scoped to a person.** Played
-state, playback positions, favourites and personal ratings belong to a user
-rather than to a work, and this plugin does not read or write them. The plugin
+Played state, playback positions, favourites and personal ratings belong to a
+user and not to a work, and this plugin neither reads nor writes any of them.
+Nor does it move anything else scoped to a person. The plugin
 that does move them is
 [jellyfin-plugin-watch-sync](https://github.com/Flowfin/jellyfin-plugin-watch-sync),
 and an operator who wanted watch state and installed this one has installed the
