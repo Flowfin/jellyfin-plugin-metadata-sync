@@ -72,6 +72,29 @@ server's caches and every connected client holding the old value. It is not
 something this plugin does, and the guard that refuses a repository type on a
 write path is #39's.
 
+## An item is the unit
+
+A plan for one item can name several fields, and the rows are applied together or
+not at all. Every refusal an item's rows can raise is raised before the first of
+them is set: the write path reads each row into the assignment it will make, and
+only once every row has been read does it make them.
+
+The order matters because the object being set is the library's own item and not
+a copy of it. A path that set two fields and then refused the third would leave
+that item holding a mixture neither server ever described. Not written to disk by
+this plugin, since the supported call is never reached, and then written by
+whatever saves that item next for its own reasons, with nothing recording where
+the mixture came from. Stopping short of the call does not undo what was set.
+
+What it costs is one list of assignments per item, held for as long as that item
+takes to write.
+
+Two bounds. It is one item and not a plan: a pass interrupted between two items
+has written the first and not the second, which is the pass's own resumption and
+is #38. And it ends at the supported call, so a failure the server raises inside
+that call is outside what this can promise, because by then the values are on the
+item and the server owns what happens to them.
+
 ## The update reason is the parameter that reaches the disk
 
 `ItemUpdateType` is a flag set, and the comparisons the server makes on it are
@@ -348,6 +371,13 @@ other, and the file that writes reads this server's stamp and holds it against
 this server's own earlier reading. The rule's record now carries a file and the
 reason, the rule still refuses that text from anywhere else, and the suite
 refuses an allowance naming a file that is not in the tree.
+
+An item being the unit is held by a pair rather than by one test. A plan whose
+third row is refused is asserted to leave the item holding what it held, and the
+same three rows with every one of them readable are asserted to all arrive, so
+the first is not satisfied by a path that writes nothing. Collapsing the two
+loops back into one reddens the first and leaves the second green; a writer that
+stops assigning reddens the second. Both were run.
 
 One more thing nothing holds. A stopped pass stops within one item, and it
 reports nothing about how far it got: the applier throws where the operator

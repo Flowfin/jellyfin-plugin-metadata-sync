@@ -233,6 +233,62 @@ public class LibraryPlanTargetTests
     }
 
     /// <summary>
+    /// An item is one unit. A plan whose third row is refused leaves the item
+    /// holding what it held, and not the two rows the path had already reached.
+    /// </summary>
+    /// <remarks>
+    /// The refusal tests above each carry one row, so none of them can see this.
+    /// What the item holds between the first assignment and the refusal is not a
+    /// state either server ever described, and it is the state the next component
+    /// to save this item for its own reasons would persist. The refusal stopping
+    /// the supported call is not enough on its own, because the object being set
+    /// is the library's own item and not a copy of it.
+    /// </remarks>
+    [Fact]
+    public async Task ARefusalPartWayThroughAnItemLeavesTheItemUntouched()
+    {
+        var movie = new Movie { Name = "mine", Overview = "mine", ProductionYear = 1979 };
+        var (library, calls) = LibraryCalls.Holding(_itemId, movie);
+
+        var plan = new ItemPlan { LocalItemId = _itemId, Kind = "Movie", LastSavedWhenPlanned = _asRead };
+        plan.Changes.Add(Row("Name", "theirs", writes: true));
+        plan.Changes.Add(Row("Overview", "theirs", writes: true));
+        plan.Changes.Add(Row("ProductionYear", "nineteen seventy nine", writes: true));
+
+        await Assert.ThrowsAsync<WriteRefusedException>(
+            () => new LibraryPlanTarget(library).WriteAsync(plan, CancellationToken.None));
+
+        Assert.Equal("mine", movie.Name);
+        Assert.Equal("mine", movie.Overview);
+        Assert.Equal(1979, movie.ProductionYear);
+        Assert.Empty(calls.Updates);
+    }
+
+    /// <summary>
+    /// The neighbour to the leg above, and the reason it is not a guard that
+    /// refuses everything. The same three rows, all of them readable, all arrive
+    /// on the item and the item is handed over once.
+    /// </summary>
+    [Fact]
+    public async Task EveryRowOfAnItemArrivesTogether()
+    {
+        var movie = new Movie { Name = "mine", Overview = "mine", ProductionYear = 1979 };
+        var (library, calls) = LibraryCalls.Holding(_itemId, movie);
+
+        var plan = new ItemPlan { LocalItemId = _itemId, Kind = "Movie", LastSavedWhenPlanned = _asRead };
+        plan.Changes.Add(Row("Name", "theirs", writes: true));
+        plan.Changes.Add(Row("Overview", "theirs", writes: true));
+        plan.Changes.Add(Row("ProductionYear", "1980", writes: true));
+
+        await new LibraryPlanTarget(library).WriteAsync(plan, CancellationToken.None);
+
+        Assert.Equal("theirs", movie.Name);
+        Assert.Equal("theirs", movie.Overview);
+        Assert.Equal(1980, movie.ProductionYear);
+        Assert.Same(movie, Assert.Single(calls.Updates).Item);
+    }
+
+    /// <summary>
     /// A value the peer does not hold clears the field rather than being passed
     /// over. The plan says to write and carries nothing, which is the peer
     /// holding none, and leaving the old value in place would be this server

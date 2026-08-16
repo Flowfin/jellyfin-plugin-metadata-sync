@@ -35,6 +35,14 @@ namespace Jellyfin.Plugin.MetadataSync.Reconciliation;
 /// inside a tag somebody typed.
 /// </para>
 /// <para>
+/// An item is the unit, and every one of those refusals is raised before the
+/// first field on that item is set. A path that refused half way through would
+/// leave the item holding a mixture neither server ever described, and stopping
+/// short of the supported call does not undo it, because what was set is the
+/// library's own item. #38 is where a pass being resumable is argued and this is
+/// the half of it a write path owes.
+/// </para>
+/// <para>
 /// It does check one thing the plan already answered, and the reason it is not
 /// the second answer the paragraph above refuses is that it is a different
 /// question. The plan says what should change; this asks whether the item is
@@ -83,18 +91,38 @@ public sealed class LibraryPlanTarget : IPlanTarget
     /// The suite holds this set and the set above against the register, in both
     /// directions, so a tenth field declared to move is refused by the suite
     /// until somebody has decided which of the two it belongs in.
+    /// <para>
+    /// A writer is read in two steps rather than one, and the split is what makes
+    /// an item a unit. Handed the value a row carries, it does the reading and
+    /// hands back the assignment; running that assignment cannot fail. So every
+    /// refusal an item's rows can raise is raised before the first of them
+    /// touches the item, and a row this path cannot read leaves the item as it
+    /// was rather than as far as the loop got.
+    /// </para>
     /// </remarks>
-    private static readonly IReadOnlyDictionary<string, Action<BaseItem, string?>> _writers =
-        new ReadOnlyDictionary<string, Action<BaseItem, string?>>(
-            new Dictionary<string, Action<BaseItem, string?>>(StringComparer.Ordinal)
+    private static readonly IReadOnlyDictionary<string, Func<string?, Action<BaseItem>>> _writers =
+        new ReadOnlyDictionary<string, Func<string?, Action<BaseItem>>>(
+            new Dictionary<string, Func<string?, Action<BaseItem>>>(StringComparer.Ordinal)
             {
-                ["Name"] = static (item, value) => item.Name = value!,
-                ["Overview"] = static (item, value) => item.Overview = value!,
-                ["Tagline"] = static (item, value) => item.Tagline = value!,
-                ["OfficialRating"] = static (item, value) => item.OfficialRating = value!,
-                ["PremiereDate"] = static (item, value) => item.PremiereDate = AsDate("PremiereDate", value),
-                ["EndDate"] = static (item, value) => item.EndDate = AsDate("EndDate", value),
-                ["ProductionYear"] = static (item, value) => item.ProductionYear = AsYear(value),
+                ["Name"] = static value => item => item.Name = value!,
+                ["Overview"] = static value => item => item.Overview = value!,
+                ["Tagline"] = static value => item => item.Tagline = value!,
+                ["OfficialRating"] = static value => item => item.OfficialRating = value!,
+                ["PremiereDate"] = static value =>
+                {
+                    var read = AsDate("PremiereDate", value);
+                    return item => item.PremiereDate = read;
+                },
+                ["EndDate"] = static value =>
+                {
+                    var read = AsDate("EndDate", value);
+                    return item => item.EndDate = read;
+                },
+                ["ProductionYear"] = static value =>
+                {
+                    var read = AsYear(value);
+                    return item => item.ProductionYear = read;
+                },
             });
 
     private readonly ILibraryManager _library;
@@ -277,6 +305,15 @@ public sealed class LibraryPlanTarget : IPlanTarget
             throw new ItemChangedSincePlannedException(SomethingElseWrote(item.LocalItemId));
         }
 
+        // Every row is read before any row is written. The object being set
+        // below is the library's own item rather than a copy of it, so a path
+        // that set two fields and then refused the third would leave that item
+        // holding a mixture neither server ever described - not written to disk
+        // by this plugin, and written by whatever saves the item next for its own
+        // reasons. Reading first costs one list per item and makes an item the
+        // unit it is planned as.
+        var assignments = new List<Action<BaseItem>>();
+
         foreach (var change in item.Changes)
         {
             if (!change.Writes)
@@ -284,7 +321,12 @@ public sealed class LibraryPlanTarget : IPlanTarget
                 continue;
             }
 
-            Set(found, change);
+            assignments.Add(Read(change));
+        }
+
+        foreach (var assign in assignments)
+        {
+            assign(found);
         }
 
         // One call, on the item as a whole, after every field on it is set. A
@@ -294,7 +336,7 @@ public sealed class LibraryPlanTarget : IPlanTarget
         await _library.UpdateItemAsync(found, found.GetParent(), UpdateReason, cancellationToken).ConfigureAwait(false);
     }
 
-    private static void Set(BaseItem found, PlannedChange change)
+    private static Action<BaseItem> Read(PlannedChange change)
     {
         if (_setValued.Contains(change.Field))
         {
@@ -306,6 +348,6 @@ public sealed class LibraryPlanTarget : IPlanTarget
             throw new WriteRefusedException(NoWriterFor(change.Field));
         }
 
-        writer(found, change.ValueToWrite);
+        return writer(change.ValueToWrite);
     }
 }
