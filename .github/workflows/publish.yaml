@@ -363,6 +363,95 @@ jobs:
             ${{ steps.jprm.outputs.artifact }}
             ${{ steps.jprm.outputs.artifact }}.meta.json
 
+  inventory:
+    name: Write the package inventory
+    needs: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Its own job, deliberately without the scopes the attest job holds. The generator
+    # is a NuGet tool fetched at run time, so it is code this repository did not review
+    # running in the release path. Kept here it can reach the restore graph and nothing
+    # else: it cannot mint a provenance statement under this repository's identity and
+    # it cannot write a release. That isolation is also why the inventory is shipped as
+    # a checksummed asset rather than as an attested one.
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The same commit the gate job checked, for the same reason.
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up .NET
+        # No dependency cache here either. An inventory built from a cache entry written
+        # by another run describes that run rather than this one.
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore against the committed lock file
+        # The same locked restore the build job makes, and for one further reason. The
+        # generator below is told not to restore anything itself, so what it reads is
+        # the graph this step materialised from packages.lock.json. Without that, an
+        # inventory could describe a graph nobody reviewed and no release was built
+        # from, which is worse than having none.
+        run: |
+          set -euo pipefail
+          project="Jellyfin.Plugin.MetadataSync/Jellyfin.Plugin.MetadataSync.csproj"
+          lock="$(dirname "${project}")/packages.lock.json"
+          if [ ! -f "${lock}" ]; then
+            echo "::error::${lock} does not exist, so there is no reviewed dependency graph for the inventory to describe. Run: dotnet restore ${project} -p:RestorePackagesWithLockFile=true, then commit the file."
+            exit 1
+          fi
+          dotnet restore "${project}" --locked-mode
+
+      - name: Write the inventory
+        # CycloneDX is a NuGet tool and is pinned by version, which is the pin a NuGet
+        # package has. --disable-package-restore keeps it reading the graph the step
+        # above locked instead of resolving its own, so the document describes the
+        # packages the release is compiled against and not whatever a feed served while
+        # it ran.
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/inventory"
+          dotnet tool install --global CycloneDX --version 6.2.0
+          export PATH="${HOME}/.dotnet/tools:${PATH}"
+          dotnet-CycloneDX "Jellyfin.Plugin.MetadataSync/Jellyfin.Plugin.MetadataSync.csproj" \
+            --output-format Json \
+            --output "${RUNNER_TEMP}/inventory" \
+            --filename sbom.cyclonedx.json \
+            --set-nuget-purl \
+            --exclude-test-projects \
+            --disable-package-restore
+
+      - name: Check the inventory says something
+        # A generator that fails halfway can still leave a well formed document behind,
+        # and a document listing nothing passes every check that only asks whether a
+        # file is there. The component count is what separates the two.
+        run: |
+          set -euo pipefail
+          file="${RUNNER_TEMP}/inventory/sbom.cyclonedx.json"
+          if [ ! -s "${file}" ]; then
+            echo "::error::The generator produced no inventory at ${file}, or produced an empty one. A release carries the inventory, so this stops here rather than publishing without it."
+            exit 1
+          fi
+          components="$(jq '.components | length' "${file}")"
+          if [ "${components}" -lt 1 ]; then
+            echo "::error::The inventory at ${file} lists no components. It describes nothing, so it is not an answer to what is in the package."
+            exit 1
+          fi
+          echo "The inventory lists ${components} component(s)."
+
+      - name: Hand the inventory to the release job
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: inventory-artifact
+          retention-days: 30
+          if-no-files-found: error
+          path: ${{ runner.temp }}/inventory/sbom.cyclonedx.json
+
   attest:
     name: Attest build provenance
     needs: build
@@ -391,7 +480,10 @@ jobs:
 
   release:
     name: Publish the release
-    needs: [build, attest]
+    # Every job that produces a release asset is named here, so a release cannot be
+    # published with one of them missing: a failed inventory job or a failed attest job
+    # leaves this one unreachable rather than publishing what did succeed.
+    needs: [build, attest, inventory]
     runs-on: ubuntu-latest
     # Generous, because this job builds nothing and the time it spends is asset
     # uploads on somebody else's network. A timeout that fires between creating the
@@ -407,6 +499,11 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: build-artifact
+
+      - name: Download the inventory
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: inventory-artifact
 
       - name: Refuse to touch a release that already exists
         env:
@@ -457,10 +554,21 @@ jobs:
             exit 1
           fi
 
+          # The inventory is checked here rather than assumed from the job it came out
+          # of, because an artifact that downloaded into the wrong place looks exactly
+          # like a job that never ran once the files are on this disk.
+          if [ ! -s "./sbom.cyclonedx.json" ]; then
+            echo "::error::The package inventory is not here, or is empty. It is a release asset, so this run stops rather than publishing a release without one."
+            exit 1
+          fi
+
           zip="${zips[0]#./}"
           # The bare filename, so the checksum line names the file a client downloads.
           md5sum "${zip}" > "${zip%.zip}.md5"
           sha256sum "${zip}" > "${zip%.zip}.sha256"
+          # The inventory gets a sha256 and never an md5, because exactly one asset in
+          # the release may end in .md5 and that one is the archive's.
+          sha256sum "sbom.cyclonedx.json" > "sbom.cyclonedx.json.sha256"
           ls -l
 
       - name: Create the release and upload the assets

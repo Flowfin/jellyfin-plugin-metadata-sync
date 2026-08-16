@@ -43,18 +43,32 @@ serialising them by hand is what keeps the release order readable.
 ## What the run produces
 
 The workflow builds the plugin from the tagged commit, creates the GitHub release
-for the tag, and attaches four files:
+for the tag, and attaches six files:
 
 - the plugin archive
 - the packaging metadata written beside it, `<archive>.zip.meta.json`
 - one `.md5` file, the checksum of the archive
 - one `.sha256` file for the same archive
+- `sbom.cyclonedx.json`, the inventory of what the plugin is built from
+- `sbom.cyclonedx.json.sha256` for that inventory
 
 The `.md5` is the value a Jellyfin catalog serves as the plugin checksum. There is
 exactly one per release so that no generator can pair a checksum with the wrong
-file. Both the archive and the metadata are checked for existence by name before the
-release job runs, so a release with three of the four files is not a state this route
-can reach.
+file. The inventory therefore carries a `.sha256` and never an `.md5`. The archive,
+the metadata and the inventory are each checked for existence by name before the
+release job writes anything, so a release with five of the six files is not a state
+this route can reach.
+
+The inventory is a CycloneDX document listing the packages the plugin is compiled
+against, generated from the dependency graph `packages.lock.json` fixes rather than
+from the project file read by hand. It answers what is inside the thing an operator
+installs, which is a question a release should not need its author to answer.
+
+It is generated in its own job, which holds neither the signing scopes nor write
+access. The generator is a tool fetched at run time, so it is code this repository
+did not review, and the job it runs in can reach the restore graph and nothing else.
+That is why the inventory is shipped as a checksummed asset and is not itself
+attested.
 
 The run also signs a build provenance statement for the archive, in a separate job
 that downloads the archive and runs no build tooling. A downloaded archive can be
@@ -86,6 +100,8 @@ is gone and no catalog is fed until a manifest generator is added.
   `dotnet restore <project> -p:RestorePackagesWithLockFile=true` and commit it.
 - The version stamped into the assembly is not the version in `build.yaml`.
 - The build produced no archive, or more than one, or no packaging metadata.
+- The inventory generator wrote nothing, or wrote a document listing no components.
+- The inventory did not reach the release job.
 - A release already exists for the tag.
 
 All of these fail before anything is published.
