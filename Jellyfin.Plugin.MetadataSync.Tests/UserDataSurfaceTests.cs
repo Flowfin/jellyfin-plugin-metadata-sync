@@ -59,7 +59,13 @@ public class UserDataSurfaceTests
 
         // The store behind it. Reaching this skips the manager and keeps the
         // same data, which is what a guard naming only the manager would miss.
-        "MediaBrowser.Controller.Persistence.IUserDataRepository",
+        // On the supported line the store is the database row rather than a
+        // repository interface on the controller assembly, so the name here is
+        // the row. The interface this entry used to carry,
+        // MediaBrowser.Controller.Persistence.IUserDataRepository, is not a
+        // type the supported line has at all, which the resolution leg below
+        // caught the moment the reference moved.
+        "Jellyfin.Database.Implementations.Entities.UserData",
 
         // The event raised when that state changes, and the reason enum on it.
         // Subscribing is reading, and it arrives without anybody calling a
@@ -155,6 +161,7 @@ public class UserDataSurfaceTests
         {
             TheSurfaceThisGuardIsAbout().Assembly,
             typeof(MediaBrowser.Model.Entities.MetadataField).Assembly,
+            typeof(Jellyfin.Database.Implementations.Entities.UserData).Assembly,
         };
 
         return servers.Select(assembly => assembly.GetType(fullName, throwOnError: false)).FirstOrDefault(type => type is not null);

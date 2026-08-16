@@ -93,8 +93,8 @@ that the plugin declares five package references, two of them the server's own
 assemblies and three of them analysers that do not ship in the artefact:
 
     git show origin/master:Jellyfin.Plugin.MetadataSync/Jellyfin.Plugin.MetadataSync.csproj | grep -n 'PackageReference Include'
-    11:    <PackageReference Include="Jellyfin.Controller" Version="10.9.11" >
-    14:    <PackageReference Include="Jellyfin.Model" Version="10.9.11">
+    11:    <PackageReference Include="Jellyfin.Controller" Version="10.11.11" >
+    14:    <PackageReference Include="Jellyfin.Model" Version="10.11.11">
     20:    <PackageReference Include="SerilogAnalyzer" Version="0.15.0" PrivateAssets="All" />
     21:    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" PrivateAssets="All" />
     22:    <PackageReference Include="SmartAnalyzers.MultithreadingAnalyzer" Version="1.1.31" PrivateAssets="All" />
