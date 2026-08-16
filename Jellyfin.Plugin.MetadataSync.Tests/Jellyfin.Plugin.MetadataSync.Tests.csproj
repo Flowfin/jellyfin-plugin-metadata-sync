@@ -158,6 +158,16 @@
     <None Include="..\.github\workflows\coverage.yml" Link="coverage.yml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The publish route is what ReleaseRouteTests reads. The property it holds
+       is that the job creating the release waits on every job that produces an
+       asset, which is one line in that file and reads as scheduling rather than
+       as a refusal. It is copied for the same reason the coverage workflow is:
+       the route has never run, so the file is the only thing there is to
+       judge. -->
+  <ItemGroup>
+    <None Include="..\.github\workflows\publish.yaml" Link="publish.yaml" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- DefaultLevelLoggingTests reads the plugin's source text, because the rule
        it holds up is about what a logging call was written to say. The compiled
        assembly cannot answer that: a message template is a constant in the
