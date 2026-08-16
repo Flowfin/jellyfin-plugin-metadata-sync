@@ -57,7 +57,7 @@ out.
 
 | Workflow on the target | State here | Reasoning |
 | --- | --- | --- |
-| `build.yml` (Build) | Present, different shape | The target carries its own package and SBOM steps. Here `build.yaml` calls the shared plugin workflow instead, which is a smaller surface in this tree and a dependency on somebody else's workflow file. That trade is the row. |
+| `build.yml` (Build) | Present, different shape | The target carries its own package steps. Here `build.yaml` calls the shared plugin workflow instead, which is a smaller surface in this tree and a dependency on somebody else's workflow file. That trade is the row. The inventory is the half that is no longer a difference: the target generates one in an isolated job off the locked restore graph, and `publish.yaml` here does the same, on the release route rather than on every build, because the inventory this repository owes is the one describing what a release shipped. |
 | `codeql.yml` (CodeQL) | Present, not required | `scan-codeql.yaml` runs here and calls the shared workflow. Putting it in the required set alongside the package inventory and build provenance is #80. |
 | `dco.yml` (DCO) | Present, and now stricter than the target | Arrived with the template and the audit set, carrying a comparison that built both sides from the same commit, so a commit whose author address was not an address agreed with itself and passed. #120 fixed that here. The target still carries the original line, which the difference section below prints. |
 | `dependency-review.yml` | Present | Arrived with the template and the audit set. No difference to explain. |
