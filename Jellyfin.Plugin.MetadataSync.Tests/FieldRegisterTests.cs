@@ -342,10 +342,14 @@ public class FieldRegisterTests
     [Fact]
     public void EveryFieldOnThePerUserRecordHasARowAndNoneOfThemMove()
     {
-        // The key and the user are what the record is filed under. Neither says
-        // anything about what somebody watched, and there is nothing for a row
-        // to declare about a record's own identity.
-        var notAField = new[] { "Key", "UserId" };
+        // The key is what the record is filed under. It says nothing about what
+        // somebody watched, and there is nothing for a row to declare about a
+        // record's own identity. The user was excused here too until the
+        // reference moved to the supported line, where the record no longer
+        // carries it: the identity of the person is on the row in the database
+        // rather than on this type, so excusing a member this type does not
+        // have would be an excuse nothing needs.
+        var notAField = new[] { "Key" };
 
         var record = ResolveServerType("MediaBrowser.Controller.Entities.UserItemData");
         Assert.NotNull(record);

@@ -3,7 +3,7 @@ name: "Metadata Sync"
 guid: "5c37c448-9d94-4fdd-a621-4238b859165b"
 imageUrl: "https://raw.githubusercontent.com/Flowfin/jellyfin-plugin-metadata-sync/master/img/logo.png"
 version: "1.0.0.0"
-targetAbi: "10.9.0.0"
+targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Move chosen metadata fields between two paired Jellyfin servers."
 description: >
