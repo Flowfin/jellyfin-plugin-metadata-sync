@@ -59,12 +59,44 @@ version that did not exist when a record was written cannot know what the record
 means. The plugin then resumes, which means the next pass re-derives its
 resolutions and its plan rather than continuing an old one.
 
-## Revocation is a fourth act, and it is not this document's
+## Revocation is a fourth act
 
 Revoking a pairing is not any of the three above, and it is the one act that
-does reach back into what already moved. What happens then is decided in #64,
-with its bound in #66: nothing is reverted that this plugin cannot prove it
-wrote, and what it cannot prove is counted rather than assumed.
+does reach back into what already moved. What arrived through the sync is taken
+back. That was decided on 2026-08-09 in #1, and it is the decision in this plan
+that reaches furthest, because taking a value back is only safe where this
+plugin can prove it put that value there.
+
+The bound is #66, and it is not a detail of the revert. It is what makes a
+revert allowable at all. A field this plugin cannot prove it wrote is left
+alone and counted, never reverted on an assumption. So a revocation against a
+library where the record is incomplete removes less than everything that ever
+arrived, and the count of what it did not touch is part of the answer rather
+than a footnote to it.
+
+Two other answers were considered and are not taken. Both are written here with
+what they cost, because a decision that records only what was chosen reads as
+the only thing anybody thought of.
+
+Leaving the metadata in place costs nothing to build, and most of this document
+already argues in its favour: a value written into the library is library data,
+which is the sentence the disable row above rests on. It is not taken because
+unpairing would then not undo the transfer. Two households separating their
+servers would each keep whatever the other had sent, with no act left that walks
+it back, and an operator who revokes a pairing for a reason is the operator who
+wanted that back.
+
+Making it the operator's choice at revocation time is the answer that looks
+kindest and is the most expensive one. A choice is only a choice where the
+person making it can see what each branch does, so it needs the attribution
+record and the previous values in place first, and it needs a confirmation
+stating how many fields fall into the not-known case before anything happens.
+Offered without those it is a question an operator cannot answer, asked at the
+moment they are least able to study it. It is not refused on principle. What
+refuses it is that it is strictly more than the answer above, and the answer
+above has to exist either way.
+
+The mechanism is #64 and none of it is built.
 
 ## What of this is true of the tree today
 
@@ -85,3 +117,14 @@ The uninstall hook is not overridden:
 With no store to keep or delete, an override today would be an empty method
 whose body is a decision nobody could read from it. It lands with the store, and
 #62 carries both.
+
+Nothing here is told that a pairing was revoked either, so the fourth act has no
+way to start. This plugin codes against a consumer contract that is published
+nowhere yet, and the document stating what it would ask for is not in this tree:
+
+    git ls-tree -r --name-only origin/master -- docs/ | grep -c 'consumer.md'
+    0
+
+Both halves of the answer above are therefore written and neither is built. The
+event that would start a revert has nothing to arrive on, and the record that
+would bound it is the same absent store.
