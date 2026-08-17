@@ -136,6 +136,16 @@
     <None Include="..\docs\conflicts.md" Link="subjects\docs\conflicts.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The document telling an operator which server line a package is for
+       restates the runtime, the target ABI and the server package that the
+       manifest and the plugin project declare. SupportedServersTests holds it
+       against both, so it is copied here for the same reason the manifest is:
+       reading it by walking up from the test binary would answer a different
+       question on a machine where the tests run from somewhere else. -->
+  <ItemGroup>
+    <None Include="..\docs\supported-servers.md" Link="supported-servers.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- This project file is what HeadlessPolicyTests reads, so the suite can
        refuse a dependency that would need a display, a running server or the
        network. Reading the resolved package graph instead would answer a
