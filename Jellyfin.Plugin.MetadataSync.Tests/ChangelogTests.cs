@@ -276,7 +276,11 @@ public class ChangelogTests
         var title = new Regex(@"^\s*-\s+title:\s+'([^']*)'\s*$");
         var label = new Regex(@"^\s+-\s+'([^']*)'\s*$");
 
-        var categories = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        // Built on the concrete list type and widened once on the way out. The
+        // scan appends to a category after the line that opened it, and a
+        // dictionary typed to the read-only interface can only offer that by
+        // casting its own values back to something it does not promise.
+        var categories = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         var current = string.Empty;
 
         foreach (var line in File.ReadAllLines(_drafter))
@@ -293,11 +297,14 @@ public class ChangelogTests
             var named = label.Match(line);
             if (named.Success && current.Length > 0)
             {
-                ((List<string>)categories[current]).Add(named.Groups[1].Value);
+                categories[current].Add(named.Groups[1].Value);
             }
         }
 
-        return categories;
+        return categories.ToDictionary(
+            entry => entry.Key,
+            entry => (IReadOnlyList<string>)entry.Value,
+            StringComparer.Ordinal);
     }
 
     // The classes the gate accepts on a pull request, read out of the list it
@@ -320,7 +327,10 @@ public class ChangelogTests
         var label = new Regex(@"^label: ""(.+)"",$");
         var path = new Regex(@"^""(.+)"",$");
 
-        var keyed = new List<(string, IReadOnlyList<string>)>();
+        // Same reason as in Categories: the paths of an entry are appended to
+        // after the line that opened it, so the list is held as a list until
+        // the return widens it.
+        var keyed = new List<(string Label, List<string> Paths)>();
         foreach (var line in Block("const CLASS_BY_SUBJECT = ["))
         {
             var opened = label.Match(line);
@@ -333,11 +343,11 @@ public class ChangelogTests
             var named = path.Match(line);
             if (named.Success && keyed.Count > 0)
             {
-                ((List<string>)keyed[^1].Item2).Add(named.Groups[1].Value);
+                keyed[^1].Paths.Add(named.Groups[1].Value);
             }
         }
 
-        return keyed;
+        return keyed.Select(entry => (entry.Label, (IReadOnlyList<string>)entry.Paths)).ToList();
     }
 
     // The lines of one declaration in the gate, trimmed, from the line that

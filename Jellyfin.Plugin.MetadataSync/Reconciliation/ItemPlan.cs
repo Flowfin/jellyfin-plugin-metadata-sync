@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Text.Json.Serialization;
 
 namespace Jellyfin.Plugin.MetadataSync.Reconciliation;
@@ -56,40 +57,11 @@ public sealed class ItemPlan
     /// thing the applier asks about an item.
     /// </remarks>
     [JsonIgnore]
-    public bool Writes
-    {
-        get
-        {
-            foreach (var change in Changes)
-            {
-                if (change.Writes)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-    }
+    public bool Writes => Changes.Any(change => change.Writes);
 
     /// <summary>
     /// Gets how many fields on this item would be written.
     /// </summary>
     [JsonIgnore]
-    public int FieldsToWrite
-    {
-        get
-        {
-            var count = 0;
-            foreach (var change in Changes)
-            {
-                if (change.Writes)
-                {
-                    count++;
-                }
-            }
-
-            return count;
-        }
-    }
+    public int FieldsToWrite => Changes.Count(change => change.Writes);
 }

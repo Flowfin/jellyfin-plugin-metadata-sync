@@ -279,21 +279,11 @@ internal static class CoverageReport
 
         foreach (var area in _areas)
         {
-            foreach (var declared in area.Namespaces)
+            if (area.Namespaces.Any(declared => remainder.StartsWith(declared + ".", StringComparison.Ordinal))
+                || area.RootTypes.Any(declared => string.Equals(remainder, declared, StringComparison.Ordinal)
+                    || remainder.StartsWith(declared + ".", StringComparison.Ordinal)))
             {
-                if (remainder.StartsWith(declared + ".", StringComparison.Ordinal))
-                {
-                    return area;
-                }
-            }
-
-            foreach (var declared in area.RootTypes)
-            {
-                if (string.Equals(remainder, declared, StringComparison.Ordinal)
-                    || remainder.StartsWith(declared + ".", StringComparison.Ordinal))
-                {
-                    return area;
-                }
+                return area;
             }
         }
 

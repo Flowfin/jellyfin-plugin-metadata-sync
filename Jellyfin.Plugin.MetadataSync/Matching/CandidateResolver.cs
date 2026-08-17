@@ -65,15 +65,9 @@ public static class CandidateResolver
         ArgumentNullException.ThrowIfNull(identifiers);
         ArgumentNullException.ThrowIfNull(candidates);
 
-        var sameWork = new List<Candidate>();
-
-        foreach (var candidate in candidates)
-        {
-            if (ProviderIdentifiers.Compare(candidate.Identifiers, identifiers) == ProviderIdentifierVerdict.Match)
-            {
-                sameWork.Add(candidate);
-            }
-        }
+        var sameWork = candidates
+            .Where(candidate => ProviderIdentifiers.Compare(candidate.Identifiers, identifiers) == ProviderIdentifierVerdict.Match)
+            .ToList();
 
         // Ordered by identity rather than left in arrival order, so what comes
         // back is the same object whichever order the rows arrived in. The

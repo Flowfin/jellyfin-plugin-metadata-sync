@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 
 namespace Jellyfin.Plugin.MetadataSync.Matching;
 
@@ -52,15 +53,9 @@ public static class OrdinalResolver
         ArgumentNullException.ThrowIfNull(here);
         ArgumentNullException.ThrowIfNull(there);
 
-        var underTheSameParent = new List<OrdinalIdentity>();
-
-        foreach (var candidate in there)
-        {
-            if (ProviderIdentifiers.Compare(here.ParentIdentifiers, candidate.ParentIdentifiers) == ProviderIdentifierVerdict.Match)
-            {
-                underTheSameParent.Add(candidate);
-            }
-        }
+        var underTheSameParent = there
+            .Where(candidate => ProviderIdentifiers.Compare(here.ParentIdentifiers, candidate.ParentIdentifiers) == ProviderIdentifierVerdict.Match)
+            .ToList();
 
         if (underTheSameParent.Count == 0)
         {
@@ -87,21 +82,15 @@ public static class OrdinalResolver
             return Refused(OrdinalVerdict.SeasonZero, OrdinalStep.Ordinal, SeasonZero(here.Number!.Value));
         }
 
-        var atThatOrdinal = new List<OrdinalIdentity>();
-
-        foreach (var candidate in underTheSameParent)
-        {
-            // A candidate covering a range is excluded by what it is rather than
-            // by its numbers. It is not one episode, so it is not this one, and
-            // taking it because the range begins here is containment wearing an
-            // equality sign.
-            if (!candidate.CoversARange
+        // A candidate covering a range is excluded by what it is rather than by
+        // its numbers. It is not one episode, so it is not this one, and taking
+        // it because the range begins here is containment wearing an equality
+        // sign.
+        var atThatOrdinal = underTheSameParent
+            .Where(candidate => !candidate.CoversARange
                 && candidate.Season == here.Season
                 && candidate.Number == here.Number)
-            {
-                atThatOrdinal.Add(candidate);
-            }
-        }
+            .ToList();
 
         if (atThatOrdinal.Count == 1)
         {
