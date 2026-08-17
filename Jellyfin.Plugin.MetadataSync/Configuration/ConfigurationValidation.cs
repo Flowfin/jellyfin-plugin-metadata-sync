@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Jellyfin.Plugin.MetadataSync.Fields;
 
 namespace Jellyfin.Plugin.MetadataSync.Configuration;
@@ -104,7 +105,7 @@ public static class ConfigurationValidation
                 continue;
             }
 
-            if (!Contains(librariesTheServerHolds, library))
+            if (!librariesTheServerHolds.Contains(library))
             {
                 problems.Add(new ConfigurationProblem(
                     nameof(PluginConfiguration.ParticipatingLibraries),
@@ -187,23 +188,5 @@ public static class ConfigurationValidation
         problems.Add(new ConfigurationProblem(
             nameof(PluginConfiguration.PairingId),
             "PairingId names no pairing, and the rest of this configuration names libraries or fields to act on."));
-    }
-
-    /// <summary>
-    /// Membership over the set that was handed in, without asking it for a
-    /// shape it does not have. The caller supplies a collection, which is the
-    /// smallest thing this check needs, and a collection is not a set.
-    /// </summary>
-    private static bool Contains(IReadOnlyCollection<Guid> libraries, Guid library)
-    {
-        foreach (var held in libraries)
-        {
-            if (held == library)
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

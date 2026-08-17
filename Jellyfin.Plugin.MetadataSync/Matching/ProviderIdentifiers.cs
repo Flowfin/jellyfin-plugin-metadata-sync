@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -64,18 +65,8 @@ public static class ProviderIdentifiers
     /// </summary>
     /// <param name="provider">The provider, as the dictionary key spells it.</param>
     /// <returns>The rule.</returns>
-    public static ProviderIdentifierRule RuleFor(string provider)
-    {
-        foreach (var rule in Rules)
-        {
-            if (string.Equals(rule.Provider, provider, KeyComparison))
-            {
-                return rule;
-            }
-        }
-
-        return DefaultRule;
-    }
+    public static ProviderIdentifierRule RuleFor(string provider) =>
+        Rules.FirstOrDefault(rule => string.Equals(rule.Provider, provider, KeyComparison)) ?? DefaultRule;
 
     /// <summary>
     /// Compares two items' provider identifiers.

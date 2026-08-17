@@ -359,7 +359,7 @@ public static class ReferenceResolver
     }
 
     private static string Pair(ReferenceKind kind, ReferenceProperty property) =>
-        kind.ToString() + "/" + property.ToString();
+        kind + "/" + property;
 
     private static string NotAReference(ReferenceKind kind) => string.Format(
         CultureInfo.InvariantCulture,

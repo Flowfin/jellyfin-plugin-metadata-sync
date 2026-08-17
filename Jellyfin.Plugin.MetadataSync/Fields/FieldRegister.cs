@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -66,18 +67,8 @@ public static class FieldRegister
     /// </summary>
     /// <param name="field">The field, named as the server names it.</param>
     /// <returns>The row, or null where the register declares no such field.</returns>
-    public static FieldRow? Find(string field)
-    {
-        foreach (var row in Rows)
-        {
-            if (string.Equals(row.Field, field, StringComparison.Ordinal))
-            {
-                return row;
-            }
-        }
-
-        return null;
-    }
+    public static FieldRow? Find(string field) =>
+        Rows.FirstOrDefault(row => string.Equals(row.Field, field, StringComparison.Ordinal));
 
     /// <summary>
     /// Returns the row for a field that may move, and refuses everything else.

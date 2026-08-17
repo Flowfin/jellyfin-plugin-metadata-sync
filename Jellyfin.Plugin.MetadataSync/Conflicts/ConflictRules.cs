@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -66,18 +67,8 @@ public static class ConflictRules
     /// </summary>
     /// <param name="id">The rule name.</param>
     /// <returns>The rule, or null where no rule carries that name.</returns>
-    public static ConflictRule? Find(string id)
-    {
-        foreach (var rule in Rules)
-        {
-            if (string.Equals(rule.Id, id, StringComparison.Ordinal))
-            {
-                return rule;
-            }
-        }
-
-        return null;
-    }
+    public static ConflictRule? Find(string id) =>
+        Rules.FirstOrDefault(rule => string.Equals(rule.Id, id, StringComparison.Ordinal));
 
     /// <summary>
     /// Reads a rule table out of this assembly by resource name.

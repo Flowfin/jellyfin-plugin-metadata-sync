@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Jellyfin.Plugin.MetadataSync.Conflicts;
 using Jellyfin.Plugin.MetadataSync.Fields;
 
@@ -91,7 +92,7 @@ public static class Planner
             return Answered(observation, PlanDisposition.NotDeclared, NoRowAtAll(observation.Field));
         }
 
-        if (!Contains(row.Kinds, item.Kind))
+        if (!row.Kinds.Contains(item.Kind, StringComparer.Ordinal))
         {
             return Answered(observation, PlanDisposition.OutsideTheKindGroup, NotThisKind(row, item.Kind));
         }
@@ -157,19 +158,6 @@ public static class Planner
             ValueToWrite = null,
             Reason = reason,
         };
-    }
-
-    private static bool Contains(IReadOnlyList<string> kinds, string kind)
-    {
-        foreach (var candidate in kinds)
-        {
-            if (string.Equals(candidate, kind, StringComparison.Ordinal))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static string NoRowAtAll(string field) => string.Format(
