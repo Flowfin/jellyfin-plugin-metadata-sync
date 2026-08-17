@@ -141,6 +141,34 @@ public class RefusalTests
                  "the group the row names is one the register declares",
                  () => FieldRegister.Parse(FieldRegisterTests.UndeclaredKindGroupRegister)),
 
+            ["Matching/Candidate.cs -> ArgumentException.ThrowIfNullOrWhiteSpace(id);"] =
+                (nameof(CandidateResolutionTests),
+                 nameof(CandidateResolutionTests.ACandidateWithNoIdentityIsRefused),
+                 nameof(CandidateResolutionTests.ExactlyOneCandidateNamingTheWorkResolves),
+                 "the candidate has an identity an ambiguity could name it by",
+                 () => new Candidate(" ", new Dictionary<string, string>(StringComparer.Ordinal))),
+
+            ["Matching/Candidate.cs -> ArgumentNullException.ThrowIfNull(identifiers);"] =
+                (nameof(CandidateResolutionTests),
+                 nameof(CandidateResolutionTests.ACandidateWithNoIdentifiersIsRefused),
+                 nameof(CandidateResolutionTests.ExactlyOneCandidateNamingTheWorkResolves),
+                 "the candidate's identifier dictionary is there",
+                 () => new Candidate("here:1", null!)),
+
+            ["Matching/CandidateResolver.cs -> ArgumentNullException.ThrowIfNull(identifiers);"] =
+                (nameof(CandidateResolutionTests),
+                 nameof(CandidateResolutionTests.ResolvingAgainstIdentifiersThatAreNotThereIsRefused),
+                 nameof(CandidateResolutionTests.AWorkWithNoIdentifiersOfItsOwnResolvesNothing),
+                 "the work's identifier dictionary is there, even when it is empty",
+                 () => CandidateResolver.Resolve(null!, Array.Empty<Candidate>())),
+
+            ["Matching/CandidateResolver.cs -> ArgumentNullException.ThrowIfNull(candidates);"] =
+                (nameof(CandidateResolutionTests),
+                 nameof(CandidateResolutionTests.ResolvingCandidatesThatAreNotThereIsRefused),
+                 nameof(CandidateResolutionTests.NoCandidateOfferedIsNotTheSameAsNoCandidateMatching),
+                 "the candidate set is there, even when it is empty",
+                 () => CandidateResolver.Resolve(new Dictionary<string, string>(StringComparer.Ordinal), null!)),
+
             ["Matching/ProviderIdentifiers.cs -> ArgumentNullException.ThrowIfNull(local);"] =
                 (nameof(ProviderIdentifierTests),
                  nameof(ProviderIdentifierTests.ComparingWithNoLocalDictionaryIsRefused),
