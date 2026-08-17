@@ -92,6 +92,54 @@ That register is what makes this refusal liveable rather than merely correct. An
 operator who can see which items did not resolve, and why, can act on it. An
 operator who sees a sync that quietly covered two thirds of a library cannot.
 
+## A work more than one item here carries
+
+Comparing identifiers answers whether two items are the same work. It does not
+answer which item to write to on a server that holds two of them, and a film
+kept in two cuts or two qualities is exactly that: one work, two items, and an
+operator who keeps both did nothing wrong.
+
+`CandidateResolver` in the plugin is where that is decided. It adds no
+comparison of its own, so every candidate offered to it is answered by the rules
+in `provider-identifiers.md`, and what it settles is what happens when those
+rules say yes more than once. Nothing is written and both items are named, so an
+operator can merge them or say which one this plugin writes to.
+
+It reads the identifiers it is handed and nothing else, so every row below is
+decidable with nothing running.
+
+## The fixture table for candidates offered on one server
+
+Every row is a test. The rows are read out of this document by the suite rather
+than restated in it, so a row added here is run and a row whose expectation
+changes here changes what the suite asserts.
+
+The work is written as its provider identifiers, `Provider=Value`, several
+separated by `;`, exactly as `provider-identifiers.md` writes them, and an empty
+cell is a work carrying none. A candidate is written as the identity it is
+reported back by, then its own identifiers in brackets, and candidates are
+separated by a space. `here:extended[Tmdb=550]` is one candidate. An empty cell
+is a library that offered none, which is a different thing from a library that
+offered candidates none of which is this work.
+
+The last column is what the row is for, on the same terms as the table further
+down: it names the implementation the row refuses rather than the behaviour it
+wants, because the wanted behaviour is the outcome column and writing it twice
+says nothing new.
+
+| Case | The work | Offered here | Outcome | The mistake it would catch |
+| --- | --- | --- | --- | --- |
+| exactly one candidate is the same work | `Tmdb=550` | `here:1[Tmdb=550] here:2[Tmdb=551]` | `Resolved` | A resolver that answers nothing at all, which leaves every refusing row below green while no item is ever placed. |
+| one work held here as two cuts of the same film | `Tmdb=550` | `here:extended[Tmdb=550] here:theatrical[Tmdb=550]` | `HeldByMoreThanOne` | Taking the first candidate the library returned, so the same pass over the same data writes to the other item once a rescan reorders the rows. |
+| two items that are one work, beside a third that is not | `Tmdb=550` | `here:extended[Tmdb=550] here:theatrical[Tmdb=550] here:other[Tmdb=551]` | `HeldByMoreThanOne` | Reading the set as settled once one candidate has been told apart from another, when the two that cannot be told apart are still two. |
+| a library that offered no candidate at all | `Tmdb=550` | | `NothingOffered` | Reporting a library nobody has scanned with this provider as one holding a different work, which sends an operator looking for a disagreement that is not there. |
+| candidates offered and none of them the work | `Tmdb=550` | `here:1[Tmdb=551]` | `NoneIsTheSameWork` | Folding an empty result into a mismatched one, after which nothing separates a provider nobody enabled from two libraries that genuinely disagree. |
+| the only candidate offered shares no provider | `Tmdb=550` | `here:1[Imdb=tt0137523]` | `NoneIsTheSameWork` | Taking the only candidate a query returned, which is taking the first with a step in front of it. |
+| a work carrying no identifiers of its own | | `here:1[Tmdb=550]` | `NoneIsTheSameWork` | Starting from agreement rather than from nothing, so an item nobody has run a metadata scan over resolves to whatever was offered beside it. |
+| two cuts of one work, one writing the provider name in lower case | `Tmdb=550` | `here:extended[tmdb=550] here:theatrical[Tmdb=550]` | `HeldByMoreThanOne` | Looking the provider up by an ordinal dictionary key, which drops one of the two cuts out of the set and leaves the other looking like an answer. |
+| two cuts of one work, one of them zero-padded | `Tvdb=75978` | `here:a[Tvdb=0075978] here:b[Tvdb=75978]` | `HeldByMoreThanOne` | Comparing a decimal identifier as text, which hides one duplicate behind its padding and turns an ambiguity into a resolution. |
+| two candidates agreeing on one provider where only one agrees on both | `Tmdb=550;Imdb=tt0137523` | `here:a[Tmdb=550;Imdb=tt0137523] here:b[Tmdb=550;Imdb=tt0111161]` | `Resolved` | Answering on the first provider that agrees, which turns the candidate a second provider rules out into a second answer for one work. |
+
 ## An item identified by its parent and an ordinal
 
 A film usually carries its own provider identifiers. An episode often does not:
