@@ -277,17 +277,13 @@ internal static class CoverageReport
 
         var remainder = typeName[TypePrefix.Length..];
 
-        foreach (var area in _areas)
-        {
-            if (area.Namespaces.Any(declared => remainder.StartsWith(declared + ".", StringComparison.Ordinal))
-                || area.RootTypes.Any(declared => string.Equals(remainder, declared, StringComparison.Ordinal)
-                    || remainder.StartsWith(declared + ".", StringComparison.Ordinal)))
-            {
-                return area;
-            }
-        }
-
-        return null;
+        // The first area that claims the type wins, which is the order the
+        // table declares them in, so an area listed earlier keeps a name a
+        // later one would also match.
+        return _areas.FirstOrDefault(area =>
+            area.Namespaces.Any(declared => remainder.StartsWith(declared + ".", StringComparison.Ordinal))
+            || area.RootTypes.Any(declared => string.Equals(remainder, declared, StringComparison.Ordinal)
+                || remainder.StartsWith(declared + ".", StringComparison.Ordinal)));
     }
 
     private static IEnumerable<MeasuredLine> MethodLines(XElement measured)

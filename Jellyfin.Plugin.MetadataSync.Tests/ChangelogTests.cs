@@ -347,7 +347,8 @@ public class ChangelogTests
             }
         }
 
-        return keyed.Select(entry => (entry.Label, (IReadOnlyList<string>)entry.Paths)).ToList();
+        return keyed.ConvertAll<(string Label, IReadOnlyList<string> Paths)>(
+            entry => (entry.Label, entry.Paths));
     }
 
     // The lines of one declaration in the gate, trimmed, from the line that
