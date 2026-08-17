@@ -24,9 +24,18 @@ source to say so:
 What does not exist is a pass. Nothing reads two servers, nothing turns items
 into the observations a plan is made from, and nothing registers the write path
 as a service, so a plan can be carried out in a test and nowhere else. Every
-sentence below about the server was read out of the server, and the sections on
-the window and on the deferral are still a decision taken before the code:
-#41 defends the window and has not landed.
+sentence below about the server was read out of the server.
+
+The window and the deferral are code rather than a decision taken ahead of it.
+The item is fetched again immediately before its plan is carried out, its
+last-saved stamp is compared against the one the plan was made from, and an item
+that moved is deferred with nothing written on it. `## What holds this up` below
+names the check behind each of those and what removing it reddens.
+
+One half of the deferral is still a decision taken before the code, and it is
+named where the deferral is described rather than here: a deferred item is
+counted and handed back to whoever asked for the apply, and nothing picks it up
+on a later pass, because there is no later pass.
 
 ## What a plan row can carry, and what it cannot
 
