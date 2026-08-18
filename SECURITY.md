@@ -38,6 +38,10 @@ A public issue is the wrong route for anything that would tell a reader how to
 make this plugin write where it should not, and once opened it cannot be made
 private again.
 
+The form is here, without navigating:
+
+<https://github.com/Flowfin/jellyfin-plugin-metadata-sync/security/advisories/new>
+
 What a report should carry, in whatever form is easiest to write:
 
 - what an attacker gets, stated as an outcome rather than as a category
