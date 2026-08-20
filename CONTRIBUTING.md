@@ -45,7 +45,7 @@ file-system property in the resolution path, no transport type reachable from
 a reconciliation path, no static instance outside the entry point, no second
 contract version literal, no second purpose literal, no timestamp from one
 server compared against the other's, no direction comparison outside the
-direction type.
+direction type, no resolution held in a field or a property.
 
 An issue that declares another invariant of that shape, and adds no rule to
 the lint that refuses it, is caught in review and sent back. The rule and the
