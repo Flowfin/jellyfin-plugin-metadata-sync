@@ -156,6 +156,14 @@ public class InvariantLintTests
             NearMiss: "if (!Enum.IsDefined(configuration.Direction))",
             NearMissIsTheNeighbourThat: "is the legitimate reading the validator already makes: it asks whether the value is a direction this plugin declares at all and never which one it is, so it names no member and takes no branch on one.",
             CannotCatch: "a comparison that names no member. The value cast to its underlying number and compared against a literal spells none of this, and so does a direction obtained through a helper that returns a bool. It also has nothing to say about whether the one place that reads a direction reads it correctly, which is the second condition of #34 and needs a pass rather than a pattern."),
+
+        new Rule(
+            Id: "no-resolution-held-outside-the-call-that-derived-it",
+            GuidePhrase: "no resolution held in a field or a property",
+            Invariant: "A resolution is true of two libraries as they stood when it was computed, so nothing keeps one in a slot that outlives the call that derived it and a later pass cannot read one.",
+            DeclaredBy: "#33",
+            RefusedBy: nameof(ResolutionLifetimeTests),
+            CannotCatch: "the same bounds that test states for itself, and one this row makes worse by sitting in a table of token scans: a resolution is a type rather than a spelling, so a pattern here would refuse the resolvers that return one. It carries no pattern for that reason and the walk is the whole mechanism."),
     };
 
     /// <summary>
