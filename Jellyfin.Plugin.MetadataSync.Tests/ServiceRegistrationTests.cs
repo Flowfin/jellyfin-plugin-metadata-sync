@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Jellyfin.Plugin.MetadataSync.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -12,6 +13,8 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// </summary>
 public class ServiceRegistrationTests
 {
+    private static readonly Guid _library = new("55555555-5555-5555-5555-555555555555");
+
     /// <summary>
     /// The configuration accessor returns what it was given, not what a static
     /// holds.
@@ -21,9 +24,9 @@ public class ServiceRegistrationTests
     {
         var supplied = new PluginConfiguration();
 
-        IPluginConfigurationProvider provider = new PluginConfigurationProvider(() => supplied);
+        IPluginConfigurationProvider provider = ProviderOver(supplied);
 
-        Assert.Same(supplied, provider.Configuration);
+        Assert.Same(supplied, provider.Require());
     }
 
     /// <summary>
@@ -37,12 +40,12 @@ public class ServiceRegistrationTests
         var first = new PluginConfiguration();
         var second = new PluginConfiguration();
 
-        IPluginConfigurationProvider one = new PluginConfigurationProvider(() => first);
-        IPluginConfigurationProvider two = new PluginConfigurationProvider(() => second);
+        IPluginConfigurationProvider one = ProviderOver(first);
+        IPluginConfigurationProvider two = ProviderOver(second);
 
-        Assert.Same(first, one.Configuration);
-        Assert.Same(second, two.Configuration);
-        Assert.NotSame(one.Configuration, two.Configuration);
+        Assert.Same(first, one.Require());
+        Assert.Same(second, two.Require());
+        Assert.NotSame(one.Require(), two.Require());
     }
 
     /// <summary>
@@ -52,7 +55,21 @@ public class ServiceRegistrationTests
     [Fact]
     public void ConfigurationProviderRefusesAMissingReader()
     {
-        Assert.Throws<ArgumentNullException>(() => new PluginConfigurationProvider(null!));
+        Assert.Throws<ArgumentNullException>(
+            () => new PluginConfigurationProvider(null!, () => Array.Empty<Guid>()));
+    }
+
+    /// <summary>
+    /// The same, for the second delegate. A provider built without it would
+    /// have nothing to check a participating library against, and the range it
+    /// would fall back to is the empty one, which refuses every library an
+    /// operator chose.
+    /// </summary>
+    [Fact]
+    public void ConfigurationProviderRefusesAMissingLibraryReader()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => new PluginConfigurationProvider(() => new PluginConfiguration(), null!));
     }
 
     /// <summary>
@@ -70,5 +87,12 @@ public class ServiceRegistrationTests
             services,
             s => s.ServiceType == typeof(IPluginConfigurationProvider));
         Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);
+    }
+
+    private static PluginConfigurationProvider ProviderOver(PluginConfiguration configuration)
+    {
+        return new PluginConfigurationProvider(
+            () => configuration,
+            () => new List<Guid> { _library });
     }
 }
