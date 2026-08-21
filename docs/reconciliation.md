@@ -14,17 +14,36 @@ written.
 ## What exists, and what still does not
 
 The write exists. `LibraryPlanTarget` is the implementation the interface
-between the two halves was waiting for, it calls the member named below and
-nothing else, and the suite reads the compiled instructions rather than the
-source to say so:
+between the two halves was waiting for, it calls one member to fetch an item and
+one to save it and nothing else, and the suite reads the compiled instructions
+rather than the source to say so.
+
+The read exists as well now. `ItemReader` asks the server for the items of the
+libraries that take part, which is the subject of `## Which libraries a pass
+reads` below. So four files in the plugin name the server's library, and each
+of them asks it something different:
 
     git grep -Iln "ILibraryManager" -- 'Jellyfin.Plugin.MetadataSync/*.cs'
+    Jellyfin.Plugin.MetadataSync/Configuration/ServerLibraries.cs
+    Jellyfin.Plugin.MetadataSync/PluginServiceRegistrator.cs
+    Jellyfin.Plugin.MetadataSync/Reconciliation/ItemReader.cs
     Jellyfin.Plugin.MetadataSync/Reconciliation/LibraryPlanTarget.cs
 
-What does not exist is a pass. Nothing reads two servers, nothing turns items
-into the observations a plan is made from, and nothing registers the write path
-as a service, so a plan can be carried out in a test and nowhere else. Every
-sentence below about the server was read out of the server.
+That paste named one file and the command returned three, before this change
+added the fourth. It was found by running the command rather than by reading the
+paragraph: the read below makes the plugin name the library in one more place,
+and re-running the line to add it returned two others the document had never
+carried. `ServerLibraries` asks which libraries the server holds, so that a
+configuration can be checked against a range, and the registrator resolves the
+library inside a delegate so that range is read when somebody asks rather than
+at start-up. Neither is a pass reaching a library, which is what the sentence
+above the paste is about, and neither was excluded on purpose.
+
+What does not exist is a pass. Nothing reads the peer, nothing turns items into
+the observations a plan is made from, and nothing constructs a reader or
+registers the write path as a service, so the three halves can be held together
+in a test and nowhere else. Every sentence below about the server was read out
+of the server.
 
 The window and the deferral are code rather than a decision taken ahead of it.
 The item is fetched again immediately before its plan is carried out, its
@@ -36,6 +55,60 @@ One half of the deferral is still a decision taken before the code, and it is
 named where the deferral is described rather than here: a deferred item is
 counted and handed back to whoever asked for the apply, and nothing picks it up
 on a later pass, because there is no later pass.
+
+## Which libraries a pass reads
+
+Participation is per library rather than per server, and it is decided before an
+item is read. `ItemReader` is built from the set of participating libraries and
+asks for the items under those libraries, so a library that does not take part
+is never named in a query.
+
+The difference between that and reading everything and keeping what is in the
+set is invisible in the answer on a good day. On a bad one it is the whole
+thing: a defect in a filter reaches a library an operator excluded, and a query
+that never named the library cannot. That is why the participating libraries are
+the ancestors the query asks under rather than a test applied to what comes
+back.
+
+The empty set is the case to be deliberate about, because it is the state a
+plugin is installed in. It means no library takes part, never all of them, so no
+query is made at all. What makes that worth writing down rather than assuming is
+that the query type reads the other way round: a recursive query carrying no
+ancestor is a query over everything the server holds, so turning an empty set
+into a query is one line that reads as harmless and enumerates a whole server.
+
+Three things the read deliberately does not do.
+
+It does not ask whether an identifier is a library this server holds.
+`ConfigurationValidation` refuses a configuration naming one the server does not
+have, and a second answer here would be a second place for that to be decided.
+
+It does not bound how many items come back. It asks once and is handed a list,
+which on a large library is the whole of it at once. That bound is #37, and this
+is the read #37 was waiting for rather than a read that already carries it.
+
+It holds nothing between passes. The next pass asks again, because the library
+moved while nothing was running, which is the property a resumed pass needs from
+a read and is #38.
+
+Two things follow from where the decision sits, and neither needs a mechanism of
+its own. An item moved into a library that does not take part is not written,
+and the refusal is at the read: nothing further along is asked about the item at
+all. An item moved into a participating library is picked up by the next pass
+for the same reason.
+
+The half of that which was already true is a different check and reads like this
+one. The write path fetches the item again and defers it where something else
+saved it in between, which catches an item that was touched. An item that
+changed library and was not otherwise touched is exactly the case that check
+does not cover, and the read is what covers it.
+
+What none of this makes true is that a pass runs. Nothing in this plugin
+constructs a reader, so the reader, the planner and the write path are held
+together in the suite and nowhere else. What would run one is #40. The
+administrator surface that shows which libraries take part is #51 and has no
+controller to sit on, and when that selection last changed is not derivable from
+the configuration, which holds the set and not a moment.
 
 ## What a plan row can carry, and what it cannot
 
@@ -387,6 +460,19 @@ same three rows with every one of them readable are asserted to all arrive, so
 the first is not satisfied by a path that writes nothing. Collapsing the two
 loops back into one reddens the first and leaves the second green; a writer that
 stops assigning reddens the second. Both were run.
+
+The read is refused by a machine too, and each half was proved by breaking it.
+A reader that asked the server for everything reddens the leg that reads the
+answer and the leg that reads the ask, and the second is the one that would
+still red on the day a filter afterwards happened to be right. An empty
+participating set turned into a query reddens the leg that asserts the server is
+asked nothing at all. A set held by reference instead of copied reddens the leg
+that changes the selection under a reader that already exists.
+
+The proxy those legs run against answers an unbounded query with everything it
+holds, exactly as the query means, and a leg asserts that it does. Without it
+the rule above would pass against an arrangement that quietly narrowed for the
+reader, which is a test asserting its own fixture.
 
 One more thing nothing holds. A stopped pass stops within one item, and it
 reports nothing about how far it got: the applier throws where the operator
