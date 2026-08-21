@@ -55,7 +55,35 @@ public class RefusalTests
                  nameof(ServiceRegistrationTests.ConfigurationProviderRefusesAMissingReader),
                  nameof(ServiceRegistrationTests.ConfigurationProviderReturnsTheConfigurationItWasGiven),
                  "the delegate is there",
-                 () => new PluginConfigurationProvider(null!)),
+                 () => new PluginConfigurationProvider(null!, () => Array.Empty<Guid>())),
+
+            ["Configuration/PluginConfigurationProvider.cs -> ArgumentNullException.ThrowIfNull(readLibrariesTheServerHolds);"] =
+                (nameof(ServiceRegistrationTests),
+                 nameof(ServiceRegistrationTests.ConfigurationProviderRefusesAMissingLibraryReader),
+                 nameof(ServiceRegistrationTests.ConfigurationProviderReturnsTheConfigurationItWasGiven),
+                 "the delegate answering which libraries the server holds is there",
+                 () => new PluginConfigurationProvider(() => new PluginConfiguration(), null!)),
+
+            ["Configuration/PluginConfigurationProvider.cs -> throw new ConfigurationRefusedException(problems);"] =
+                (nameof(ConfigurationLoadTests),
+                 nameof(ConfigurationLoadTests.AConfigurationThatCannotBeActedOnIsRefusedWhenItIsAskedFor),
+                 nameof(ConfigurationLoadTests.AConfigurationThatCanBeActedOnIsHandedOver),
+                 "the library the configuration names is one the server holds",
+                 () => ProviderNamingALibraryTheServerDoesNotHold().Require()),
+
+            ["Configuration/ConfigurationRefusedException.cs -> ArgumentNullException.ThrowIfNull(problems);"] =
+                (nameof(ConfigurationLoadTests),
+                 nameof(ConfigurationLoadTests.ARefusalBuiltFromNoProblemsAtAllIsRefused),
+                 nameof(ConfigurationLoadTests.TheRefusalCarriesEveryReasonRatherThanTheFirst),
+                 "the list of reasons the refusal is built from is there",
+                 () => new ConfigurationRefusedException(null!)),
+
+            ["Configuration/ServerLibraries.cs -> ArgumentNullException.ThrowIfNull(library);"] =
+                (nameof(ConfigurationLoadTests),
+                 nameof(ConfigurationLoadTests.ReadingTheLibrariesWithNoServerIsRefused),
+                 nameof(ConfigurationLoadTests.TheRangeIsTheLibrariesTheServerLists),
+                 "the server whose libraries are read is there",
+                 () => ServerLibraries.Held(null!)),
 
             ["Configuration/ConfigurationValidation.cs -> ArgumentNullException.ThrowIfNull(configuration);"] =
                 (nameof(ConfigurationValidationTests),
@@ -640,6 +668,14 @@ public class RefusalTests
         });
 
         return plan;
+    }
+
+    private static PluginConfigurationProvider ProviderNamingALibraryTheServerDoesNotHold()
+    {
+        var configuration = new PluginConfiguration { PairingId = new Guid("44444444-4444-4444-4444-444444444444") };
+        configuration.ParticipatingLibraries.Add(new Guid("22222222-2222-2222-2222-222222222222"));
+
+        return new PluginConfigurationProvider(() => configuration, Array.Empty<Guid>);
     }
 
     private static LibraryPlanTarget TargetOverTheItemAsSomethingElseLeftIt()
