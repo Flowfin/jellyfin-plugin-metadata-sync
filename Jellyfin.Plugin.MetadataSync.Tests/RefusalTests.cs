@@ -379,6 +379,20 @@ public class RefusalTests
                      .GetAwaiter()
                      .GetResult()),
 
+            ["Reconciliation/ItemReader.cs -> ArgumentNullException.ThrowIfNull(library);"] =
+                (nameof(ParticipatingLibraryTests),
+                 nameof(ParticipatingLibraryTests.AReaderRefusesAMissingLibrary),
+                 nameof(ParticipatingLibraryTests.ANonParticipatingLibraryIsNeverEnumerated),
+                 "the library to read from is there",
+                 () => new ItemReader(null!, Array.Empty<Guid>())),
+
+            ["Reconciliation/ItemReader.cs -> ArgumentNullException.ThrowIfNull(participating);"] =
+                (nameof(ParticipatingLibraryTests),
+                 nameof(ParticipatingLibraryTests.AReaderRefusesAMissingSet),
+                 nameof(ParticipatingLibraryTests.NothingIsAskedOfTheLibraryWhenNoLibraryParticipates),
+                 "the set of participating libraries is there, even where it is empty",
+                 () => new ItemReader(LibraryItems.Empty().Library, null!)),
+
             ["Reconciliation/LibraryPlanTarget.cs -> ArgumentNullException.ThrowIfNull(library);"] =
                 (nameof(LibraryPlanTargetTests),
                  nameof(LibraryPlanTargetTests.ATargetWithNoLibraryIsRefused),
