@@ -13,8 +13,8 @@ namespace Jellyfin.Plugin.MetadataSync.Fields;
 /// <summary>
 /// The declared set of fields, read from the register that ships inside the
 /// assembly. This is the only place a field is declared: the document under
-/// docs/ is checked against this file by the suite, and the mover asks this
-/// register before it writes anything.
+/// docs/ is checked against this file by the suite, and the planner asks this
+/// register before a field reaches a plan.
 /// </summary>
 /// <remarks>
 /// The register is data rather than code so that adding a field is adding a row
@@ -75,6 +75,16 @@ public static class FieldRegister
     /// </summary>
     /// <param name="field">The field, named as the server names it.</param>
     /// <returns>The row, which is guaranteed to be one that moves.</returns>
+    /// <remarks>
+    /// Nothing in the plugin calls this today. The one caller it had wrote a
+    /// field outside a plan and is gone, and a pass asks <see cref="Find"/>
+    /// instead, because the planner answers a field it may not move with a
+    /// disposition on the row rather than by throwing: a pass that threw would
+    /// stop at the first refused field on an item, and an operator would be
+    /// handed one reason where the register has one per row. So this is the
+    /// throwing face of the register, for a caller that wants one field or
+    /// nothing, and it is reached from the suite and nowhere else.
+    /// </remarks>
     /// <exception cref="FieldNotDeclaredException">
     /// The register declares no such field, or declares one that does not move.
     /// </exception>

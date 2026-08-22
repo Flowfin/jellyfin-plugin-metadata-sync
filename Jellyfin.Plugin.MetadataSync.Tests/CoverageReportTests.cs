@@ -163,13 +163,13 @@ public class CoverageReportTests
             statedLines: 2,
             statedBranches: 2,
             Measured(
-                "Jellyfin.Plugin.MetadataSync.Fields.FieldMover",
+                "Jellyfin.Plugin.MetadataSync.Fields.FieldRegister",
                 ("86", 12, "50% (1/2)"),
                 ("110", 0, null))));
 
         Assert.Empty(reading.Refusals);
-        Assert.Contains("Fields.FieldMover line 86, 1 of 2 branch(es) reached", reading.Unreached);
-        Assert.Contains("Fields.FieldMover line 110, never executed", reading.Unreached);
+        Assert.Contains("Fields.FieldRegister line 86, 1 of 2 branch(es) reached", reading.Unreached);
+        Assert.Contains("Fields.FieldRegister line 110, never executed", reading.Unreached);
     }
 
     /// <summary>
