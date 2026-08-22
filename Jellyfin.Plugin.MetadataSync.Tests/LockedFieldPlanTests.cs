@@ -14,13 +14,14 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// field is written.
 /// </summary>
 /// <remarks>
-/// <see cref="FieldRegisterTests"/> covers the same nine names through
-/// <see cref="FieldMover"/>, and that is a different statement. Nothing on the
-/// write path calls the mover: <see cref="Planner"/> decides, and
-/// <see cref="Applier"/> obeys the flag the decision left on the row without
-/// asking the register, the rules or a lock a second time. So a lock proved at
-/// the mover is proved on a call no pass makes, and it would go on reading as a
-/// working guard after the deciding half stopped honouring it.
+/// This is the only place the nine names are held. They were covered a second
+/// time in <see cref="FieldRegisterTests"/>, through a type that wrote a field
+/// on a call no pass made, and that was a different statement rather than a
+/// stronger one: <see cref="Planner"/> decides and <see cref="Applier"/> obeys
+/// the flag the decision left on the row without asking the register, the rules
+/// or a lock a second time, so a lock proved on that other call would have gone
+/// on reading as a working guard after the deciding half stopped honouring it.
+/// The type is gone and the second copy with it.
 /// <para>
 /// The sweep is over the server's own enumeration rather than over nine names
 /// written here, so a tenth lockable field on a later server line is inside the

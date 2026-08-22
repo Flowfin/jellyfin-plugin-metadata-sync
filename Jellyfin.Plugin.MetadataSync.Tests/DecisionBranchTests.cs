@@ -28,112 +28,6 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 public class DecisionBranchTests
 {
     /// <summary>
-    /// The nine writers were reached by no test at all: the suite asserted which
-    /// fields may move and every way a write is refused, and never that a write
-    /// arrives. So the whole point of the type was the uncovered part.
-    ///
-    /// Driven off the register rather than off a list here, so a writer added
-    /// later is asserted without anybody remembering to add it.
-    /// </summary>
-    [Fact]
-    public void EveryFieldTheRegisterSaysMovesArrivesOnTheReceivingItem()
-    {
-        Assert.NotEmpty(FieldMover.WritableFields);
-
-        foreach (var field in FieldMover.WritableFields)
-        {
-            var property = typeof(BaseItem).GetProperty(field);
-            Assert.NotNull(property);
-
-            var from = new Movie();
-            var to = new Movie();
-            var sent = ValueFor(property!.PropertyType, field);
-            property.SetValue(from, sent);
-
-            FieldMover.Move(field, from, to);
-
-            Assert.Equal(sent, property.GetValue(to));
-        }
-    }
-
-    /// <summary>
-    /// A list-valued field is copied rather than shared, so the receiving item
-    /// does not end up holding the array the sending item holds. The copy is what
-    /// keeps a later edit on one server from appearing on the other inside one
-    /// pass.
-    /// </summary>
-    [Fact]
-    public void AListValuedFieldArrivesAsACopyAndNotAsTheSameArray()
-    {
-        var sent = new[] { "one", "two" };
-        var from = new Movie { Tags = sent };
-        var to = new Movie();
-
-        FieldMover.Move("Tags", from, to);
-
-        Assert.Equal(sent, to.Tags);
-        Assert.NotSame(sent, to.Tags);
-    }
-
-    /// <summary>
-    /// The absent case, which is the one the copy has a branch for. A server that
-    /// holds no tags at all is not a server that holds an empty list, and the
-    /// receiving item gets an empty list rather than a null the library would
-    /// then carry.
-    /// </summary>
-    [Fact]
-    public void AListValuedFieldThatIsAbsentArrivesAsAnEmptyList()
-    {
-        var from = new Movie { Tags = null! };
-        var to = new Movie { Tags = new[] { "was here" } };
-
-        FieldMover.Move("Tags", from, to);
-
-        Assert.NotNull(to.Tags);
-        Assert.Empty(to.Tags);
-    }
-
-    /// <summary>
-    /// The field-level lock check has three parts and two of its arms were
-    /// unreached. This is the arm where the register names no lock for the row at
-    /// all: there is no lock to consult, so the write happens, and it happens
-    /// without reading the item's lock list.
-    /// </summary>
-    [Fact]
-    public void AFieldTheRegisterGovernsByNoLockIsWrittenEvenWhenOtherFieldsAreLocked()
-    {
-        var row = FieldRegister.RequireMovable("Tagline");
-        Assert.Null(row.Lock);
-
-        var from = new Movie { Tagline = "what the peer says" };
-        var to = new Movie { Tagline = "ours", LockedFields = new[] { MetadataField.Name, MetadataField.Overview } };
-
-        FieldMover.Move("Tagline", from, to);
-
-        Assert.Equal("what the peer says", to.Tagline);
-    }
-
-    /// <summary>
-    /// The other unreached arm: an item that carries no lock list at all. The
-    /// server leaves it unset on an item nobody has locked anything on, which is
-    /// the ordinary case, and reading it as an empty list rather than refusing is
-    /// what makes the ordinary case work.
-    /// </summary>
-    [Fact]
-    public void AGovernedFieldIsWrittenWhenTheItemCarriesNoLockListAtAll()
-    {
-        var row = FieldRegister.RequireMovable("Overview");
-        Assert.NotNull(row.Lock);
-
-        var from = new Movie { Overview = "What the peer says about it" };
-        var to = new Movie { Overview = "ours", LockedFields = null! };
-
-        FieldMover.Move("Overview", from, to);
-
-        Assert.Equal("What the peer says about it", to.Overview);
-    }
-
-    /// <summary>
     /// The leading-zero normalisation had no test for the value that is nothing
     /// but zeros. Trimming every zero off leaves an empty string, which would
     /// compare equal to any other all-zero identifier and to nothing else, so the
@@ -292,7 +186,7 @@ public class DecisionBranchTests
     }
 
     /// <summary>
-    /// Both refusals the mover raises are exception types with the three
+    /// The refusals this plugin raises are exception types with the three
     /// constructors the analyzer's exception pattern asks for, and two of the
     /// three were constructed by nothing.
     ///
@@ -306,9 +200,6 @@ public class DecisionBranchTests
     public void ARefusalSaysWhatItIsAboutWithNoContextAndCarriesOneWhenThereIs()
     {
         var cause = new InvalidOperationException("the register could not be read");
-
-        Assert.Contains("locked", new FieldLockedException().Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Same(cause, new FieldLockedException("while refusing a write", cause).InnerException);
 
         Assert.Contains("register", new FieldNotDeclaredException().Message, StringComparison.OrdinalIgnoreCase);
         Assert.Same(cause, new FieldNotDeclaredException("while refusing a write", cause).InnerException);
@@ -329,39 +220,4 @@ public class DecisionBranchTests
         trimmed,
         "LeadingZeros",
         "A fixture rule, so the normaliser is asked about a value the real table's providers do not produce.");
-
-    /// <summary>
-    /// A value of the property's own type, distinctive enough that a write to the
-    /// wrong field would fail the assertion rather than pass by coincidence.
-    /// </summary>
-    private static object ValueFor(Type propertyType, string field)
-    {
-        var underlying = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
-
-        if (underlying == typeof(string))
-        {
-            return "what the peer holds for " + field;
-        }
-
-        if (underlying == typeof(string[]))
-        {
-            return new[] { field + " one", field + " two" };
-        }
-
-        if (underlying == typeof(DateTime))
-        {
-            return new DateTime(1977, 5, 25, 0, 0, 0, DateTimeKind.Utc);
-        }
-
-        if (underlying == typeof(int))
-        {
-            return 1977;
-        }
-
-        throw new NotSupportedException(string.Format(
-            CultureInfo.InvariantCulture,
-            "The register declares '{0}' as movable and this leg has no value of type {1} to send. Add one here rather than dropping the field from the walk.",
-            field,
-            propertyType));
-    }
 }

@@ -18,11 +18,20 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// </summary>
 /// <remarks>
 /// The single most destructive thing this plugin can do is write a field nobody
-/// expected it to write, and every leg here is one way that happens: a writer
-/// that no row declares, a row that moves with nothing behind it, a field name
-/// the server does not have, a value taken from the media file, a document that
-/// says something other than the register, and a caller asking for a field that
-/// was never declared at all.
+/// expected it to write, and every leg here is one way that happens: a field
+/// name the server does not have, a value taken from the media file, a document
+/// that says something other than the register, and a caller asking for a field
+/// that was never declared at all.
+/// <para>
+/// What is asserted elsewhere, and deliberately not here. Which fields the
+/// writing code can reach, held against the rows that move in both directions,
+/// is <see cref="LibraryPlanTargetTests.TheWritersAndTheRefusedFieldsAreExactlyWhatTheRegisterLetsMove"/>,
+/// because that is the path a pass takes. Every lock the server declares is
+/// held against the code that decides, in <see cref="LockedFieldPlanTests"/>.
+/// Both used to be covered here as well, through a second writer this plugin no
+/// longer carries, and a lock proved on a call no pass makes proves nothing
+/// about the pass.
+/// </para>
 /// </remarks>
 public class FieldRegisterTests
 {
@@ -183,25 +192,6 @@ public class FieldRegisterTests
     }
 
     /// <summary>
-    /// This is the leg the register exists for. The set of fields the writing
-    /// code can reach is compared with the set of rows that declare a field
-    /// moves, in both directions, so a writer added without a row fails and a
-    /// row that moves with nothing behind it fails too.
-    /// </summary>
-    [Fact]
-    public void TheFieldsTheMoverCanWriteAreExactlyTheRowsThatMove()
-    {
-        var declared = FieldRegister.Rows.Where(r => r.Moves).Select(r => r.Field).ToHashSet(StringComparer.Ordinal);
-        var writable = FieldMover.WritableFields.ToHashSet(StringComparer.Ordinal);
-
-        var writesWithoutARow = writable.Except(declared, StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
-        var rowsWithoutAWriter = declared.Except(writable, StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
-
-        Assert.Empty(writesWithoutARow);
-        Assert.Empty(rowsWithoutAWriter);
-    }
-
-    /// <summary>
     /// A field with no row is refused when it is asked for. The refusal is at
     /// run time and not only in review, because review is where the last one of
     /// these got through.
@@ -216,14 +206,11 @@ public class FieldRegisterTests
     [Fact]
     public void AFieldWithNoRowIsRefusedWhenSomethingAsksToMoveIt()
     {
-        var from = new Movie();
-        var to = new Movie();
-
         Assert.NotNull(typeof(BaseItem).GetProperty("SortName"));
         Assert.Null(FieldRegister.Find("SortName"));
 
         var refused = Assert.Throws<FieldNotDeclaredException>(
-            () => FieldMover.Move("SortName", from, to));
+            () => FieldRegister.RequireMovable("SortName"));
 
         Assert.Contains("SortName", refused.Message, StringComparison.Ordinal);
     }
@@ -241,7 +228,7 @@ public class FieldRegisterTests
         Assert.False(row.Moves);
 
         var refused = Assert.Throws<FieldNotDeclaredException>(
-            () => FieldMover.Move("RunTimeTicks", new Movie(), new Movie()));
+            () => FieldRegister.RequireMovable("RunTimeTicks"));
 
         Assert.Contains(row.Reason, refused.Message, StringComparison.Ordinal);
     }
@@ -315,7 +302,7 @@ public class FieldRegisterTests
         Assert.False(row.Moves);
 
         var refused = Assert.Throws<FieldNotDeclaredException>(
-            () => FieldMover.Move(field, new Movie(), new Movie()));
+            () => FieldRegister.RequireMovable(field));
 
         Assert.Contains(row.Reason, refused.Message, StringComparison.Ordinal);
     }
@@ -390,7 +377,7 @@ public class FieldRegisterTests
         Assert.False(row.Moves);
 
         var refused = Assert.Throws<FieldNotDeclaredException>(
-            () => FieldMover.Move(field, new Movie(), new Movie()));
+            () => FieldRegister.RequireMovable(field));
 
         Assert.Contains(row.Reason, refused.Message, StringComparison.Ordinal);
     }
@@ -478,80 +465,18 @@ public class FieldRegisterTests
     }
 
     /// <summary>
-    /// A field the operator locked is not written. Locked on exactly the field
-    /// being written rather than on everything, because a fixture that locked
-    /// the whole set would pass against a mover that read the wrong entry.
-    /// </summary>
-    /// <remarks>
-    /// Five of the nine lockable names govern a row that moves and are reachable
-    /// here. The other four, <c>Genres</c>, <c>Studios</c>, <c>Cast</c> and
-    /// <c>Runtime</c>, govern rows the register refuses to move at all, so the
-    /// register refuses before the lock is ever read. That is a stronger refusal
-    /// and not a gap, and it is why this covers five names rather than nine:
-    /// asserting a lock on a field nothing can write would be asserting about a
-    /// line no arrangement reaches.
-    /// </remarks>
-    [Theory]
-    [InlineData("Name", MetadataField.Name)]
-    [InlineData("Overview", MetadataField.Overview)]
-    [InlineData("Tags", MetadataField.Tags)]
-    [InlineData("ProductionLocations", MetadataField.ProductionLocations)]
-    [InlineData("OfficialRating", MetadataField.OfficialRating)]
-    public void AFieldTheOperatorLockedIsNotWritten(string field, MetadataField governing)
-    {
-        var row = FieldRegister.Find(field);
-        Assert.NotNull(row);
-        Assert.Equal(governing, row.Lock);
-
-        var from = new Movie();
-        var to = new Movie { LockedFields = new[] { governing } };
-        var before = Read(to, field);
-
-        var refused = Assert.Throws<FieldLockedException>(() => FieldMover.Move(field, from, to));
-
-        Assert.Contains(governing.ToString(), refused.Message, StringComparison.Ordinal);
-        Assert.Equal(before, Read(to, field));
-    }
-
-    /// <summary>
-    /// The near-miss for the lock. The same item, locked on one field, and the
-    /// field beside it written. A mover that read the lock set as a single
-    /// answer for the whole item would refuse this too.
+    /// The neighbour both refusals above differ from by one thing. A field the
+    /// register declares as moving is answered with its own row rather than
+    /// refused, so neither refusal is passing because the register refuses
+    /// everything it is asked.
     /// </summary>
     [Fact]
-    public void AFieldLockedOnAnotherRowDoesNotRefuseThisOne()
+    public void ADeclaredFieldThatMovesIsAnsweredWithItsOwnRow()
     {
-        var from = new Movie { Overview = "What the peer says about it" };
-        var to = new Movie { Overview = "ours", LockedFields = new[] { MetadataField.Name } };
+        var row = FieldRegister.RequireMovable("Overview");
 
-        FieldMover.Move("Overview", from, to);
-
-        Assert.Equal("What the peer says about it", to.Overview);
-    }
-
-    /// <summary>
-    /// An operator who locked the item said nothing on it is ours, so no field
-    /// is written, including the ones the server has no field-level lock for.
-    /// </summary>
-    /// <remarks>
-    /// <c>Tagline</c> is the field chosen here for that reason: it has no lock
-    /// of its own, so it is the row that a mover checking only the nine names
-    /// would write straight through an item the operator had locked outright.
-    /// </remarks>
-    [Fact]
-    public void NoFieldIsWrittenOntoAnItemTheOperatorLocked()
-    {
-        var row = FieldRegister.Find("Tagline");
-        Assert.NotNull(row);
-        Assert.Null(row.Lock);
-
-        var from = new Movie { Tagline = "what the peer says" };
-        var to = new Movie { Tagline = "ours", IsLocked = true };
-
-        var refused = Assert.Throws<FieldLockedException>(() => FieldMover.Move("Tagline", from, to));
-
-        Assert.Contains("Tagline", refused.Message, StringComparison.Ordinal);
-        Assert.Equal("ours", to.Tagline);
+        Assert.Equal("Overview", row.Field);
+        Assert.True(row.Moves);
     }
 
     /// <summary>
@@ -565,41 +490,6 @@ public class FieldRegisterTests
         var refused = Assert.Throws<InvalidOperationException>(() => FieldRegister.Parse(LockTheServerDoesNotHaveRegister));
 
         Assert.Contains("Description", refused.Message, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// The ordinary case, and the neighbour every refusal below differs from by
-    /// one thing. A declared field is written and the value arrives.
-    /// </summary>
-    [Fact]
-    public void ADeclaredFieldIsWrittenOntoTheItem()
-    {
-        var from = new Movie { Overview = "What the peer says about it" };
-        var to = new Movie { Overview = "What this server says about it" };
-
-        FieldMover.Move("Overview", from, to);
-
-        Assert.Equal("What the peer says about it", to.Overview);
-    }
-
-    /// <summary>
-    /// There is nothing to take a value from. Writing a field off an item that
-    /// is not there would write whatever the default is, silently.
-    /// </summary>
-    [Fact]
-    public void MovingFromAnItemThatIsNotThereIsRefused()
-    {
-        Assert.Throws<ArgumentNullException>(() => FieldMover.Move("Overview", null!, new Movie()));
-    }
-
-    /// <summary>
-    /// There is nothing to write to. The same failure in the other direction,
-    /// and the one that would otherwise be a null reference somewhere later.
-    /// </summary>
-    [Fact]
-    public void MovingOntoAnItemThatIsNotThereIsRefused()
-    {
-        Assert.Throws<ArgumentNullException>(() => FieldMover.Move("Overview", new Movie(), null!));
     }
 
     /// <summary>
@@ -666,19 +556,6 @@ public class FieldRegisterTests
             .ToList();
 
         Assert.Empty(repeated);
-    }
-
-    /// <summary>
-    /// Reads a field back off an item by name, so a refusal can be asserted to
-    /// have left the value alone rather than only to have thrown.
-    /// </summary>
-    private static object? Read(BaseItem item, string field)
-    {
-        var property = typeof(BaseItem).GetProperty(field);
-        Assert.NotNull(property);
-
-        var value = property.GetValue(item);
-        return value is string[] strings ? string.Join(",", strings) : value;
     }
 
     private static Type? ResolveServerType(string name)

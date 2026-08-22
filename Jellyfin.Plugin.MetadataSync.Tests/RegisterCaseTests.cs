@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Jellyfin.Plugin.MetadataSync.Fields;
-using MediaBrowser.Controller.Entities.Movies;
+using Jellyfin.Plugin.MetadataSync.Reconciliation;
 using Xunit;
 
 namespace Jellyfin.Plugin.MetadataSync.Tests;
@@ -22,9 +22,10 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// set the register exists to be the only declaration of.
 /// <para>
 /// What was missing is the half that makes that argument worth anything, which
-/// is that every row reaches a theory. The rows that move were run end to end by
-/// <see cref="DecisionBranchTests.EveryFieldTheRegisterSaysMovesArrivesOnTheReceivingItem"/>,
-/// off the register rather than off a list. The rows that do not move were run
+/// is that every row reaches a theory. The rows that move are run end to end by
+/// <see cref="LibraryPlanTargetTests.EveryFieldThisPathCanWriteArrivesOnTheItem"/>,
+/// and the two that path refuses to spell are run by the theory beside it, off
+/// the register rather than off a list. The rows that do not move were run
 /// one at a time, by name, in lists written beside the four legs that use them,
 /// and most of them were declared and never asked. A row nobody runs reads
 /// exactly like coverage, which is the failure <see cref="FixtureTableTests"/>
@@ -45,8 +46,8 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// about theirs.
 /// </para>
 /// <para>
-/// What this does not reach. It asks the mover for one field on a bare item and
-/// never runs a pass, so nothing here says the right item was chosen or that a
+/// What this does not reach. It asks the register for one field and never runs
+/// a pass, so nothing here says the right item was chosen or that a
 /// refusal was recorded anywhere. It reads the refusal's text, so a row whose
 /// sentence is wrong about why it refuses passes exactly like one that is right.
 /// And it holds no row that moves: whether a value arrives is the leg named
@@ -82,7 +83,7 @@ public class RegisterCaseTests
         Assert.False(row.Moves);
 
         var refused = Assert.Throws<FieldNotDeclaredException>(
-            () => FieldMover.Move(field, new Movie(), new Movie()));
+            () => FieldRegister.RequireMovable(field));
 
         Assert.Contains(field, refused.Message, StringComparison.Ordinal);
         Assert.Contains(row.Reason, refused.Message, StringComparison.Ordinal);
@@ -96,10 +97,10 @@ public class RegisterCaseTests
     /// This is what stops the cases drifting back into a list written beside the
     /// legs. A filter narrowed above, or a row the split stops reaching, leaves
     /// rows declared and never asked, which is the state this file exists to
-    /// end. The moving side is taken from the mover's own writable set rather
+    /// end. The moving side is taken from the write path's own two sets rather
     /// than from the register a second time, so this leg reads the thing that
-    /// actually runs those rows; that set is held equal to the rows that move by
-    /// <see cref="FieldRegisterTests.TheFieldsTheMoverCanWriteAreExactlyTheRowsThatMove"/>,
+    /// actually runs those rows; those sets are held equal to the rows that move
+    /// by <see cref="LibraryPlanTargetTests.TheWritersAndTheRefusedFieldsAreExactlyWhatTheRegisterLetsMove"/>,
     /// which is the leg that would catch the two disagreeing.
     /// <para>
     /// Both sides are asserted to be non-empty before anything is concluded. A
@@ -111,7 +112,9 @@ public class RegisterCaseTests
     public void EveryRowInTheRegisterReachesACaseByOneRouteOrTheOther()
     {
         var refusing = RowsThatDoNotMove.Select(one => (string)one[0]).ToList();
-        var moving = FieldMover.WritableFields.ToList();
+        var moving = LibraryPlanTarget.WritableFields
+            .Concat(LibraryPlanTarget.FieldsWithNoSpelling)
+            .ToList();
 
         Assert.NotEmpty(refusing);
         Assert.NotEmpty(moving);
