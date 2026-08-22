@@ -355,10 +355,20 @@ the fields, and those are the same statement here: a rule is handed no field and
 no item, so there is nothing it could read that would tell one field from
 another.
 
-What is not checked is what happens after the answer. Nothing chains the
-register, this table and the writer into a pass: nothing carries a decision to
-an item, nothing records one, and no field on any real library has been through
-any of it. So a green run here says this rule set decides the cases above as
-this document writes them, and it says nothing yet about a library. The pass is
-#35 and #39, the record an entry belongs in is #48, and the refusal a residual
-owes an operator is #45.
+What is not checked is what happens on a server. Three of the four links are
+chained now, and this paragraph said none of them were. The planner asks the
+register first and these rules second, and every case above is run through it
+rather than only through the resolver. The applier hands a planned row to an
+item through the one supported call. And the deferral cases drive deciding and
+writing together, which is the pair the window between them belongs to.
+
+What no route constructs is a pass. Nothing reads the peer, nothing turns items
+into the observations a plan is made from, and nothing schedules or starts any
+of it, so that chain exists in a test and nowhere else, and no field on any real
+library has been through it. A decision is still recorded nowhere. So a green
+run here says this rule set decides the cases above as this document writes
+them, and it says nothing yet about a library.
+
+The two halves a pass is made of landed in #35 and #39. What would run them is
+#36, #38 and #40, the record an entry belongs in is #48, and the refusal a
+residual owes an operator is #45.
