@@ -99,34 +99,6 @@ public class RefusalTests
                  "the set the libraries are checked against is there, even when it is empty",
                  () => ConfigurationValidation.Validate(new PluginConfiguration(), null!)),
 
-            ["Fields/FieldMover.cs -> ArgumentNullException.ThrowIfNull(from);"] =
-                (nameof(FieldRegisterTests),
-                 nameof(FieldRegisterTests.MovingFromAnItemThatIsNotThereIsRefused),
-                 nameof(FieldRegisterTests.ADeclaredFieldIsWrittenOntoTheItem),
-                 "the item the value is taken from is there",
-                 () => FieldMover.Move("Overview", null!, new Movie())),
-
-            ["Fields/FieldMover.cs -> ArgumentNullException.ThrowIfNull(to);"] =
-                (nameof(FieldRegisterTests),
-                 nameof(FieldRegisterTests.MovingOntoAnItemThatIsNotThereIsRefused),
-                 nameof(FieldRegisterTests.ADeclaredFieldIsWrittenOntoTheItem),
-                 "the item the value is written to is there",
-                 () => FieldMover.Move("Overview", new Movie(), null!)),
-
-            ["Fields/FieldMover.cs -> throw new FieldLockedException(TheWholeItemIsLocked(field));"] =
-                (nameof(FieldRegisterTests),
-                 nameof(FieldRegisterTests.NoFieldIsWrittenOntoAnItemTheOperatorLocked),
-                 nameof(FieldRegisterTests.ADeclaredFieldIsWrittenOntoTheItem),
-                 "the operator has not locked the receiving item",
-                 () => FieldMover.Move("Tagline", new Movie(), new Movie { IsLocked = true })),
-
-            ["Fields/FieldMover.cs -> throw new FieldLockedException(TheFieldIsLocked(field, governing));"] =
-                (nameof(FieldRegisterTests),
-                 nameof(FieldRegisterTests.AFieldTheOperatorLockedIsNotWritten),
-                 nameof(FieldRegisterTests.AFieldLockedOnAnotherRowDoesNotRefuseThisOne),
-                 "the lock the operator set is not the one governing this field",
-                 () => FieldMover.Move("Overview", new Movie(), new Movie { LockedFields = new[] { MetadataField.Overview } })),
-
             ["Fields/FieldRegister.cs -> throw new InvalidOperationException(NoSuchLock(row));"] =
                 (nameof(FieldRegisterTests),
                  nameof(FieldRegisterTests.ARowNamingALockTheServerDoesNotHaveIsRefused),
@@ -137,14 +109,14 @@ public class RefusalTests
             ["Fields/FieldRegister.cs -> throw new FieldNotDeclaredException(NoRowAtAll(field));"] =
                 (nameof(FieldRegisterTests),
                  nameof(FieldRegisterTests.AFieldWithNoRowIsRefusedWhenSomethingAsksToMoveIt),
-                 nameof(FieldRegisterTests.ADeclaredFieldIsWrittenOntoTheItem),
+                 nameof(FieldRegisterTests.ADeclaredFieldThatMovesIsAnsweredWithItsOwnRow),
                  "the field has a row",
                  () => FieldRegister.RequireMovable("SortName")),
 
             ["Fields/FieldRegister.cs -> throw new FieldNotDeclaredException(ARowThatRefuses(row));"] =
                 (nameof(FieldRegisterTests),
                  nameof(FieldRegisterTests.AFieldWhoseRowRefusesToMoveIsRefusedWithItsReason),
-                 nameof(FieldRegisterTests.ADeclaredFieldIsWrittenOntoTheItem),
+                 nameof(FieldRegisterTests.ADeclaredFieldThatMovesIsAnsweredWithItsOwnRow),
                  "the row the field has says it moves",
                  () => FieldRegister.RequireMovable("RunTimeTicks")),
 

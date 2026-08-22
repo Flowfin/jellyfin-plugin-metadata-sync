@@ -41,7 +41,6 @@ public class ApplierTests
     {
         "FieldRegister",
         "FieldRow",
-        "FieldMover",
         "SyncDirection",
         "Direction",
         "ConflictResolver",
