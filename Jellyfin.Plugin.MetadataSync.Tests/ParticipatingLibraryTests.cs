@@ -58,7 +58,8 @@ public class ParticipatingLibraryTests
         var read = new ItemReader(library, new[] { _shared }).Read();
 
         Assert.Same(shared, Assert.Single(read));
-        Assert.Equal(new[] { _shared }, Assert.Single(items.AskedFor));
+        Assert.NotEmpty(items.AskedFor);
+        Assert.All(items.AskedFor, asked => Assert.Equal(new[] { _shared }, asked));
         Assert.DoesNotContain(_private, items.AskedFor.SelectMany(asked => asked));
     }
 

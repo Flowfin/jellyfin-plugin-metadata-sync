@@ -11,8 +11,8 @@ using MediaBrowser.Controller.Library;
 namespace Jellyfin.Plugin.MetadataSync.Tests;
 
 /// <summary>
-/// The server's library, as far as reading items out of it is concerned: one
-/// member that answers and every other one that refuses.
+/// The server's library, as far as reading items out of it is concerned: two
+/// members that answer and every other one that refuses.
 /// </summary>
 /// <remarks>
 /// A third proxy beside <see cref="LibraryCalls"/> and
@@ -20,7 +20,13 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// for the reason <see cref="LibraryFolders"/> already gives: what each proxy
 /// proves is the set of members its path may call, and a member added to one
 /// for another path's sake widens both. The write path may call two things,
-/// the listing path may call one, and this path may call one different one.
+/// the listing path may call one, and this path may call two different ones.
+/// <para>
+/// The second of those two arrived with the bound in #37. A read that hands
+/// items over a page at a time asks which items there are before it asks for
+/// any of them, so the set this proxy admits is <c>GetItemIds</c> and
+/// <c>GetItemList</c> and still nothing else.
+/// </para>
 /// <para>
 /// What separates it from a stub is that it answers a query the way the server
 /// answers one, rather than the way a reader would like it answered. A
@@ -28,14 +34,17 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// holds, and that is what this hands back. So a reader that asked for
 /// everything and narrowed the answer afterwards is caught by the items it
 /// returns, which is an observation, rather than by a rule this file invented
-/// about what a query should look like.
+/// about what a query should look like. The same holds for a page: a query
+/// naming identifiers is answered with those identifiers and a query naming
+/// none is answered with everything, so a reader that stopped naming a page
+/// would be handed the library rather than corrected.
 /// </para>
 /// <para>
 /// It is not a server. There is no hierarchy in it: an item sits in exactly one
 /// library and nothing here has a parent, so a query naming a library answers
 /// with what was put in that library and nothing is walked. That is enough for
-/// what <c>ParticipatingLibraryTests</c> asks and it is not enough for anything
-/// about ordering, paging or the shape of a real result.
+/// what <c>ParticipatingLibraryTests</c> and <c>BoundedReadTests</c> ask and it
+/// is not enough for anything about ordering or the shape of a real result.
 /// </para>
 /// </remarks>
 [SuppressMessage(
@@ -60,6 +69,23 @@ internal class LibraryItems : DispatchProxy
     /// A query naming none is recorded as an empty entry rather than dropped.
     /// </summary>
     public Collection<IReadOnlyList<Guid>> AskedFor { get; } = new();
+
+    /// <summary>
+    /// Gets the identifiers each query named, one entry per query. A query
+    /// naming none is recorded as an empty entry, which is the spelling for a
+    /// query about everything its ancestors hold.
+    /// </summary>
+    public Collection<IReadOnlyList<Guid>> AskedForItems { get; } = new();
+
+    /// <summary>
+    /// Gets how many items this library has handed over, across every call.
+    /// </summary>
+    /// <remarks>
+    /// Counted here rather than inferred from the answers, because what a bound
+    /// on a read is about is how many items exist on this side of the call at
+    /// once, and that is a number the thing handing them over knows.
+    /// </remarks>
+    public int Handed { get; private set; }
 
     /// <summary>
     /// Builds a library with nothing in it, and the handle onto what it was
@@ -102,25 +128,19 @@ internal class LibraryItems : DispatchProxy
 
         if (IsGetItemList(targetMethod))
         {
-            var query = (InternalItemsQuery)args![0]!;
-            var ancestors = query.AncestorIds ?? Array.Empty<Guid>();
+            var answer = Answer((InternalItemsQuery)args![0]!);
+            Handed += answer.Count;
+            return answer;
+        }
 
-            AskedFor.Add(ancestors.ToList());
-
-            // No ancestor named is not "nothing". It is the whole server, which
-            // is what the query means and why an empty participating set turned
-            // into a query would read everything an operator excluded.
-            var libraries = ancestors.Length == 0 ? ByLibrary.Keys.ToList() : ancestors.ToList();
-
-            return libraries
-                .Where(ByLibrary.ContainsKey)
-                .SelectMany(library => ByLibrary[library])
-                .ToList();
+        if (IsGetItemIds(targetMethod))
+        {
+            return Answer((InternalItemsQuery)args![0]!).Select(item => item.Id).ToList();
         }
 
         throw new NotSupportedException(string.Format(
             CultureInfo.InvariantCulture,
-            "Reading the items of a pass called ILibraryManager.{0}, and the only member it may call is GetItemList.",
+            "Reading the items of a pass called ILibraryManager.{0}, and the only members it may call are GetItemIds and GetItemList.",
             targetMethod.Name));
     }
 
@@ -128,5 +148,36 @@ internal class LibraryItems : DispatchProxy
     {
         return string.Equals(method.Name, nameof(ILibraryManager.GetItemList), StringComparison.Ordinal)
             && method.GetParameters().Length == 1;
+    }
+
+    private static bool IsGetItemIds(MethodInfo method)
+    {
+        return string.Equals(method.Name, nameof(ILibraryManager.GetItemIds), StringComparison.Ordinal)
+            && method.GetParameters().Length == 1;
+    }
+
+    private List<BaseItem> Answer(InternalItemsQuery query)
+    {
+        var ancestors = query.AncestorIds ?? Array.Empty<Guid>();
+        var wanted = query.ItemIds ?? Array.Empty<Guid>();
+
+        AskedFor.Add(ancestors.ToList());
+        AskedForItems.Add(wanted.ToList());
+
+        // No ancestor named is not "nothing". It is the whole server, which is
+        // what the query means and why an empty participating set turned into a
+        // query would read everything an operator excluded.
+        var libraries = ancestors.Length == 0 ? ByLibrary.Keys.ToList() : ancestors.ToList();
+
+        var held = libraries
+            .Where(ByLibrary.ContainsKey)
+            .SelectMany(library => ByLibrary[library]);
+
+        // No identifier named is not "nothing" either. It is everything those
+        // libraries hold, which is what makes a reader that stopped naming a
+        // page visible: it is handed the library rather than an empty answer.
+        return wanted.Length == 0
+            ? held.ToList()
+            : held.Where(item => wanted.Contains(item.Id)).ToList();
     }
 }
