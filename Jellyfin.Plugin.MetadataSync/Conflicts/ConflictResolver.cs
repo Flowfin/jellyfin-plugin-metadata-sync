@@ -37,7 +37,8 @@ namespace Jellyfin.Plugin.MetadataSync.Conflicts;
 /// <para>
 /// What this type does not do: it does not read the register, so a field that
 /// may not move never reaches it; it does not record anything, which is #48;
-/// and it does not write, which is <see cref="Fields.FieldMover"/>.
+/// and it does not write, which is <see cref="Reconciliation.LibraryPlanTarget"/>
+/// by way of the plan this answer ends up on.
 /// </para>
 /// </remarks>
 public sealed class ConflictResolver

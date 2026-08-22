@@ -8,19 +8,35 @@ using MediaBrowser.Model.Entities;
 namespace Jellyfin.Plugin.MetadataSync.Fields;
 
 /// <summary>
-/// The one place a field is written from one server's item onto another's.
+/// Writes one declared field from one server's item onto another's, refusing
+/// before the writer runs where the register or a lock says it may not.
 /// </summary>
 /// <remarks>
-/// Every write goes through <see cref="Move"/>, and <see cref="Move"/> asks the
-/// register first, so a field with no row is refused at run time rather than
-/// written quietly. The set of fields this type can write is asserted against
-/// the register by the suite, in both directions: a writer with no row fails,
-/// and a row that moves with no writer fails.
+/// This is not the write path a pass takes, and the sentence here used to say
+/// it was. A pass decides in <see cref="Reconciliation.Planner"/> and writes in
+/// <see cref="Reconciliation.LibraryPlanTarget"/>, which obeys the flag the
+/// decision left on the row without asking the register, the rules or a lock a
+/// second time, because a second answer at write time is how the two halves of
+/// one pass come to disagree about one field. Nothing outside the suite calls
+/// <see cref="Move"/>.
 ///
-/// A lock the operator set on the receiving item refuses the write here, before
-/// the writer runs. That is one half of the rule in #13 and the half this tree
-/// can hold: the peer's lock state refuses a send rather than a write, and it
-/// travels in an answer from a contract this plugin does not yet reference.
+/// So the refusals below are not what keeps a locked field out of a library.
+/// The planner is, and <c>LockedFieldPlanTests</c> holds every lock the server
+/// declares against it, each proved by taking the answer away from the planner
+/// and watching the sweep redden. What these refusals hold is this call: a
+/// field with no row, a row the register refuses to move, a locked item and a
+/// locked field are each refused before the writer runs, so a caller reaching
+/// for a writer directly cannot get past the register that way.
+///
+/// Whether a type that writes a field belongs here at all, now that a pass
+/// writes through a plan, is #13's to settle rather than this file's. What
+/// stops it drifting in the meantime is the suite holding the set of fields it
+/// can write against the register in both directions: a writer with no row
+/// fails, and a row that moves with no writer fails.
+///
+/// The peer's lock is not read on this call at all. It refuses a send rather
+/// than a write, and it travels in an answer from a contract this plugin does
+/// not yet reference.
 ///
 /// What this type does not decide: which of the two values wins, whether the
 /// item is the right item, and whether the field applies to the kind of item in
