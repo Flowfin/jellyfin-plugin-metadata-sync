@@ -83,9 +83,8 @@ It does not ask whether an identifier is a library this server holds.
 `ConfigurationValidation` refuses a configuration naming one the server does not
 have, and a second answer here would be a second place for that to be decided.
 
-It does not bound how many items come back. It asks once and is handed a list,
-which on a large library is the whole of it at once. That bound is #37, and this
-is the read #37 was waiting for rather than a read that already carries it.
+It does not decide how many items come back in one call, which is the section
+below rather than this one.
 
 It holds nothing between passes. The next pass asks again, because the library
 moved while nothing was running, which is the property a resumed pass needs from
@@ -109,6 +108,50 @@ together in the suite and nowhere else. What would run one is #40. The
 administrator surface that shows which libraries take part is #51 and has no
 controller to sit on, and when that selection last changed is not derivable from
 the configuration, which holds the set and not a moment.
+
+## How much of a library is held while it is read
+
+A first pass over a library of fifty thousand items, on a server that is also
+transcoding for two people, is where a read that asks once and is handed a list
+becomes the thing that makes a media server unusable. So the read hands items
+over a page at a time, and the page size is a constant on `ItemReader` that the
+suite reads rather than restates.
+
+Which items there are is one question, asked once. Which items those are is
+asked a page at a time afterwards, and every one of those page queries names the
+participating libraries as well as the identifiers, so the property the section
+above is about holds on each call on its own rather than only across the
+sequence.
+
+Asking for the identifiers first is a choice against the obvious alternative,
+and the reason is what the alternative loses. Paging by offset over a library
+something else is writing to skips an item whenever an earlier one is deleted
+underneath the walk: the later pages shift up by one, and the item that moved
+across the boundary is never asked for. Nothing reports it. The pass finishes,
+counts what it wrote, and an operator reads a success over a library that has an
+item in it the sync did not look at. A list of identifiers taken in one answer
+cannot be overtaken that way.
+
+What that costs is stated rather than avoided. The identifiers of everything
+that takes part are held for the length of the pass, at sixteen bytes each,
+which is one and a half megabytes at a hundred thousand items. Against that, the
+items themselves are the library's metadata and are held one page at a time.
+
+What it does not promise. An item deleted after the identifiers were read is not
+handed back by the server and is simply absent from its page; an item created
+after them is not seen until the next pass. Both are the library moving under a
+pass rather than a defect, and neither is silent in the way the offset walk is,
+because the identifier was read once and what became of it is answerable.
+Nothing is locked across a page, so an item can still change between the page it
+arrived on and the moment a write is attempted. That window is `## The window
+between planning and applying` below, and it is not narrowed by anything here.
+
+Three of the four bounds #37 names are not here. How many resolutions may be in
+flight is a property of a contract this plugin does not reference, how many
+writes per unit of time wants a measurement against a real library rather than a
+number chosen in front of an operator, and how long a pass may run has no pass
+to bound. The one that is here is a constant rather than a setting, and #37 asks
+for it in configuration with a maximum a configuration cannot exceed.
 
 ## What a plan row can carry, and what it cannot
 
