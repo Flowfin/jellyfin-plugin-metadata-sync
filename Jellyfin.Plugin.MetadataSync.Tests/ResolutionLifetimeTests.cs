@@ -39,11 +39,27 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// declared member types, so a resolution kept in a slot typed <c>object</c>, in
 /// a dictionary keyed to it, or behind a cache in another process spells none of
 /// this. It reads this plugin's assembly, so a resolution the server itself
-/// holds is outside it. It reads members and never method bodies, so a
-/// resolution carried through a closure that the compiler lifts is out of reach.
-/// And it says nothing about whether the one place that derives a resolution
-/// derives it at the right moment, which is the behavioural half of the same
-/// condition.
+/// holds is outside it. And it says nothing about whether the one place that
+/// derives a resolution derives it at the right moment, which is the behavioural
+/// half of the same condition.
+///
+/// A closure is NOT among those, and this paragraph said it was. It said the
+/// walk reads members and never method bodies, so a resolution carried through a
+/// closure the compiler lifts is out of reach. A lifted capture is not a method
+/// body: the compiler writes a class for it, with the captured value as a
+/// declared field, and the walk reads every type the assembly declares. So the
+/// route the sentence described as a way past the rule is refused, which is the
+/// direction that matters, because a reader who trusts it builds the one shape
+/// they were told nothing would stop. It is executed rather than asserted, by
+/// the leg over the lifted fixture below.
+///
+/// What that costs is over-reach, and it is worth knowing before meeting it. The
+/// class exists whether or not the closure escapes the frame, so a method that
+/// derives a resolution and then names it inside a lambda used and dropped in the
+/// same call is refused too, though nothing there outlives the pass. The repair
+/// is to not close over the resolution rather than to widen the walk, and
+/// widening it to skip what the compiler generated switches the whole route back
+/// off, which is the second breach run recorded on #33.
 /// </remarks>
 public class ResolutionLifetimeTests
 {
@@ -124,9 +140,9 @@ public class ResolutionLifetimeTests
             ResolutionsAnsweredBy(typeof(Plugin).Assembly),
             typeof(ResolutionLifetimeTests).Assembly);
 
-        Assert.Contains(nameof(HoldsOneOutright) + ".Kept", held, StringComparer.Ordinal);
-        Assert.Contains(nameof(HoldsOneInACollection) + ".Kept", held, StringComparer.Ordinal);
-        Assert.Contains(nameof(HoldsOneBehindAProperty) + ".Kept", held, StringComparer.Ordinal);
+        Assert.Contains(Inside(nameof(HoldsOneOutright)) + ".Kept", held, StringComparer.Ordinal);
+        Assert.Contains(Inside(nameof(HoldsOneInACollection)) + ".Kept", held, StringComparer.Ordinal);
+        Assert.Contains(Inside(nameof(HoldsOneBehindAProperty)) + ".Kept", held, StringComparer.Ordinal);
     }
 
     /// <summary>
@@ -142,7 +158,40 @@ public class ResolutionLifetimeTests
             ResolutionsAnsweredBy(typeof(Plugin).Assembly),
             typeof(ResolutionLifetimeTests).Assembly);
 
-        Assert.DoesNotContain(nameof(HoldsARuleTable) + ".Kept", held, StringComparer.Ordinal);
+        Assert.DoesNotContain(Inside(nameof(HoldsARuleTable)) + ".Kept", held, StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// The route the remarks above used to describe as a way past this rule. A
+    /// value a lambda closes over is not a local the walk cannot see: the
+    /// compiler writes a class for it and the capture is a declared field on
+    /// that class, so it is refused like any other slot.
+    /// </summary>
+    /// <remarks>
+    /// The class is named for the method and a number, so the assertion is about
+    /// the type that captured rather than about the name the compiler chose,
+    /// which moves when a neighbouring lambda is added.
+    /// </remarks>
+    [Fact]
+    public void TheWalkFindsAResolutionTheCompilerLiftedIntoAClosure()
+    {
+        var held = HoldersOf(
+            ResolutionsAnsweredBy(typeof(Plugin).Assembly),
+            typeof(ResolutionLifetimeTests).Assembly);
+
+        Assert.Contains(
+            held,
+            holder => holder.StartsWith(Inside(nameof(HoldsOneInALiftedClosure)) + "+", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// A type of this suite's own, named the way <see cref="Named"/> names it.
+    /// </summary>
+    /// <param name="nested">The nested type's own name.</param>
+    /// <returns>The name a holder inside it carries.</returns>
+    private static string Inside(string nested)
+    {
+        return nameof(ResolutionLifetimeTests) + "+" + nested;
     }
 
     /// <summary>
@@ -165,18 +214,37 @@ public class ResolutionLifetimeTests
 
         foreach (var type in assembly.GetTypes())
         {
+
             foreach (var field in type.GetFields(Everything).Where(field => Carries(field.FieldType, resolutions)))
             {
-                held.Add(type.Name + "." + field.Name);
+                held.Add(Named(type) + "." + field.Name);
             }
 
             foreach (var property in type.GetProperties(Everything).Where(property => Carries(property.PropertyType, resolutions)))
             {
-                held.Add(type.Name + "." + property.Name);
+                held.Add(Named(type) + "." + property.Name);
             }
         }
 
         return held.Order(StringComparer.Ordinal).ToList();
+    }
+
+    /// <summary>
+    /// A type named by the whole chain that declares it rather than by itself.
+    /// </summary>
+    /// <param name="type">The type to name.</param>
+    /// <returns>The enclosing types and this one, outermost first.</returns>
+    /// <remarks>
+    /// The class the compiler writes for a lifted capture is named for the
+    /// method it came from and a number, so a refusal naming it alone tells a
+    /// reader nothing about where to look. Named through its declaring chain it
+    /// points at the type that captured, which is where the repair is made.
+    /// </remarks>
+    private static string Named(Type type)
+    {
+        return type.DeclaringType is null
+            ? type.Name
+            : Named(type.DeclaringType) + "+" + type.Name;
     }
 
     /// <summary>
@@ -310,6 +378,25 @@ public class ResolutionLifetimeTests
     {
         /// <summary>Gets the slot the rule refuses.</summary>
         public static ReferenceResolution[] Kept { get; } = Array.Empty<ReferenceResolution>();
+    }
+
+    /// <summary>
+    /// A resolution closed over by a lambda that outlives the call, which is the
+    /// shape a deferred write or a cached predicate takes and the one the
+    /// remarks above used to call unreachable. Nothing here names a field of the
+    /// resolution type; the compiler writes one.
+    /// </summary>
+    private static class HoldsOneInALiftedClosure
+    {
+        /// <summary>Gets the delegate whose capture the rule refuses.</summary>
+        public static Func<bool> Kept { get; } = Capture();
+
+        private static Func<bool> Capture()
+        {
+            CandidateResolution? resolution = null;
+
+            return () => resolution is not null;
+        }
     }
 
     /// <summary>
