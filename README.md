@@ -23,12 +23,26 @@ There is no release. This repository has published none, which you can check:
 Nothing comes back. There is no tag either, so there is nothing to install from
 a catalogue and nothing to install by hand.
 
-What is built today is the field register, the writer that reads it, the
-provider identifier comparison rules, and the suite that holds all three up. The
-pairing consumer, the reconciliation pass, the conflict rules and the
-administrator surface are planned and not written. Read the sections below as
-what this plugin is being built to do, and read this section as the reason not to
-expect any of it to run yet.
+What is built today is a set of parts a pass would be made of. The field
+register and the conflict rules, and the planner that puts those two together
+into a plan. The write path that carries a plan to this server's library. The
+provider identifier comparison and the reference comparison, each a decision
+nothing has been wired to yet. And the suite that holds all of them up.
+
+What is not built is the pass itself. Nothing schedules one, nothing starts one,
+and nothing reads the other server, so none of the parts above is reached by any
+route an operator can take:
+
+    git grep -In "IScheduledTask" -- 'Jellyfin.Plugin.MetadataSync/'
+    # no output, exit 1
+
+The pairing consumer is not written either, and this plugin references no
+pairing package, so there is nothing for the parts above to be handed. The
+administrator surface is not written: the one page this plugin declares says it
+has no settings.
+
+Read the sections below as what this plugin is being built to do, and read this
+section as the reason not to expect any of it to run yet.
 
 ## What this plugin refuses to do
 
