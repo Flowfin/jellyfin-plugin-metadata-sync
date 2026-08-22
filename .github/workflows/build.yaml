@@ -26,3 +26,15 @@ jobs:
     permissions:
       contents: read
     uses: jellyfin/jellyfin-meta-plugins/.github/workflows/build.yaml@eb99033a7ff644881b014bc0b4169916c854a68b # jellyfin-meta-plugins master, 2026-07-29
+    with:
+      # Both SDKs, because the projects target one framework per supported
+      # server line and a restore evaluates every target whichever one is
+      # published. The called workflow defaults to 9.0.x alone, which cannot
+      # evaluate net10.0 and fails before anything is compiled.
+      dotnet-version: |
+        9.0.x
+        10.0.x
+      # One package, for the line the manifest declares. The second package with
+      # its own manifest entry is the half of #9 that is still open, and naming a
+      # second target here would produce an artefact no manifest accounts for.
+      dotnet-target: "net9.0"

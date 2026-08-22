@@ -45,7 +45,9 @@ public class ItemDeletionTests
         "MediaBrowser.Controller.Library.ILibraryManager.DeleteItem",
 
         // The same act one layer down, which skips the manager and keeps the
-        // effect. A guard naming only the manager would miss it.
+        // effect. A guard naming only the manager would miss it. The 12.0 line
+        // no longer declares it, which is why it is also in
+        // <see cref="RemovalMembersOnlyTheOlderLineDeclares"/> below.
         "MediaBrowser.Controller.Persistence.IItemRepository.DeleteItem",
 
         // Removing an image is removing a file. Image bytes never move here and
@@ -56,6 +58,29 @@ public class ItemDeletionTests
         // remove a file or a folder from an operator's disk.
         "MediaBrowser.Controller.IO.FileSystemHelper.DeleteFile",
         "MediaBrowser.Controller.IO.FileSystemHelper.DeleteEmptyFolders",
+    };
+
+    /// <summary>
+    /// The members of the set above that exist on the 10.11 line and not on the
+    /// 12.0 line.
+    /// </summary>
+    /// <remarks>
+    /// The set stays refused on both lines. A member the newer server dropped is
+    /// still a member the older one carries, and a plugin naming it is naming a
+    /// removal whichever line it is compiled for, so nothing is taken out of the
+    /// rule for a line.
+    /// <para>
+    /// What this list is for is the leg that asks whether the vocabulary is
+    /// real. That question has a different answer per line, and asking it
+    /// against one line only is how a set that has drifted goes on reading like
+    /// one that bites. It is held in both directions below, so it can neither
+    /// name something the older line never had nor keep naming something the
+    /// newer line still declares.
+    /// </para>
+    /// </remarks>
+    private static readonly string[] RemovalMembersOnlyTheOlderLineDeclares =
+    {
+        "MediaBrowser.Controller.Persistence.IItemRepository.DeleteItem",
     };
 
     /// <summary>
@@ -129,10 +154,77 @@ public class ItemDeletionTests
     [Fact]
     public void EveryNameInTheSetIsOneTheServerActuallyHas()
     {
-        var unresolved = RemovalMembers.Where(name => !ServerHasMember(name)).ToList();
+#if NET9_0
+        var expected = RemovalMembers;
+#else
+        var expected = RemovalMembers
+            .Where(name => !RemovalMembersOnlyTheOlderLineDeclares.Contains(name, StringComparer.Ordinal));
+#endif
 
-        Assert.Empty(unresolved);
+        var unresolved = expected.Where(name => !ServerHasMember(name)).ToList();
+
+        Assert.True(
+            unresolved.Count == 0,
+            "These names in the removal set do not resolve against the server this target compiles against: "
+                + string.Join(", ", unresolved));
+
         Assert.NotNull(typeof(ILibraryManager).Assembly.GetType(RemovalOptions, throwOnError: false));
+    }
+
+#if NET9_0
+    /// <summary>
+    /// The exception list held against the server, in the direction that keeps
+    /// it from growing. A member named here that the older line does not
+    /// declare either was never real, and listing it excuses the leg above from
+    /// resolving a name nothing ever had.
+    /// </summary>
+    [Fact]
+    public void EveryMemberExcusedOnTheNewerLineIsOneTheOlderLineHas()
+    {
+        var missing = RemovalMembersOnlyTheOlderLineDeclares.Where(name => !ServerHasMember(name)).ToList();
+
+        Assert.True(
+            missing.Count == 0,
+            "These names are excused on the newer line and the older line does not declare them either: "
+                + string.Join(", ", missing));
+    }
+
+#else
+    /// <summary>
+    /// The same list held in the other direction, which is the one that rots
+    /// quietly. A member the newer line brings back is excused here forever
+    /// afterwards, and the leg above cannot see it because that leg is about
+    /// the older line.
+    /// </summary>
+    [Fact]
+    public void NoMemberExcusedOnTheNewerLineIsOneTheNewerLineStillHas()
+    {
+        var returned = RemovalMembersOnlyTheOlderLineDeclares.Where(ServerHasMember).ToList();
+
+        Assert.True(
+            returned.Count == 0,
+            "These names are excused on the newer line and the newer line declares them: " + string.Join(", ", returned));
+    }
+#endif
+
+    /// <summary>
+    /// The list is not allowed to be empty on either line. An empty one
+    /// satisfies both legs above by having nothing to disagree with, and that
+    /// is the state this file was in before the second line was compiled here:
+    /// one set, asked of one server, with the difference between the lines
+    /// unread.
+    /// </summary>
+    [Fact]
+    public void TheMembersOnlyTheOlderLineDeclaresAreAllInTheRefusedSet()
+    {
+        Assert.NotEmpty(RemovalMembersOnlyTheOlderLineDeclares);
+
+        var outside = RemovalMembersOnlyTheOlderLineDeclares
+            .Where(name => !RemovalMembers.Contains(name, StringComparer.Ordinal)).ToList();
+
+        Assert.True(
+            outside.Count == 0,
+            "These names are excused on the newer line and are not in the refused set at all: " + string.Join(", ", outside));
     }
 
     /// <summary>

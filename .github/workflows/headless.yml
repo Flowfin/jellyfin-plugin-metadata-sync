@@ -14,6 +14,12 @@
 #
 # The image is pinned by digest rather than by tag, for the same reason the
 # actions are pinned by commit: a tag is a name somebody else can repoint.
+#
+# It carries the 10.0 SDK because the projects target one framework per
+# supported server line and the newer of the two is net10.0. That SDK builds
+# both, and the suite's own RollForward lets the net9.0 target run on the
+# runtime this image carries rather than reporting a missing framework as if
+# the tests had failed.
 name: Headless suite
 
 on:
@@ -38,7 +44,7 @@ jobs:
     permissions:
       contents: read
     env:
-      SDK_IMAGE: mcr.microsoft.com/dotnet/sdk@sha256:2205fd3a7cf5e422c58398a9968aa8b5041fdbb47c76574fe631082e4cbfa2b8
+      SDK_IMAGE: mcr.microsoft.com/dotnet/sdk@sha256:e1ffd2a92ae84c1291bc1b6887501f8af98e6331e7af6d4c8d37168c5e87a64c
     steps:
       - name: Checkout Repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
