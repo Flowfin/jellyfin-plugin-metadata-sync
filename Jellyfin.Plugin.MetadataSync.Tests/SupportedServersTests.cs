@@ -34,13 +34,13 @@ public class SupportedServersTests
     /// </summary>
     /// <param name="Line">The server line, as major and minor.</param>
     /// <param name="Runtime">The runtime that line needs.</param>
-    /// <param name="Built">Whether this repository builds an artefact for it.</param>
-    /// <param name="Abi">The target ABI that artefact declares.</param>
-    /// <param name="CompiledAgainst">The server package that artefact was compiled against.</param>
+    /// <param name="Built">Whether this repository packages an artefact for it.</param>
+    /// <param name="Abi">The target ABI that package declares.</param>
+    /// <param name="CompiledAgainst">The server package that package was compiled against.</param>
     private sealed record Row(string Line, string Runtime, string Built, string Abi, string CompiledAgainst);
 
     /// <summary>
-    /// The cell a row uses to say an artefact for that line is produced here.
+    /// The cell a row uses to say a package for that line is produced here.
     /// </summary>
     private const string Built = "yes";
 
@@ -77,7 +77,47 @@ public class SupportedServersTests
         var row = BuiltRow();
 
         Assert.Equal(ManifestField("framework"), row.Runtime);
-        Assert.Equal(PluginProjectProperty("TargetFramework"), row.Runtime);
+        Assert.Contains(row.Runtime, PluginProjectFile.TargetFrameworks(), StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// Every line in the table, packaged or not, against the frameworks the
+    /// project actually builds. The leg above covers the one row a package
+    /// exists for; this one covers the other, which is the row a reader turns
+    /// to when they want to know whether their line is compiled here at all.
+    /// </summary>
+    /// <remarks>
+    /// It is a set comparison in both directions on purpose. A line dropped
+    /// from the build and left in the document offers a reader a runtime
+    /// nothing is compiled for, and a target added to the build and left out of
+    /// the document hides the line that arrived.
+    /// </remarks>
+    [Fact]
+    public void EveryLineInTheTableIsARuntimeTheProjectBuilds()
+    {
+        var declared = PluginProjectFile.TargetFrameworks().Order(StringComparer.Ordinal).ToList();
+        var tabled = Table().Select(r => r.Runtime).Order(StringComparer.Ordinal).ToList();
+
+        Assert.Equal(declared, tabled);
+    }
+
+    /// <summary>
+    /// Each line's runtime against the server packages the project references
+    /// for it. A conditional reference wired to the wrong framework compiles
+    /// the newer line against the older server and every leg above stays green,
+    /// because each cell still agrees with the file it was copied from.
+    /// </summary>
+    [Fact]
+    public void EachLinesRuntimeCarriesThatLinesServerPackages()
+    {
+        foreach (var row in Table())
+        {
+            var controller = PluginProjectFile.PackageVersion("Jellyfin.Controller", row.Runtime);
+            var model = PluginProjectFile.PackageVersion("Jellyfin.Model", row.Runtime);
+
+            Assert.Equal(controller, model);
+            Assert.Equal(row.Line, LineOf(controller));
+        }
     }
 
     /// <summary>
@@ -101,9 +141,10 @@ public class SupportedServersTests
     [Fact]
     public void TheBuiltRowNamesTheServerPackageTheProjectReferences()
     {
-        var declared = PluginPackageVersion("Jellyfin.Controller");
+        var row = BuiltRow();
+        var declared = PluginProjectFile.PackageVersion("Jellyfin.Controller", row.Runtime);
 
-        Assert.Equal("Jellyfin.Controller " + declared, BuiltRow().CompiledAgainst);
+        Assert.Equal("Jellyfin.Controller " + declared, row.CompiledAgainst);
     }
 
     /// <summary>
@@ -118,16 +159,16 @@ public class SupportedServersTests
     {
         var row = BuiltRow();
         var abi = Version.Parse(row.Abi);
-        var package = Version.Parse(row.CompiledAgainst.Split(' ').Last());
 
         Assert.Equal(row.Line, abi.Major + "." + abi.Minor);
-        Assert.Equal(row.Line, package.Major + "." + package.Minor);
+        Assert.Equal(row.Line, LineOf(row.CompiledAgainst.Split(' ').Last()));
     }
 
     /// <summary>
-    /// A row for a line nothing is built for carries no ABI and no package,
-    /// because there is no artefact for either to belong to. A number left in
-    /// those cells reads as a package an operator can install.
+    /// A row for a line nothing is packaged for carries no ABI and no package,
+    /// because there is no package for either to belong to. A number left in
+    /// those cells reads as something an operator can install, and the line
+    /// being compiled here does not make one.
     /// </summary>
     [Fact]
     public void ALineWithNoArtefactCarriesNoAbiAndNoPackage()
@@ -201,6 +242,19 @@ public class SupportedServersTests
         return row!;
     }
 
+    /// <summary>
+    /// The server line a package version is on, as the table writes a line.
+    /// A prerelease is read for its line and not for its suffix, because the
+    /// 12.0 line ships as a release candidate and <c>Version</c> refuses one.
+    /// </summary>
+    private static string LineOf(string packageVersion)
+    {
+        var numbers = packageVersion.Split('-')[0].Split('.');
+
+        Assert.True(numbers.Length >= 2, "The version " + packageVersion + " names no major and minor.");
+        return numbers[0] + "." + numbers[1];
+    }
+
     private static string ManifestField(string name)
     {
         var manifest = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "build.yaml"))
@@ -213,25 +267,4 @@ public class SupportedServersTests
         return match!.Groups[1].Value;
     }
 
-    private static XDocument PluginProject()
-        => XDocument.Load(Path.Combine(AppContext.BaseDirectory, "Jellyfin.Plugin.MetadataSync.csproj"));
-
-    private static string PluginProjectProperty(string name)
-    {
-        var declared = PluginProject().Descendants(name).Select(e => e.Value.Trim()).FirstOrDefault();
-
-        Assert.False(string.IsNullOrEmpty(declared), "The plugin project declares no <" + name + ">.");
-        return declared!;
-    }
-
-    private static string PluginPackageVersion(string packageId)
-    {
-        var declared = PluginProject().Descendants("PackageReference")
-            .Where(e => string.Equals(e.Attribute("Include")?.Value, packageId, StringComparison.Ordinal))
-            .Select(e => e.Attribute("Version")?.Value)
-            .FirstOrDefault();
-
-        Assert.False(string.IsNullOrEmpty(declared), "The plugin project references no " + packageId + " with a version.");
-        return declared!;
-    }
 }

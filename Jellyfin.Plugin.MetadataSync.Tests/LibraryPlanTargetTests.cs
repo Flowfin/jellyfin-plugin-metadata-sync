@@ -62,9 +62,15 @@ public class LibraryPlanTargetTests
         get
         {
             var fields = new TheoryData<string>();
-            foreach (var field in LibraryPlanTarget.FieldsWithNoSpelling)
+
+            // Named `movable` rather than `field`. From C# 14, which is the
+            // language version the newer server line's target framework
+            // selects, `field` inside a property accessor binds to a
+            // synthesized backing field, so this loop stops compiling there
+            // while reading exactly as it did.
+            foreach (var movable in LibraryPlanTarget.FieldsWithNoSpelling)
             {
-                fields.Add(field);
+                fields.Add(movable);
             }
 
             return fields;

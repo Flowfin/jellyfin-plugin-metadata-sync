@@ -1,13 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFrameworks>net9.0;net10.0</TargetFrameworks>
     <RootNamespace>Jellyfin.Plugin.MetadataSync.Tests</RootNamespace>
     <AssemblyName>Jellyfin.Plugin.MetadataSync.Tests</AssemblyName>
     <IsPackable>false</IsPackable>
-    <!-- The suite targets the same runtime as the plugin. Rolling forward lets it
-         also run on a machine that carries only a newer major runtime, instead of
-         reporting a missing framework as if the tests had failed. -->
+    <!-- The suite targets the same runtimes as the plugin, one per server line,
+         so a guard that only holds on one of them is red rather than unread.
+         Rolling forward lets a target also run on a machine that carries only a
+         newer major runtime, instead of reporting a missing framework as if the
+         tests had failed. -->
     <RollForward>Major</RollForward>
   </PropertyGroup>
 
@@ -21,9 +23,14 @@
        because the server supplies them. A test host has no server, so the suite
        takes the same two packages at the same versions with their runtime
        assets, and nothing else from the server. -->
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
     <PackageReference Include="Jellyfin.Controller" Version="10.11.11" />
     <PackageReference Include="Jellyfin.Model" Version="10.11.11" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="Jellyfin.Controller" Version="12.0.0-rc4" />
+    <PackageReference Include="Jellyfin.Model" Version="12.0.0-rc4" />
   </ItemGroup>
 
   <ItemGroup>

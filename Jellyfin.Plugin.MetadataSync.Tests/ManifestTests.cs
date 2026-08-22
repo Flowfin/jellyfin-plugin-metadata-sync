@@ -37,13 +37,18 @@ public class ManifestTests
     /// Naming one the project does not build against produces a package the
     /// server accepts and then cannot load.
     /// </summary>
+    /// <remarks>
+    /// The project builds one framework per supported server line and the
+    /// manifest declares one, so this is membership rather than equality. What
+    /// it still refuses is the case it was written for: a manifest naming a
+    /// runtime no target produces.
+    /// </remarks>
     [Fact]
-    public void ManifestFrameworkIsTheOneThePluginProjectTargets()
+    public void ManifestFrameworkIsOneThePluginProjectTargets()
     {
         var declared = ManifestField("framework");
-        var targeted = PluginProjectProperty("TargetFramework");
 
-        Assert.Equal(targeted, declared);
+        Assert.Contains(declared, PluginProjectFile.TargetFrameworks(), StringComparer.Ordinal);
     }
 
     /// <summary>
@@ -56,9 +61,10 @@ public class ManifestTests
     [Fact]
     public void ManifestTargetAbiAgreesWithTheServerPackagesTheProjectCompilesAgainst()
     {
+        var packaged = ManifestField("framework");
         var declaredAbi = new Version(ManifestField("targetAbi"));
-        var controller = new Version(PluginPackageVersion("Jellyfin.Controller"));
-        var model = new Version(PluginPackageVersion("Jellyfin.Model"));
+        var controller = new Version(PluginProjectFile.PackageVersion("Jellyfin.Controller", packaged));
+        var model = new Version(PluginProjectFile.PackageVersion("Jellyfin.Model", packaged));
 
         Assert.Equal(controller.Major, model.Major);
         Assert.Equal(controller.Minor, model.Minor);
@@ -168,25 +174,4 @@ public class ManifestTests
         return (null, "build.yaml declares no quoted '" + name + "' field.");
     }
 
-    private static XDocument PluginProject()
-        => XDocument.Load(Path.Combine(AppContext.BaseDirectory, "Jellyfin.Plugin.MetadataSync.csproj"));
-
-    private static string PluginProjectProperty(string name)
-    {
-        var declared = PluginProject().Descendants(name).Select(e => e.Value.Trim()).FirstOrDefault();
-
-        Assert.False(string.IsNullOrEmpty(declared), "The plugin project declares no <" + name + ">.");
-        return declared!;
-    }
-
-    private static string PluginPackageVersion(string packageId)
-    {
-        var declared = PluginProject().Descendants("PackageReference")
-            .Where(e => string.Equals(e.Attribute("Include")?.Value, packageId, StringComparison.Ordinal))
-            .Select(e => e.Attribute("Version")?.Value)
-            .FirstOrDefault();
-
-        Assert.False(string.IsNullOrEmpty(declared), "The plugin project references no " + packageId + " with a version.");
-        return declared!;
-    }
 }

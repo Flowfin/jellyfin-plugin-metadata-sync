@@ -243,7 +243,12 @@ jobs:
         # run must never be able to reach the bytes that get released.
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: "9.0.x"
+          # Both SDKs. Only one line is published here, but a restore evaluates
+          # every target framework the project declares, so an SDK that cannot
+          # evaluate the newer one fails before the publishable line is reached.
+          dotnet-version: |
+            9.0.x
+            10.0.x
 
       - name: Check the project is built for the target in the manifest
         env:
@@ -389,7 +394,12 @@ jobs:
         # by another run describes that run rather than this one.
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: "9.0.x"
+          # Both SDKs. Only one line is published here, but a restore evaluates
+          # every target framework the project declares, so an SDK that cannot
+          # evaluate the newer one fails before the publishable line is reached.
+          dotnet-version: |
+            9.0.x
+            10.0.x
 
       - name: Restore against the committed lock file
         # The same locked restore the build job makes, and for one further reason. The

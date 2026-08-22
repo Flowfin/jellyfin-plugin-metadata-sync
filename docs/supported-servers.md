@@ -9,15 +9,54 @@ was compiled for.
     git show v12.0-rc4:MediaBrowser.Controller/MediaBrowser.Controller.csproj | grep TargetFramework
         <TargetFramework>net10.0</TargetFramework>
 
-| Server line | Runtime | Artefact built here | Target ABI | Compiled against |
+| Server line | Runtime | Package built here | Target ABI | Package compiled against |
 | --- | --- | --- | --- | --- |
 | 10.11 | net9.0 | yes | 10.11.0.0 | Jellyfin.Controller 10.11.11 |
 | 12.0 | net10.0 | no | none | nothing |
 
-One row says yes. This repository builds a single artefact, for the first of
+One row says yes. This repository packages a single artefact, for the first of
 the two lines, and the second line has nothing to install. That is the state of
 the build rather than a narrowing of what is supported, and issue #9 is where
-the second artefact is held.
+the second package is held.
+
+## Both lines are compiled here, and only one is packaged
+
+The column above is about a package an operator can install. It is not about
+whether the source compiles for a line, and those two are now different
+answers.
+
+The plugin project and the suite target one framework per line, and each target
+references that line's server packages:
+
+    git grep -n "TargetFrameworks" -- '*.csproj'
+
+So every commit is compiled against both server surfaces, and the whole suite
+runs twice, once per line. A member that exists on one line and not on the
+other is a build failure here rather than a plugin the other line marks as not
+supported after somebody installs it.
+
+That is worth the cost it carries, which is that the second line is a release
+candidate and the reference to it is a prerelease. The alternative was reading
+the newer server's source and believing the reading, which is how the guard
+below came to name a member the 12.0 line does not have.
+
+What it does not give an operator is anything to install. The manifest declares
+one `framework` and one `targetAbi`, so one package is produced, and the second
+package with its own manifest entry is the half of #9 that is still open.
+
+The first thing compiling the second line found was in this repository rather
+than in the server. `ItemDeletionTests` refuses the naming of the library's
+item removal members, and one of the five names it holds,
+`MediaBrowser.Controller.Persistence.IItemRepository.DeleteItem`, is not
+declared on the 12.0 line:
+
+    git grep -c "DeleteItem" v10.11.11 v12.0-rc4 -- MediaBrowser.Controller/Persistence/IItemRepository.cs
+    v10.11.11:...:1
+    v12.0-rc4:...:0
+
+The leg that asks whether a guard's vocabulary is real had only ever asked one
+server, so a name that had gone stale for one line read exactly like one that
+bites on both.
 
 ## What happens on a line this plugin was not built for
 
@@ -61,10 +100,18 @@ meets a member that moved.
 
 `SupportedServersTests` holds the table above against the manifest and the
 plugin project, so the runtime, the ABI and the server package in the row
-claiming a built artefact cannot drift away from what the build actually
+claiming a built package cannot drift away from what the build actually
 produces. It also refuses a second row claiming one, because the manifest
 declares a single `targetAbi` and a document saying otherwise would be offering
 an operator a package that is not made.
+
+Every row's runtime is held against the frameworks the project builds, in both
+directions, so a line the build stops compiling cannot stay in this table and a
+line the build starts compiling cannot be left out of it. Each row's server
+packages are held against the line the row is about, which is what refuses a
+conditional reference wired to the wrong framework: the newer line compiled
+against the older server passes every other leg here, because each cell still
+agrees with the file it was copied from.
 
 Nothing here checks the two paragraphs above. They are a reading of a Jellyfin
 checkout at the two tags, quoted with the commands that produced them, and the

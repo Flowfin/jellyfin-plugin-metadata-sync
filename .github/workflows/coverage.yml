@@ -63,7 +63,9 @@ jobs:
         # something a measurement of this commit should be able to read.
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: "9.0.x"
+          dotnet-version: |
+            9.0.x
+            10.0.x
 
       - name: Run the suite with the collector on
         run: |
