@@ -210,8 +210,14 @@ server's own set rather than this register's, so most rows here have no lock of
 their own and are claimed only by locking the item.
 
 A lock refuses a write on this server whatever the direction says and whatever
-the configuration says. The mover checks the item first and the field second,
-and it refuses before it reaches the writer.
+the configuration says. The refusal is made where a pass decides rather than
+where it writes. The planner hands both claims to the conflict rules, which
+answer the item-level lock before the field-level one, and the row that comes
+back writes nothing; the half that writes obeys that row without asking a lock
+again, because a second answer at write time is how the two halves of one pass
+come to disagree about one field. Every one of the nine names below is held
+against that decision by the suite, each proved by taking the answer away from
+the planner and watching the sweep redden.
 
 
 <!-- rendered from field-register.json: locks -->
@@ -263,10 +269,12 @@ It does not say which of two values wins. A field that moves can still be a
 field both servers changed, and the conflict rules are argued in M6.
 
 It does not check the kind. The kind group in a row says which item kinds the
-row is about, and nothing in the mover reads it today: the mover asks whether
-the field moves at all and writes it if so. Enforcing the kind belongs with the
-planner that knows what kind of item it is holding, and until that exists this
-paragraph is the whole of the disclosure.
+row is about, and reading it belongs with the half that knows what kind of item
+it is holding rather than with the declaration. That half is here now: the
+planner compares the item's kind against the row's group and comes back with a
+row that writes nothing when the two do not meet, naming the group in the
+sentence beside it. What this register does is declare the group, and it answers
+no question about any particular item.
 
 It does not decide whether the target of a reference is already here. Genres,
 studios and people name something the server holds separately, so writing one
