@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
 using System.Xml.Linq;
 using Xunit;
 
@@ -27,11 +29,29 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// obeyed.
 /// </para>
 /// <para>
-/// The bound is worth having in writing. This reads what the project declares
-/// and nothing else. A copy of somebody else's implementation pasted into this
-/// repository as source declares no reference and is invisible here, and so is a
-/// binary dropped beside the test host. What it catches is the route a second
-/// implementation actually arrives by, which is a reference somebody added.
+/// A project reference is the route a second implementation usually arrives by
+/// and it is not the only one. A copy of somebody else's implementation pasted
+/// into this repository as source declares no reference, and a binary dropped
+/// beside the test host declares nothing at all, so the second rule here reads
+/// the built output instead of the project: every assembly beside the test host
+/// is opened and asked which namespaces it declares, and one under
+/// <c>Jellyfin.Plugin.</c> that is not this plugin's is a second plugin in the
+/// directory the suite loads from.
+/// </para>
+/// <para>
+/// That rule is derived from what an assembly declares rather than from what it
+/// is called, which is what makes it worth reading the metadata. A pasted copy
+/// arrives inside an assembly this repository already builds, so no file name
+/// gives it away, and a dropped binary is named by whoever dropped it.
+/// </para>
+/// <para>
+/// The bound is worth having in writing. The namespace root is what is read, so
+/// a copy renamed into this plugin's own namespace is invisible, and so is one
+/// whose types are under a name that is not <c>Jellyfin.Plugin.</c> at all. It
+/// reads the directory as it stands when the suite runs, so a binary dropped
+/// afterwards is outside it. And neither rule here says anything about what the
+/// suite then talks to: that a test uses the double rather than a real
+/// counterparty is the half of #23 that waits on the double existing.
 /// </para>
 /// </remarks>
 public class SuiteCounterpartyTests
@@ -42,6 +62,13 @@ public class SuiteCounterpartyTests
     /// does not turn this into a rule about directory layout.
     /// </summary>
     private const string PluginUnderTest = "Jellyfin.Plugin.MetadataSync.csproj";
+
+    /// <summary>
+    /// The namespace this plugin's own types are under. Everything this
+    /// repository builds sits below it, so it is the one branch of
+    /// <c>Jellyfin.Plugin.</c> that may appear beside the test host.
+    /// </summary>
+    private const string ThisPlugin = "Jellyfin.Plugin.MetadataSync";
 
     /// <summary>
     /// A second implementation of anything the suite talks to has to be reachable
@@ -127,5 +154,144 @@ public class SuiteCounterpartyTests
             references.Select(r => $"<ProjectReference Include=\"{r}\" />"));
 
         return $"<Project Sdk=\"Microsoft.NET.Sdk\"><ItemGroup>{items}</ItemGroup></Project>";
+    }
+
+    /// <summary>
+    /// Whether a declared namespace belongs to a plugin that is not this one.
+    /// </summary>
+    /// <param name="declared">The namespace, as an assembly declares it.</param>
+    /// <returns><c>true</c> if it is another plugin's.</returns>
+    /// <remarks>
+    /// The comparison is by segment and not by prefix. A namespace beginning
+    /// with this plugin's name and carrying on without a separator is a
+    /// different plugin whose name happens to start the same way, and a prefix
+    /// test admits it while reading exactly like a working rule.
+    /// </remarks>
+    private static bool IsAnotherPluginsNamespace(string declared)
+    {
+        if (!declared.StartsWith("Jellyfin.Plugin.", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return !string.Equals(declared, ThisPlugin, StringComparison.Ordinal)
+            && !declared.StartsWith(ThisPlugin + ".", StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Every namespace declared by an assembly sitting beside the test host.
+    /// </summary>
+    /// <returns>The namespaces, in a stable order and without repeats.</returns>
+    /// <remarks>
+    /// A file carrying no metadata is native and declares no namespace, which is
+    /// the only thing passed over. A file that is not an image at all is left to
+    /// throw rather than be swallowed, because a reader that quietly drops what
+    /// it cannot parse is a reader that reports a clean directory.
+    /// </remarks>
+    private static IReadOnlyList<string> NamespacesBesideTheTestHost()
+    {
+        var declared = new SortedSet<string>(StringComparer.Ordinal);
+
+        foreach (var file in Directory.EnumerateFiles(AppContext.BaseDirectory, "*.dll"))
+        {
+            using var stream = File.OpenRead(file);
+            using var portableExecutable = new PEReader(stream);
+
+            if (!portableExecutable.HasMetadata)
+            {
+                continue;
+            }
+
+            var metadata = portableExecutable.GetMetadataReader();
+
+            foreach (var handle in metadata.TypeDefinitions)
+            {
+                var name = metadata.GetString(metadata.GetTypeDefinition(handle).Namespace);
+
+                if (name.Length != 0)
+                {
+                    declared.Add(name);
+                }
+            }
+        }
+
+        return declared.ToList();
+    }
+
+    /// <summary>
+    /// The rule the project reference cannot reach. Nothing in the directory the
+    /// suite loads from is a second plugin, however it arrived there.
+    /// </summary>
+    [Fact]
+    public void NoAssemblyBesideTheTestHostBelongsToASecondPlugin()
+    {
+        var foreign = NamespacesBesideTheTestHost()
+            .Where(IsAnotherPluginsNamespace)
+            .ToList();
+
+        Assert.Empty(foreign);
+    }
+
+    /// <summary>
+    /// The failing-open direction, and the reason this leg exists at all. A
+    /// reader that opened nothing, or that read every assembly and took no
+    /// namespace out of it, answers with an empty set, and an empty set is what
+    /// a clean directory answers with too. So the reading is asserted to have
+    /// found this plugin's own types before its silence is trusted.
+    /// </summary>
+    [Fact]
+    public void TheReadingFindsThisPluginsOwnNamespaces()
+    {
+        var declared = NamespacesBesideTheTestHost();
+
+        Assert.Contains(ThisPlugin, declared, StringComparer.Ordinal);
+        Assert.Contains(ThisPlugin + ".Fields", declared, StringComparer.Ordinal);
+        Assert.Contains(ThisPlugin + ".Tests", declared, StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// The refusing direction, over the namespaces a second implementation
+    /// actually arrives under: the pairing plugin this suite is meant to reach
+    /// only through a double, and any other plugin in the same family.
+    /// </summary>
+    /// <param name="declared">A namespace another plugin would declare.</param>
+    [Theory]
+    [InlineData("Jellyfin.Plugin.ServerPairing")]
+    [InlineData("Jellyfin.Plugin.ServerPairing.Protocol")]
+    [InlineData("Jellyfin.Plugin.ServerPairing.Matching")]
+    [InlineData("Jellyfin.Plugin.Sso")]
+    public void ASecondPluginsNamespaceIsRefused(string declared)
+    {
+        Assert.True(IsAnotherPluginsNamespace(declared));
+    }
+
+    /// <summary>
+    /// The near miss. Drop the separator and the name is a different plugin
+    /// whose own name begins the same way, which a prefix comparison admits.
+    /// </summary>
+    /// <param name="declared">A namespace that only begins like this plugin's.</param>
+    [Theory]
+    [InlineData("Jellyfin.Plugin.MetadataSyncExtra")]
+    [InlineData("Jellyfin.Plugin.MetadataSyncer.Protocol")]
+    public void ANamespaceThatOnlyBeginsLikeThisPluginIsRefused(string declared)
+    {
+        Assert.True(IsAnotherPluginsNamespace(declared));
+    }
+
+    /// <summary>
+    /// What the rule must not refuse. This plugin's own namespaces, and the
+    /// server's, which are not plugins at all and share the first segment.
+    /// </summary>
+    /// <param name="declared">A namespace that belongs in this directory.</param>
+    [Theory]
+    [InlineData("Jellyfin.Plugin.MetadataSync")]
+    [InlineData("Jellyfin.Plugin.MetadataSync.Fields")]
+    [InlineData("Jellyfin.Plugin.MetadataSync.Tests")]
+    [InlineData("Jellyfin.Data.Enums")]
+    [InlineData("Jellyfin.Extensions")]
+    [InlineData("MediaBrowser.Controller.Entities")]
+    public void ANamespaceThatBelongsHereIsNotRefused(string declared)
+    {
+        Assert.False(IsAnotherPluginsNamespace(declared));
     }
 }
