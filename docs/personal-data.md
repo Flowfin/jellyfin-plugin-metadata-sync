@@ -10,20 +10,22 @@ are easy to miss.
 
 ## What exists today
 
-Nothing in this plugin moves a field yet. The field register, the reconciliation
-pass and the payload validation are planned and not built, so every sentence
-below about what moves describes what the design permits to move rather than
-what a running plugin does:
+Nothing in this plugin moves a field yet, and the reason is narrower than it was
+when this file was written. The field register is built, and so are the writer
+that reads it, the comparison rules, the planner and the write path. What is not
+built is a pass: nothing schedules one, nothing starts one, and nothing reads a
+peer, so every sentence below about what moves describes what the design permits
+to move rather than what a running plugin does.
+
+    git grep -In "IScheduledTask" origin/master -- 'Jellyfin.Plugin.MetadataSync/'
+    # no output, exit 1
+
+This file used to paste the plugin's whole file list here, on the reasoning that
+a reader could see how little there was. The list is no longer short, a paste of
+it goes stale on every landing, and it had. What a reader wants is the command,
+which answers at the moment they run it:
 
     git ls-tree -r --name-only origin/master -- Jellyfin.Plugin.MetadataSync/
-    Jellyfin.Plugin.MetadataSync/Configuration/IPluginConfigurationProvider.cs
-    Jellyfin.Plugin.MetadataSync/Configuration/PluginConfiguration.cs
-    Jellyfin.Plugin.MetadataSync/Configuration/PluginConfigurationProvider.cs
-    Jellyfin.Plugin.MetadataSync/Configuration/configPage.html
-    Jellyfin.Plugin.MetadataSync/Jellyfin.Plugin.MetadataSync.csproj
-    Jellyfin.Plugin.MetadataSync/Plugin.cs
-    Jellyfin.Plugin.MetadataSync/PluginServiceRegistrator.cs
-    Jellyfin.Plugin.MetadataSync/packages.lock.json
 
 Writing this before the code is deliberate. A statement written after the fact
 is a description of whatever was built; written first, it is a bound the build
@@ -87,24 +89,40 @@ through the pairing plane, which is the pairing plugin's contract, and this
 plugin is meant to carry no HTTP client, no socket and no URL of its own through
 which a second destination could be named.
 
-That is a design statement and not yet a mechanism, and the difference matters
-enough to be measured rather than asserted. What is true of the tree today is
-that the plugin declares five package references, two of them the server's own
-assemblies and three of them analysers that do not ship in the artefact:
+That is a design statement, and part of it is a mechanism now. The difference
+matters enough to be measured rather than asserted, so what the plugin declares
+is pasted here and the suite re-runs the paste rather than trusting it. The
+server's own assemblies appear once per supported server line, and everything
+else in the block is an analyser that does not ship in the artefact, marked as
+one by `PrivateAssets`. No count is written beside the block, because a count
+beside a list is a second answer that goes stale on its own.
 
+<!-- run against Jellyfin.Plugin.MetadataSync.csproj: package references -->
     git show origin/master:Jellyfin.Plugin.MetadataSync/Jellyfin.Plugin.MetadataSync.csproj | grep -n 'PackageReference Include'
-    11:    <PackageReference Include="Jellyfin.Controller" Version="10.11.11" >
-    14:    <PackageReference Include="Jellyfin.Model" Version="10.11.11">
-    20:    <PackageReference Include="SerilogAnalyzer" Version="0.15.0" PrivateAssets="All" />
-    21:    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" PrivateAssets="All" />
-    22:    <PackageReference Include="SmartAnalyzers.MultithreadingAnalyzer" Version="1.1.31" PrivateAssets="All" />
+    16:    <PackageReference Include="Jellyfin.Controller" Version="10.11.11" >
+    19:    <PackageReference Include="Jellyfin.Model" Version="10.11.11">
+    25:    <PackageReference Include="Jellyfin.Controller" Version="12.0.0-rc4" >
+    28:    <PackageReference Include="Jellyfin.Model" Version="12.0.0-rc4">
+    34:    <PackageReference Include="SerilogAnalyzer" Version="0.15.0" PrivateAssets="All" />
+    35:    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.556" PrivateAssets="All" />
+    36:    <PackageReference Include="SmartAnalyzers.MultithreadingAnalyzer" Version="1.1.31" PrivateAssets="All" />
 
-None of them is a transport, and nothing refuses a sixth that is. A check that
-fails when a transport type becomes reachable from a reconciliation path is one
-of the invariants issue #79 is meant to seed, and until it lands the sentence
-above this one is held by review. The runtime the plugin already sits on offers
-an HTTP client without any package reference at all, so the list above is
-evidence about intent and not a boundary.
+`PersonalDataStatementTests` re-runs that grep against the project file and
+compares what comes back with what is pasted above, line numbers included. The
+block was wrong before that leg existed: it described the project as it stood
+when one server line was compiled, and the paste stayed while the project gained
+a second set of references under a second target.
+
+None of them is a transport, and nothing refuses one that is. What is
+refused is narrower and it is not nothing.
+`TransportReachabilityTests.NoTransportIsReachableFromAPass` walks the assembly
+from the types a pass is made of and fails if any of them can reach a client, a
+socket, a listener or a type an address is spelled as, and the invariant lint
+refuses those spellings anywhere in the plugin's sources beside it. Both are
+about a path rather than about a dependency, which is the direction that matters
+here: the runtime the plugin already sits on offers an HTTP client with no
+package reference at all, so the list above is evidence about intent and the
+walk is the boundary.
 
 The payload validation in issue #24 is the other half: it bounds what may be in
 a payload at all, which is what keeps the destination question from being the

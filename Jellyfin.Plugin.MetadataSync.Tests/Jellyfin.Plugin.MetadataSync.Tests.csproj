@@ -153,6 +153,14 @@
     <None Include="..\docs\supported-servers.md" Link="supported-servers.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The personal data statement pastes the output of one command over the
+       plugin project file, and PersonalDataStatementTests re-runs it. The
+       project file is already copied above for the manifest, so only the
+       document is added here, for the same reason the field register is. -->
+  <ItemGroup>
+    <None Include="..\docs\personal-data.md" Link="personal-data.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- The headless policy and the register of refused tests. The register
        counts itself in its own last section, and RefusedTestRegisterTests
        recomputes that count from the entries above it; the policy is copied
