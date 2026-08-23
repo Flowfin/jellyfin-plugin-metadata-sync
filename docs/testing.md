@@ -44,10 +44,20 @@ is in the test rather than in this document, so a package added to reach a
 display server, a real server or the network fails the suite instead of passing
 review.
 
-That is the whole of the enforcement. The four refusals above are otherwise
-prose: nothing reads a test body and decides whether it opened a window, and no
-check here refuses one that does. What the assertion covers is the most common
-route by which such a test arrives, which is a dependency added first.
+`RefusedTestRegisterTests` reads the register beside it and holds it to its own
+shape and its own arithmetic: an entry that declares what it needs without
+declaring what proves the property instead, and a closing sentence whose count
+of entries or of gaps disagrees with the entries above it, both fail the suite.
+The counts in that sentence are rendered from the entries and compared, so the
+sentence is derived rather than typed.
+
+Those two are the whole of the enforcement, and neither reaches what the policy
+is mostly about. The four refusals above are prose: nothing reads a test body
+and decides whether it opened a window, and no check here refuses one that does.
+What the package assertion covers is the most common route by which such a test
+arrives, which is a dependency added first. What the register assertion covers
+is the accounting and never the argument: an entry naming a substitute that does
+not prove the property reads to both checks exactly like one that does.
 
 ## The register
 
@@ -64,10 +74,12 @@ decision somebody remembers.
 the gap arguable; it is not what makes it acceptable. A change that refuses a
 test and names `nothing` in its place is sent back unless the pull request says
 why the property can go uncovered for now and what would cover it, and the
-entry itself carries that sentence. The three entries in the register that say
-`nothing` today were written under this rule and each says what a reader should
+entry itself carries that sentence. The entries in the register that say
+`nothing` were written under this rule and each says what a reader should
 assume instead, which is that the property is untested rather than tested
-somewhere else.
+somewhere else. How many of them there are is that register's own count and is
+not repeated here: a number restated in a second file is a number that goes
+stale in one of them, and this one had.
 
 Nothing refuses this. It is a rule review holds, in the same way as the rest of
 this policy except the package assertion above, and it is written here rather
