@@ -175,6 +175,16 @@
     <None Include="..\docs\refused-tests.md" Link="refused-tests.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The security policy opens by saying what is in this tree and what is not,
+       and SecurityPolicyTests holds that section against the plugin's own
+       sources, which are copied below. It is copied for the same reason the
+       field register is: reading it by walking up from the test binary would
+       answer a different question on a machine where the tests run from
+       somewhere else. -->
+  <ItemGroup>
+    <None Include="..\SECURITY.md" Link="SECURITY.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- This project file is what HeadlessPolicyTests reads, so the suite can
        refuse a dependency that would need a display, a running server or the
        network. Reading the resolved package graph instead would answer a
