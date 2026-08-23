@@ -84,7 +84,7 @@ it is in this suite.
 
 ## Nothing else is refused yet
 
-This register holds four entries and three of them are gaps. That is a fact
+This register holds four entries and two of them are gaps. That is a fact
 about how little of this plugin exists rather than a claim that the policy has
 been tested against a hard case, and the number is expected to grow as the suite
 reaches the dashboard, the pairing transport and the reconciliation pass.
