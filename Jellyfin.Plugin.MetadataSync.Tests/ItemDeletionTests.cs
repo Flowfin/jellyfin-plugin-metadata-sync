@@ -24,13 +24,25 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// beside them, because a plugin whose non-goals include copying a media file
 /// has no reason to delete one either.
 ///
-/// What it cannot catch, stated rather than left to be assumed. It refuses the
-/// naming and never the reachability: a delete invoked by reflection from a
-/// string, or through an interface this plugin declares itself and something
-/// else implements over the library, spells none of these names. It says nothing
-/// about the other half of #66, which is that a revert skips every field with no
-/// attribution record. That half needs the record from #47 and cannot be written
-/// against a tree with no store in it.
+/// It is two rules rather than one, and the difference is what #66 asks about.
+/// The naming rule says the vocabulary appears nowhere in the plugin, which is
+/// the wider statement and the weaker one: it is easy to keep true while the
+/// plugin is small, and it is not a statement about a code path. The
+/// reachability rule starts at the types a pass is made of, follows each call
+/// into the assembly, and asks what the methods it arrives at name outside it,
+/// so a removal several helpers deep in a file whose own name says nothing
+/// about removing is refused. That is the rule written in the issue's own
+/// terms.
+///
+/// What neither catches, stated rather than left to be assumed. A delete
+/// invoked by reflection from a string spells none of these names, and neither
+/// does one reached through an interface this plugin declares itself that
+/// something outside the plugin assembly implements over the library. The walk
+/// reads the assembly this run built, so it says nothing about a build made
+/// with different options. And it says nothing about the other half of #66,
+/// which is that a revert skips every field with no attribution record. That
+/// half needs the record from #47 and cannot be written against a tree with no
+/// store in it.
 /// </remarks>
 public class ItemDeletionTests
 {
@@ -91,18 +103,106 @@ public class ItemDeletionTests
     private const string RemovalOptions = "MediaBrowser.Controller.Library.DeleteOptions";
 
     /// <summary>
+    /// The types a pass is made of, and therefore where the walk below starts.
+    /// </summary>
+    private const string ReconciliationPath = "Jellyfin.Plugin.MetadataSync.Reconciliation.";
+
+    /// <summary>
     /// The rule. Nothing in the plugin assembly names a way to remove an item.
     /// </summary>
     /// <remarks>
-    /// It passes today because the plugin has no reconciliation path at all,
-    /// which is the honest reason and no proof of anything. It is installed
-    /// while the answer is trivially yes so that the first commit that changes
-    /// it is refused by the suite rather than by whoever reviews that change.
+    /// This is the wider of the two rules and the weaker one. It says the
+    /// vocabulary appears nowhere, which was once true because the plugin had
+    /// no reconciliation path at all, and there is one now. The reachability
+    /// rule below is the one written in this issue's own terms.
     /// </remarks>
     [Fact]
     public void ThePluginNamesNoWayToRemoveAnItem()
     {
         Assert.Empty(RemovalNamedBy(typeof(Plugin).Assembly));
+    }
+
+    /// <summary>
+    /// The rule #66 asks for. No code path that starts in a pass arrives at a
+    /// way to remove an item.
+    /// </summary>
+    /// <remarks>
+    /// The walk starts at every method on every type a pass is made of, follows
+    /// each call into the assembly, and collects what the methods it arrives at
+    /// name outside it. So this refuses a removal several helpers deep in a file
+    /// whose own name says nothing about removing, which is the shape a naming
+    /// scan cannot tell from a legitimate call.
+    /// </remarks>
+    [Fact]
+    public void NoWayToRemoveAnItemIsReachableFromAPass()
+    {
+        var reached = RemovalReachableFrom(typeof(Plugin).Assembly, OnTheReconciliationPath);
+
+        Assert.Empty(reached.MembersAmong(RemovalMembers));
+    }
+
+    /// <summary>
+    /// The walk starts somewhere. A predicate that matched no type would reach
+    /// nothing and pass the rule above on any tree at all, including one where
+    /// the reconciliation namespace had been renamed and the guard left behind.
+    /// </summary>
+    [Fact]
+    public void TheWalkStartsFromThePassThatIsInTheTree()
+    {
+        var reached = RemovalReachableFrom(typeof(Plugin).Assembly, OnTheReconciliationPath);
+
+        Assert.Contains("Jellyfin.Plugin.MetadataSync.Reconciliation.Planner", reached.EntryTypes, StringComparer.Ordinal);
+        Assert.Contains("Jellyfin.Plugin.MetadataSync.Reconciliation.Applier", reached.EntryTypes, StringComparer.Ordinal);
+        Assert.Contains("Jellyfin.Plugin.MetadataSync.Reconciliation.LibraryPlanTarget", reached.EntryTypes, StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// And it decodes bodies. A walk that read no instructions would report an
+    /// empty answer for the same reason a walk with no entry does.
+    /// </summary>
+    [Fact]
+    public void TheWalkReadsInstructionsRatherThanNone()
+    {
+        var reached = RemovalReachableFrom(typeof(Plugin).Assembly, OnTheReconciliationPath);
+
+        Assert.True(reached.MethodsRead > 0);
+        Assert.NotEmpty(reached.Members);
+    }
+
+    /// <summary>
+    /// The bite, executed rather than argued. A fixture entry in this suite
+    /// reaches the removal two types away and names it nowhere itself, so a walk
+    /// that stopped at the first call would report nothing and pass.
+    /// </summary>
+    [Fact]
+    public void TheWalkFollowsACallChainAcrossTypes()
+    {
+        var reached = RemovalReachableFrom(
+            typeof(ItemDeletionTests).Assembly,
+            name => string.Equals(name, typeof(ReachabilityEntryThatRemovesAnItem).FullName, StringComparison.Ordinal));
+
+        Assert.Contains(
+            "MediaBrowser.Controller.Library.ILibraryManager.DeleteItem",
+            reached.MembersAmong(RemovalMembers),
+            StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// The leg that says this is a different question from the one the naming
+    /// scan answers, and the reason the second reader was worth adding. The same
+    /// assembly names the act, and an entry that cannot reach it is not refused
+    /// for it.
+    /// </summary>
+    [Fact]
+    public void TheWalkDoesNotReportWhatTheAssemblyMerelyNames()
+    {
+        var assembly = typeof(ItemDeletionTests).Assembly;
+        var reached = RemovalReachableFrom(
+            assembly,
+            name => string.Equals(name, typeof(ReachabilityQuietEntry).FullName, StringComparison.Ordinal));
+
+        Assert.Contains("MediaBrowser.Controller.Library.ILibraryManager.DeleteItem", RemovalNamedBy(assembly), StringComparer.Ordinal);
+        Assert.Empty(reached.MembersAmong(RemovalMembers));
     }
 
     /// <summary>
@@ -266,6 +366,30 @@ public class ItemDeletionTests
             item,
             ItemUpdateType.MetadataEdit,
             System.Threading.CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Whether a type is one a pass is made of. The reconciliation namespace is
+    /// the whole answer: what a pass reaches beyond it is reached by the walk
+    /// rather than listed here, which is the difference between an entry and a
+    /// subject.
+    /// </summary>
+    /// <param name="name">The full name of a type in the plugin.</param>
+    /// <returns>Whether the walk starts there.</returns>
+    private static bool OnTheReconciliationPath(string name)
+    {
+        return name.StartsWith(ReconciliationPath, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Walks one assembly from the entries a predicate names.
+    /// </summary>
+    /// <param name="assembly">The assembly to walk.</param>
+    /// <param name="isEntryType">Which types the walk starts at.</param>
+    /// <returns>What it reached.</returns>
+    private static AssemblyReachability.Reached RemovalReachableFrom(Assembly assembly, Func<string, bool> isEntryType)
+    {
+        return AssemblyReachability.From(assembly, isEntryType);
     }
 
     /// <summary>
