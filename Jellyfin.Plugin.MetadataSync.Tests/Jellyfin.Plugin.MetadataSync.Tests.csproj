@@ -175,6 +175,14 @@
     <None Include="..\docs\refused-tests.md" Link="refused-tests.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The storage document closes by saying which tables the assembly embeds
+       and that nothing writes to a disk, and StorageStatementTests holds both
+       against the plugin project file and the plugin's own sources. It is
+       copied for the same reason the field register is. -->
+  <ItemGroup>
+    <None Include="..\docs\storage.md" Link="storage.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- The security policy opens by saying what is in this tree and what is not,
        and SecurityPolicyTests holds that section against the plugin's own
        sources, which are copied below. It is copied for the same reason the
