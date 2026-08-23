@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Entities;
 
@@ -183,5 +184,41 @@ internal static class ReachabilityTransportStep
         using var client = new System.Net.Http.HttpClient();
 
         return await client.GetStringAsync(new Uri(address)).ConfigureAwait(false);
+    }
+}
+
+/// <summary>
+/// An entry that reaches the library's item removal two types away, for the
+/// walk in <see cref="ItemDeletionTests"/>. It is the shape #66 refuses: a
+/// cleanup that arrives at a removal through helpers whose own names say
+/// nothing about removing anything.
+/// </summary>
+internal static class ReachabilityEntryThatRemovesAnItem
+{
+    public static void Start(ILibraryManager library, BaseItem item)
+    {
+        ReachabilityRemovalFirstStep.Take(library, item);
+    }
+}
+
+/// <summary>
+/// The middle of that chain, which names no removal either.
+/// </summary>
+internal static class ReachabilityRemovalFirstStep
+{
+    public static void Take(ILibraryManager library, BaseItem item)
+    {
+        ReachabilityRemovalSecondStep.Take(library, item);
+    }
+}
+
+/// <summary>
+/// The far end of the chain, and the only fixture here that names the act.
+/// </summary>
+internal static class ReachabilityRemovalSecondStep
+{
+    public static void Take(ILibraryManager library, BaseItem item)
+    {
+        library.DeleteItem(item, new DeleteOptions());
     }
 }
