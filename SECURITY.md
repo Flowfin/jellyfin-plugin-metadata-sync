@@ -6,25 +6,64 @@ to send a report.
 
 ## What exists today
 
-Nothing in this plugin moves a field yet. The reconciliation pass, the field
-register, the payload validation and the administrator surface are planned and
-not built, and every sentence below that describes a defence describes one that
-is owed rather than one that is running. Where a defence is not yet in the tree
-this file says so at the sentence, because a policy that reads as a description
-of a working system is a claim about code nobody has written.
+Nothing in this plugin moves a field yet, and that is a statement about a pass
+rather than about an empty tree. The parts a pass would be made of are here, and
+each one is named below with the file it is in, so a reader can open the thing
+rather than take this file's word for it.
+
+<!-- the parts in the tree: one per line, the file first, read by SecurityPolicyTests -->
+
+- `Jellyfin.Plugin.MetadataSync/Fields/FieldRegister.cs` declares which fields
+  may move at all, and every other decision is asked after it
+- `Jellyfin.Plugin.MetadataSync/Conflicts/ConflictResolver.cs` decides a field
+  the two servers disagree about, from a declared rule set and never from a
+  default
+- `Jellyfin.Plugin.MetadataSync/Reconciliation/Planner.cs` turns two readings of
+  one item into a plan, asking the register, the kind group and the rules in
+  that order
+- `Jellyfin.Plugin.MetadataSync/Reconciliation/Applier.cs` carries a plan to a
+  target and accounts for every item in it
+- `Jellyfin.Plugin.MetadataSync/Reconciliation/LibraryPlanTarget.cs` is the one
+  place a value is written to this server's library
+- `Jellyfin.Plugin.MetadataSync/Reconciliation/ItemReader.cs` reads the items of
+  the libraries that take part, a page at a time
+- `Jellyfin.Plugin.MetadataSync/Matching/CandidateResolver.cs` decides which
+  local item a work is, and refuses where more than one of them is
+- `Jellyfin.Plugin.MetadataSync/References/ReferenceResolver.cs` decides whether
+  an incoming person, studio or genre is one this server already holds
+- `Jellyfin.Plugin.MetadataSync/Configuration/ConfigurationValidation.cs` says
+  what about a configuration cannot be acted on
+
+<!-- end of the parts -->
+
+What is absent is anything that runs them. Nothing schedules a pass and nothing
+starts one:
+
+    git grep -In "IScheduledTask" -- 'Jellyfin.Plugin.MetadataSync/'
+    # no output, exit 1
+
+and there is no administrator surface for one to be started from, beyond the
+configuration page the server itself renders:
+
+    git grep -In "ControllerBase\|ApiController" -- 'Jellyfin.Plugin.MetadataSync/'
+    # no output, exit 1
+
+Nothing reads a peer either. The payload validation this file names below is
+owed and is not written, and no pairing package is referenced here, so none of
+the parts above is reached by any route an operator can take.
+
+This section used to paste the plugin's whole file list here, on the reasoning
+that a reader could see how little there was. The list is no longer short, a
+paste of it goes stale on every landing, and it had. What a reader wants is the
+command, which answers at the moment they run it:
 
     git ls-tree -r --name-only origin/master -- Jellyfin.Plugin.MetadataSync/
-    Jellyfin.Plugin.MetadataSync/Configuration/IPluginConfigurationProvider.cs
-    Jellyfin.Plugin.MetadataSync/Configuration/PluginConfiguration.cs
-    Jellyfin.Plugin.MetadataSync/Configuration/PluginConfigurationProvider.cs
-    Jellyfin.Plugin.MetadataSync/Configuration/configPage.html
-    Jellyfin.Plugin.MetadataSync/Jellyfin.Plugin.MetadataSync.csproj
-    Jellyfin.Plugin.MetadataSync/Plugin.cs
-    Jellyfin.Plugin.MetadataSync/PluginServiceRegistrator.cs
-    Jellyfin.Plugin.MetadataSync/packages.lock.json
 
-That is a plugin identity, a configuration object and a service registration.
-There is no sync in it.
+Every sentence below that describes a defence describes one of two things: a
+defence that is in the tree, named with the file it is in, or one that is owed,
+said to be owed at the sentence. A policy that reads as a description of a
+working system is a claim about code nobody has written, and this file is held
+to that by `SecurityPolicyTests` for the part of it a machine can read.
 
 ## Reporting
 
@@ -76,9 +115,18 @@ worth reporting even if you cannot show a full path to it:
   administrator surface, an error message and a crash dump
 - a value the operator locked is overwritten, on either server
 
-None of those has an implementation to test yet. They are listed now because
-the list is what the implementation is written against, and because a reader
-who arrives before the code should be able to see what the code is for.
+Two of the five have something to test against today and three do not. A field
+moving that the register does not permit is refused in the planner, which asks
+the register before anything else and answers a row that does not move with a
+disposition rather than a write. A locked value being overwritten is refused
+there too, on this server, for every name the server declares as lockable; the
+half of that bullet about the other server is not built, because nothing here
+reads a peer. The remaining three name a write reaching an unresolved item, a
+destination other than the paired peer, and a value appearing where it should
+not, and each of those needs a pass, a transport or a surface that does not
+exist yet. They are listed anyway, because the list is what the implementation
+is written against, and because a reader who arrives before the code should be
+able to see what the code is for.
 
 ## What is out of scope
 
@@ -108,10 +156,12 @@ what it sends fits the contract. There is no judgement about the peer's
 honesty anywhere in the design, and there will not be one. What stands between
 a hostile peer and this server's library is the field register, which bounds
 what may be written at all, and the payload validation in #24, which refuses a
-payload naming anything outside it. Both are owed and neither is built. An
-operator who pairs with a server they do not control has trusted that server,
-and this plugin's job is to make the blast radius of that trust small and
-stated rather than to second-guess it.
+payload naming anything outside it. The register is in the tree and the
+validation is owed, so what bounds a hostile payload today is which fields may
+move at all and not what a payload is allowed to name. An operator who pairs
+with a server they do not control has trusted that server, and this plugin's job
+is to make the blast radius of that trust small and stated rather than to
+second-guess it.
 
 An administrator on this server is not an adversary here. Every field this
 plugin writes is one an administrator can already change by hand through the
