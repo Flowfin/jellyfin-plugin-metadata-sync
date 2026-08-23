@@ -101,6 +101,19 @@ internal static class PluginProjectFile
         return named.Contains(targetFramework, StringComparer.Ordinal);
     }
 
+    /// <summary>
+    /// Opens the copy of the project file the test project puts beside the test
+    /// binary.
+    /// </summary>
+    /// <remarks>
+    /// Joined rather than combined. <see cref="Path.Combine(string, string)"/>
+    /// returns its second argument whole when that argument is rooted, so a
+    /// reader of it has to know the name is a constant before they know which
+    /// file is opened. The code analysis says the same thing as
+    /// <c>cs/path-combine</c>, and satisfying it by writing what was meant is
+    /// cheaper than an alert somebody has to dismiss again next time.
+    /// </remarks>
+    /// <returns>The project file.</returns>
     private static XDocument Document()
-        => XDocument.Load(Path.Combine(AppContext.BaseDirectory, "Jellyfin.Plugin.MetadataSync.csproj"));
+        => XDocument.Load(Path.Join(AppContext.BaseDirectory, "Jellyfin.Plugin.MetadataSync.csproj"));
 }
