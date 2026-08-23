@@ -47,12 +47,37 @@ structural rather than a rule anybody keeps.
 
 ## What does not exist yet
 
-The store does not. Nothing in this plugin writes anything to a disk today. The
-two files it does read, the field register and the provider identifier table,
-are embedded in the assembly and are read rather than kept, which is the
-opposite direction. So the rows above that name the store are where those things
-will go and not where they are. #16 is the issue that builds it, #47 is the
-record it holds first, and #59 is how it survives a version change.
+The store does not. Nothing in this plugin writes anything to a disk today, and
+this is the command that shows it:
+
+    git grep -In "FileStream|StreamWriter|File.Write|File.Create|File.AppendAll" -- 'Jellyfin.Plugin.MetadataSync/'
+    # no output, exit 1
+
+What it does read is a set of declared tables, embedded in the assembly and read
+rather than kept, which is the opposite direction:
+
+<!-- the tables embedded in the assembly: one per line, the file first, read by StorageStatementTests -->
+
+- `Jellyfin.Plugin.MetadataSync/Fields/field-register.json`, which fields may
+  move between two servers
+- `Jellyfin.Plugin.MetadataSync/Matching/provider-identifiers.json`, which
+  provider identifiers name one work
+- `Jellyfin.Plugin.MetadataSync/Conflicts/conflict-rules.json`, how a
+  disagreement between two servers is decided
+- `Jellyfin.Plugin.MetadataSync/References/reference-comparison.json`, when two
+  spellings of a person, a studio or a genre are one thing
+
+<!-- end of the tables -->
+
+That list is not maintained by hand. `StorageStatementTests` holds it against
+what the plugin project declares as an embedded table, in both directions, so a
+table added to the assembly with no line here is red and a line here naming a
+table the assembly does not carry is red too. This sentence used to say two, and
+the two that arrived after it was written are the third and fourth above.
+
+So the rows above that name the store are where those things will go and not
+where they are. #16 is the issue that builds it, #47 is the record it holds
+first, and #59 is how it survives a version change.
 
 A reader should take the store rows as a decision already made about where
 something goes, and not as a description of a file on a disk.

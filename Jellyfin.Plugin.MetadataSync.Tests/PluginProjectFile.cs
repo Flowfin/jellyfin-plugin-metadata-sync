@@ -102,6 +102,32 @@ internal static class PluginProjectFile
     }
 
     /// <summary>
+    /// Gets the tables the plugin embeds in its assembly, as paths relative to
+    /// the repository root with one separator whichever platform read them.
+    /// </summary>
+    /// <remarks>
+    /// A table is a declared JSON resource. The configuration page is embedded
+    /// the same way and is not one, so the reading is by extension rather than
+    /// by a list of names, which means a table added tomorrow is in the answer
+    /// without anybody remembering this method exists.
+    /// </remarks>
+    /// <returns>The paths, in the order the project declares them.</returns>
+    public static IReadOnlyList<string> EmbeddedTables()
+    {
+        var declared = Document().Descendants("EmbeddedResource")
+            .Select(e => e.Attribute("Include")?.Value)
+            .Where(include => !string.IsNullOrEmpty(include))
+            .Select(include => include!.Replace('\\', '/'))
+            .Where(include => include.EndsWith(".json", StringComparison.Ordinal))
+            .Select(include => "Jellyfin.Plugin.MetadataSync/" + include)
+            .ToList();
+
+        Assert.NotEmpty(declared);
+
+        return declared;
+    }
+
+    /// <summary>
     /// Opens the copy of the project file the test project puts beside the test
     /// binary.
     /// </summary>
