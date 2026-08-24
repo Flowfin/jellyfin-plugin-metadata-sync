@@ -193,6 +193,16 @@
     <None Include="..\SECURITY.md" Link="SECURITY.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The threat model names, per adversary, which defences are in the tree and
+       which are owed, and ThreatModelTests holds those entries against the
+       plugin's own sources, which are copied below. It is copied for the same
+       reason the security policy is: reading it by walking up from the test
+       binary would answer a different question on a machine where the tests run
+       from somewhere else. -->
+  <ItemGroup>
+    <None Include="..\docs\threat-model.md" Link="threat-model.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- This project file is what HeadlessPolicyTests reads, so the suite can
        refuse a dependency that would need a display, a running server or the
        network. Reading the resolved package graph instead would answer a
