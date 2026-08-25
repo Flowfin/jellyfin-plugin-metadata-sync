@@ -100,23 +100,39 @@ The mechanism is #64 and none of it is built.
 
 ## What of this is true of the tree today
 
-The decisions above are made. Two of the three mechanisms are not built, and a
-reader should take the rows as where something goes rather than as a description
-of a file on a disk.
+The decisions above are made. The store they are decisions about exists; the two
+mechanisms that act on it do not.
 
-There is no store. Nothing in this plugin writes anything to a disk today, which
-`docs/storage.md` states in the same terms. #16 is the issue that builds it and
-#59 is how it survives a version change, which is where the refusal of a
-newer-version store belongs.
+**This section said there was no store and that nothing in this plugin wrote
+anything to a disk.** #16 built one and both sentences stopped being true with
+it. Nothing here caught that: this document is held by no test, which
+`docs/storage.md` is, and the guard there reddened on the same change while this
+page went on describing the tree from before it.
 
-The uninstall hook is not overridden:
+    git grep -ln "FileStream\|StreamWriter\|File.Write\|File.Create\|File.AppendAll" -- 'Jellyfin.Plugin.MetadataSync/'
+    Jellyfin.Plugin.MetadataSync/Store/WrittenValues.cs
+
+What it keeps is what this plugin wrote, per pairing, per item and per field,
+bounded at ten values each with the oldest dropped first. `docs/storage.md` is
+where that is argued and what the bound costs is stated; it is not restated here.
+#59 is still how a store survives a version change, and that is where the refusal
+of a newer-version store belongs.
+
+So the uninstall row above is now a decision about a file that exists rather than
+about one that will. Deleting the store would make a reinstall start blind and
+produce a conflict on every field this plugin previously wrote; keeping it leaves
+data on disk an operator uninstalling for privacy did not ask for. Only one of
+those can be undone, which is why the store is kept.
+
+The uninstall hook is still not overridden:
 
     git grep -n "OnUninstalling" -- Jellyfin.Plugin.MetadataSync/Plugin.cs ; echo "exit=$?"
     exit=1
 
-With no store to keep or delete, an override today would be an empty method
-whose body is a decision nobody could read from it. It lands with the store, and
-#62 carries both.
+and with the store kept rather than deleted, an override would be an empty method
+either way. What the row above decides is that nothing happens to the store on an
+uninstall, and a method whose body does nothing is not how a decision like that
+is recorded. #62 carries whether one is owed at all.
 
 Nothing here is told that a pairing was revoked either, so the fourth act has no
 way to start. This plugin codes against a consumer contract that is published
@@ -126,5 +142,6 @@ nowhere yet, and the document stating what it would ask for is not in this tree:
     0
 
 Both halves of the answer above are therefore written and neither is built. The
-event that would start a revert has nothing to arrive on, and the record that
-would bound it is the same absent store.
+event that would start a revert still has nothing to arrive on. What has changed
+is the other half: the record that would bound a revert is no longer absent, so
+what #64 waits on is the event and the operation rather than the store as well.
