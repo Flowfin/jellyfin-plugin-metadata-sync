@@ -108,7 +108,7 @@ public class ApplyAccountingTests
         var plan = PlanFor(arrangement);
         var target = new DeferringTarget();
 
-        var result = await new Applier(target).ApplyAsync(plan, CancellationToken.None).ConfigureAwait(true);
+        var result = await new Applier(target, new RecordingWrittenValues()).ApplyAsync(plan, CancellationToken.None).ConfigureAwait(true);
 
         Assert.Equal(
             plan.Items.Count,
@@ -128,7 +128,7 @@ public class ApplyAccountingTests
         var plan = PlanFor(arrangement);
         var target = new DeferringTarget();
 
-        var result = await new Applier(target).ApplyAsync(plan, CancellationToken.None).ConfigureAwait(true);
+        var result = await new Applier(target, new RecordingWrittenValues()).ApplyAsync(plan, CancellationToken.None).ConfigureAwait(true);
 
         Assert.Equal(target.Kept.Count, result.ItemsWritten);
         Assert.Equal(target.Deferred.Count, result.ItemsDeferred);
@@ -150,7 +150,7 @@ public class ApplyAccountingTests
         var plan = PlanFor(arrangement);
         var target = new DeferringTarget();
 
-        var result = await new Applier(target).ApplyAsync(plan, CancellationToken.None).ConfigureAwait(true);
+        var result = await new Applier(target, new RecordingWrittenValues()).ApplyAsync(plan, CancellationToken.None).ConfigureAwait(true);
 
         Assert.Equal(target.Kept.Sum(item => item.FieldsToWrite), result.FieldsWritten);
         Assert.True(result.FieldsWritten <= plan.FieldsToWrite);
@@ -178,7 +178,7 @@ public class ApplyAccountingTests
         foreach (var arrangement in EveryArrangement())
         {
             var target = new DeferringTarget();
-            var result = await new Applier(target)
+            var result = await new Applier(target, new RecordingWrittenValues())
                 .ApplyAsync(PlanFor(string.Join(",", arrangement)), CancellationToken.None)
                 .ConfigureAwait(true);
 

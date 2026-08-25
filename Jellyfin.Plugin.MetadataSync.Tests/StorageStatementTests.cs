@@ -27,8 +27,12 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// What it reads. The list of tables is compared with the project's declared
 /// embedded resources in both directions, so a table added to the assembly with
 /// no line in the document is red and a line naming a table the assembly does
-/// not carry is red too. The document's negative claim, that nothing writes to a
-/// disk, is re-derived over the plugin's sources rather than read.
+/// not carry is red too. The list of sources that write to a disk is compared
+/// with the plugin's own sources the same way, and it replaced a negative claim
+/// that nothing wrote at all: #16 built the store, so the section names what
+/// writes instead of pasting an empty result, and both directions are held. A
+/// second file that writes with no line in the document is red, and a line
+/// naming a file that has stopped writing is red too.
 ///
 /// Existence of a named file is not checked here and does not need to be: an
 /// <c>EmbeddedResource</c> naming a file that is not in the tree fails the
@@ -54,14 +58,14 @@ public class StorageStatementTests
     private const string ListCloses = "<!-- end of the tables -->";
 
     /// <summary>
-    /// The command the section pastes an empty result under.
+    /// The comment that opens the fence around the list of sources that write.
     /// </summary>
-    private const string WriteCommand = "    git grep -In \"FileStream|StreamWriter|File.Write|File.Create|File.AppendAll\" -- 'Jellyfin.Plugin.MetadataSync/'";
+    private const string WritersOpen = "<!-- the plugin sources that write to a disk: one per line, the file first, read by StorageStatementTests -->";
 
     /// <summary>
-    /// What the section pastes under a command whose result is empty.
+    /// The comment that closes that fence.
     /// </summary>
-    private const string NoOutput = "    # no output, exit 1";
+    private const string WritersClose = "<!-- end of the sources that write -->";
 
     /// <summary>
     /// The document, copied to the output for the reason the field register is:
@@ -103,21 +107,44 @@ public class StorageStatementTests
     }
 
     /// <summary>
-    /// The claim that nothing writes to a disk is re-derived rather than read.
-    /// The section pastes the command with an empty result under it, and both
-    /// the paste and the emptiness are checked, so a write that arrives without
-    /// the paragraph being rewritten reddens here.
+    /// The sources the section names as writing to a disk are the sources that
+    /// write to one, as a set and in both directions. This stood as a claim that
+    /// nothing wrote at all, pasted as a command with an empty result under it,
+    /// and #16 built the store the claim was true because of. What replaced it
+    /// is not a weaker guard: an empty result was one comparison and a named
+    /// list is two, so a second file that writes to a disk is now caught by the
+    /// same leg that used to catch the first.
     /// </summary>
     [Fact]
-    public void TheClaimThatNothingWritesToADiskIsStillTrue()
+    public void TheSourcesTheSectionNamesAreTheSourcesThatWriteToADisk()
+    {
+        Assert.Equal(
+            Writing().OrderBy(path => path, StringComparer.Ordinal).ToList(),
+            Declared(WritersOpen, WritersClose).OrderBy(path => path, StringComparer.Ordinal).ToList());
+    }
+
+    /// <summary>
+    /// The fence around that list is still there and the list inside it is not
+    /// empty, for the same reason the tables have such a leg: a renamed comment
+    /// would leave the comparison above failing where nobody could place it.
+    /// </summary>
+    [Fact]
+    public void TheListOfSourcesThatWriteIsStillThere()
     {
         var lines = Lines(_document);
-        var head = lines.IndexOf(WriteCommand);
 
-        Assert.True(head >= 0, "The section no longer carries the command the absence of a write rests on.");
-        Assert.Equal(NoOutput, lines[head + 1]);
+        Assert.Contains(WritersOpen, lines, StringComparer.Ordinal);
+        Assert.Contains(WritersClose, lines, StringComparer.Ordinal);
+        Assert.NotEmpty(Declared(WritersOpen, WritersClose));
+    }
 
-        var writing = SourceFiles()
+    /// <summary>
+    /// The plugin sources that name a call that writes to a disk.
+    /// </summary>
+    /// <returns>The paths, relative to the repository root.</returns>
+    private static List<string> Writing()
+    {
+        return SourceFiles()
             .Where(path =>
             {
                 var text = File.ReadAllText(path);
@@ -126,8 +153,6 @@ public class StorageStatementTests
             })
             .Select(Relative)
             .ToList();
-
-        Assert.Empty(writing);
     }
 
     /// <summary>
@@ -150,11 +175,21 @@ public class StorageStatementTests
     /// The paths the fenced list declares.
     /// </summary>
     /// <returns>The paths, relative to the repository root.</returns>
-    private static List<string> Tables()
+    private static List<string> Tables() => Declared(ListOpens, ListCloses);
+
+    /// <summary>
+    /// The paths a fenced list in the document declares. One reading rather than
+    /// one per fence, so the second list cannot drift into being read by a
+    /// second copy of this that differs from it in a way nobody notices.
+    /// </summary>
+    /// <param name="opensWith">The comment that opens the fence.</param>
+    /// <param name="closesWith">The comment that closes it.</param>
+    /// <returns>The paths, relative to the repository root.</returns>
+    private static List<string> Declared(string opensWith, string closesWith)
     {
         var lines = Lines(_document);
-        var opens = lines.IndexOf(ListOpens);
-        var closes = lines.IndexOf(ListCloses);
+        var opens = lines.IndexOf(opensWith);
+        var closes = lines.IndexOf(closesWith);
 
         if (opens < 0 || closes < opens)
         {

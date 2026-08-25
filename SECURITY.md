@@ -33,6 +33,9 @@ rather than take this file's word for it.
   an incoming person, studio or genre is one this server already holds
 - `Jellyfin.Plugin.MetadataSync/Configuration/ConfigurationValidation.cs` says
   what about a configuration cannot be acted on
+- `Jellyfin.Plugin.MetadataSync/Store/WrittenValues.cs` keeps what this plugin
+  wrote, per pairing, per item and per field, which is what lets a later pass
+  tell a value this plugin put there from a value an operator typed
 
 <!-- end of the parts -->
 

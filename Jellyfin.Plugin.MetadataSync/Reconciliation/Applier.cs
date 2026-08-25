@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Jellyfin.Plugin.MetadataSync.Store;
 
 namespace Jellyfin.Plugin.MetadataSync.Reconciliation;
 
@@ -37,6 +38,14 @@ namespace Jellyfin.Plugin.MetadataSync.Reconciliation;
 /// and #41 argues it where the deferral is raised.
 /// </para>
 /// <para>
+/// It records one thing, and recording is not deciding. Every field an item's
+/// plan wrote is written into the store as the value this plugin put there,
+/// after the write returned and never before it, so the next pass can tell a
+/// value this plugin wrote from one somebody here typed. That record is #16, it
+/// is what lets the conflict rules answer causally instead of by comparing two
+/// servers' clocks, and this is the only place in a pass that produces one.
+/// </para>
+/// <para>
 /// A stopped pass stops within one item and reports nothing about how far it
 /// got. That is the whole of what this type promises: it throws where the
 /// operator asked it to stop, and turning that into a result carrying the
@@ -47,17 +56,28 @@ namespace Jellyfin.Plugin.MetadataSync.Reconciliation;
 public sealed class Applier
 {
     private readonly IPlanTarget _target;
+    private readonly IWrittenValues _written;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Applier"/> class.
     /// </summary>
     /// <param name="target">The one route to the library.</param>
-    /// <exception cref="ArgumentNullException">There is no target to write through.</exception>
-    public Applier(IPlanTarget target)
+    /// <param name="written">The store that records what this plugin wrote.</param>
+    /// <exception cref="ArgumentNullException">There is no target to write through, or nowhere to record what was written.</exception>
+    /// <remarks>
+    /// The store is required rather than optional. An applier that could be
+    /// built without one would have a path on which a pass writes a library and
+    /// records nothing, and the next pass over those items cannot tell a value
+    /// this plugin wrote from a value an operator typed. That is the failure
+    /// #16 exists against, and a default argument would be the way it arrives.
+    /// </remarks>
+    public Applier(IPlanTarget target, IWrittenValues written)
     {
         ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(written);
 
         _target = target;
+        _written = written;
     }
 
     /// <summary>
@@ -117,6 +137,20 @@ public sealed class Applier
             {
                 itemsDeferred++;
                 continue;
+            }
+
+            // Recorded after the write and never before it. A record written
+            // first would claim this plugin wrote a value the library refused,
+            // and the next pass would read that claim as evidence that a
+            // difference is this plugin's own work rather than an operator's.
+            // The write path is all or nothing per item, so an item that
+            // reached here had every one of its rows assigned.
+            foreach (var change in item.Changes)
+            {
+                if (change.Writes)
+                {
+                    _written.Record(plan.PairingId, item.LocalItemId, change.Field, change.ValueToWrite);
+                }
             }
 
             itemsWritten++;
