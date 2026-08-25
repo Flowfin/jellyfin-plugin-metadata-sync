@@ -36,6 +36,10 @@
   color: "fbca04"
   description: "Waiting on a maintainer decision before it can be built"
 
+- name: "blocked-on-maintainer"
+  color: "d4c5f9"
+  description: "Waiting on the maintainer, not on a piece of work"
+
 - name: "bug"
   color: "d73a4a"
   description: "Something isn't working"
