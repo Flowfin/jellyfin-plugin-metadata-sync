@@ -69,13 +69,21 @@ internal static class CoverageReport
     /// there. The accessor beside it is not decision code, and if it ever grows
     /// a line no test reaches it will redden this area rather than its own. That
     /// is the fail-closed direction and it is a known cost, not an oversight.
+    ///
+    /// The store sits there for the same reason. What it decides is what the
+    /// bound keeps and what a file that did not finish being written means, and
+    /// both are decisions a later pass is answered from rather than plumbing. It
+    /// touches a disk, which is the argument for putting it outside the bar, and
+    /// that argument was not taken: a test hands it a directory of its own and
+    /// nothing is substituted, so a branch nothing reaches there is a branch
+    /// nothing exercises rather than one nothing can.
     /// </summary>
     private static readonly Area[] _areas = new[]
     {
         new Area(
             "Decision code",
             heldToTheBar: true,
-            namespaces: new[] { "Conflicts", "Fields", "Matching", "References", "Configuration", "Reconciliation" },
+            namespaces: new[] { "Conflicts", "Fields", "Matching", "References", "Configuration", "Reconciliation", "Store" },
             rootTypes: Array.Empty<string>()),
         new Area(
             "Entry point and registration",

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -12,6 +13,7 @@ using Jellyfin.Plugin.MetadataSync.Fields;
 using Jellyfin.Plugin.MetadataSync.Matching;
 using Jellyfin.Plugin.MetadataSync.Reconciliation;
 using Jellyfin.Plugin.MetadataSync.References;
+using Jellyfin.Plugin.MetadataSync.Store;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Model.Entities;
 using Xunit;
@@ -332,21 +334,42 @@ public class RefusalTests
                  nameof(ApplierTests.AnApplierWithNoTargetIsRefused),
                  nameof(ApplierTests.AnEmptyPlanReachesTheLibraryNotAtAll),
                  "the route to the library is there",
-                 () => new Applier(null!)),
+                 () => new Applier(null!, new RecordingWrittenValues())),
+
+            ["Reconciliation/Applier.cs -> ArgumentNullException.ThrowIfNull(written);"] =
+                (nameof(WrittenValuesTests),
+                 nameof(WrittenValuesTests.AnApplierWithNowhereToRecordIsRefused),
+                 nameof(WrittenValuesTests.ARowThePlanDecidedAgainstIsNotRecorded),
+                 "there is somewhere to record what was written",
+                 () => new Applier(new RecordingPlanTarget(), null!)),
+
+            ["Store/WrittenValues.cs -> ArgumentException.ThrowIfNullOrWhiteSpace(directory);"] =
+                (nameof(WrittenValuesTests),
+                 nameof(WrittenValuesTests.AStoreWithNoDirectoryIsRefused),
+                 nameof(WrittenValuesTests.AFieldThatWasNeverWrittenHasNoRecord),
+                 "the directory the store keeps itself in is there",
+                 () => new WrittenValues(null!)),
+
+            ["Store/WrittenValues.cs -> ArgumentException.ThrowIfNullOrWhiteSpace(field);"] =
+                (nameof(WrittenValuesTests),
+                 nameof(WrittenValuesTests.AFieldWithNoNameIsRefusedRatherThanAnswered),
+                 nameof(WrittenValuesTests.EachPairingItemAndFieldIsItsOwnRecord),
+                 "the field has a name",
+                 () => StoreInATemporaryDirectory().Record(Guid.Empty, Guid.Empty, " ", "a value")),
 
             ["Reconciliation/Applier.cs -> ArgumentNullException.ThrowIfNull(plan);"] =
                 (nameof(ApplierTests),
                  nameof(ApplierTests.ApplyingAPlanThatIsNotThereIsRefused),
                  nameof(ApplierTests.AnEmptyPlanReachesTheLibraryNotAtAll),
                  "the plan is there, even when it writes nothing",
-                 () => _ = new Applier(new RecordingPlanTarget()).ApplyAsync(null!, CancellationToken.None)),
+                 () => _ = new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()).ApplyAsync(null!, CancellationToken.None)),
 
             ["Reconciliation/Applier.cs -> cancellationToken.ThrowIfCancellationRequested();"] =
                 (nameof(ApplierTests),
                  nameof(ApplierTests.ACancelledPassStopsWithinOneItem),
                  nameof(ApplierTests.AnItemThatWritesIsHandedToTheTargetExactlyOnce),
                  "the operator has not asked the pass to stop",
-                 () => new Applier(new RecordingPlanTarget())
+                 () => new Applier(new RecordingPlanTarget(), new RecordingWrittenValues())
                      .ApplyAsync(OneItemThatWrites(), new CancellationToken(canceled: true))
                      .GetAwaiter()
                      .GetResult()),
@@ -581,6 +604,23 @@ public class RefusalTests
     /// the source rather than trusted from the entry, so a guard that moved to
     /// another line reports the line it moved to.
     /// </remarks>
+    /// <summary>
+    /// A store over a directory of this run's own, for the arrangements above
+    /// that only need one to exist. The directory is left behind deliberately:
+    /// it is under the temporary path, nothing here writes to it, and a delete
+    /// in a register entry would be the register doing work of its own.
+    /// </summary>
+    /// <returns>The store.</returns>
+    private static WrittenValues StoreInATemporaryDirectory()
+    {
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            "metadata-sync-refusals-" + Guid.NewGuid().ToString("n", CultureInfo.InvariantCulture));
+
+        Directory.CreateDirectory(directory);
+        return new WrittenValues(directory);
+    }
+
     private static string SiteThatRefused(Exception refusal)
     {
         var root = Path.Combine(RepositoryRoot(), "Jellyfin.Plugin.MetadataSync");

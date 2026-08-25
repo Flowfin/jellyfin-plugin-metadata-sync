@@ -62,7 +62,7 @@ public class DeferralTests
         moved.Overview = "what a refresh just wrote";
         moved.DateLastSaved = new DateTime(2026, 8, 13, 1, 0, 0, DateTimeKind.Utc);
 
-        var result = await new Applier(new LibraryPlanTarget(library)).ApplyAsync(plan, CancellationToken.None);
+        var result = await new Applier(new LibraryPlanTarget(library), new RecordingWrittenValues()).ApplyAsync(plan, CancellationToken.None);
 
         Assert.Equal(1, result.ItemsDeferred);
         Assert.Equal(1, result.ItemsWritten);
@@ -90,7 +90,7 @@ public class DeferralTests
 
         calls.Items.Remove(_moved);
 
-        var result = await new Applier(new LibraryPlanTarget(library)).ApplyAsync(plan, CancellationToken.None);
+        var result = await new Applier(new LibraryPlanTarget(library), new RecordingWrittenValues()).ApplyAsync(plan, CancellationToken.None);
 
         Assert.Equal(1, result.ItemsDeferred);
         Assert.Equal(0, result.ItemsWritten);
@@ -129,7 +129,7 @@ public class DeferralTests
         plan.Items.Add(item);
 
         await Assert.ThrowsAsync<WriteRefusedException>(
-            () => new Applier(new LibraryPlanTarget(library)).ApplyAsync(plan, CancellationToken.None));
+            () => new Applier(new LibraryPlanTarget(library), new RecordingWrittenValues()).ApplyAsync(plan, CancellationToken.None));
 
         Assert.Empty(calls.Updates);
     }
@@ -147,7 +147,7 @@ public class DeferralTests
 
         var plan = Planner.Plan(RequestFor(Reading(_moved, movie)));
 
-        var result = await new Applier(new LibraryPlanTarget(library)).ApplyAsync(plan, CancellationToken.None);
+        var result = await new Applier(new LibraryPlanTarget(library), new RecordingWrittenValues()).ApplyAsync(plan, CancellationToken.None);
 
         Assert.Equal(0, result.ItemsDeferred);
         Assert.Equal(1, result.ItemsWritten);
