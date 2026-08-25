@@ -1,4 +1,5 @@
 using Jellyfin.Plugin.MetadataSync.Configuration;
+using Jellyfin.Plugin.MetadataSync.Store;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Plugins;
@@ -29,5 +30,14 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
             services => new PluginConfigurationProvider(
                 () => Plugin.Instance!.Configuration,
                 () => ServerLibraries.Held(services.GetRequiredService<ILibraryManager>())));
+
+        // One instance for the whole server. The store keeps what it holds in
+        // memory and appends to one file, so a second instance over the same
+        // directory would be a second answer to the same question with its own
+        // copy of the file's tail. It is built lazily for the same reason the
+        // library is resolved inside the delegate: nothing may touch a disk
+        // while the container is still being assembled.
+        serviceCollection.AddSingleton<IWrittenValues>(
+            _ => new WrittenValues(Plugin.Instance!.DataFolderPath));
     }
 }

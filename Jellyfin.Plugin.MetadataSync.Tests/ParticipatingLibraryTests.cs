@@ -225,7 +225,7 @@ public class ParticipatingLibraryTests
         }
 
         var target = new RecordingPlanTarget();
-        var result = await new Applier(target)
+        var result = await new Applier(target, new RecordingWrittenValues())
             .ApplyAsync(Planner.Plan(request), CancellationToken.None)
             .ConfigureAwait(true);
 

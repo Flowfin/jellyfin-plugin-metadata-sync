@@ -79,7 +79,7 @@ public class ApplierTests
     {
         var target = new RecordingPlanTarget();
 
-        var result = await new Applier(target).ApplyAsync(new Plan(), CancellationToken.None);
+        var result = await new Applier(target, new RecordingWrittenValues()).ApplyAsync(new Plan(), CancellationToken.None);
 
         Assert.Empty(target.Written);
         Assert.Equal(0, result.ItemsWritten);
@@ -100,7 +100,7 @@ public class ApplierTests
         var target = new RecordingPlanTarget();
         var plan = PlanOf(ItemThat(writes: false), ItemThat(writes: false));
 
-        var result = await new Applier(target).ApplyAsync(plan, CancellationToken.None);
+        var result = await new Applier(target, new RecordingWrittenValues()).ApplyAsync(plan, CancellationToken.None);
 
         Assert.Empty(target.Written);
         Assert.Equal(0, result.ItemsWritten);
@@ -118,7 +118,7 @@ public class ApplierTests
         var writing = ItemThat(writes: true);
         var plan = PlanOf(ItemThat(writes: false), writing);
 
-        var result = await new Applier(target).ApplyAsync(plan, CancellationToken.None);
+        var result = await new Applier(target, new RecordingWrittenValues()).ApplyAsync(plan, CancellationToken.None);
 
         Assert.Same(writing, Assert.Single(target.Written));
         Assert.Equal(1, result.ItemsWritten);
@@ -138,7 +138,7 @@ public class ApplierTests
         using var stopping = new CancellationTokenSource();
         var target = new RecordingPlanTarget();
 
-        await new Applier(target).ApplyAsync(PlanOf(ItemThat(writes: true)), stopping.Token);
+        await new Applier(target, new RecordingWrittenValues()).ApplyAsync(PlanOf(ItemThat(writes: true)), stopping.Token);
 
         Assert.Equal(stopping.Token, Assert.Single(target.Tokens));
     }
@@ -164,7 +164,7 @@ public class ApplierTests
         var plan = PlanOf(ItemThat(writes: true), ItemThat(writes: true), ItemThat(writes: true));
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => new Applier(target).ApplyAsync(plan, new CancellationToken(canceled: true)));
+            () => new Applier(target, new RecordingWrittenValues()).ApplyAsync(plan, new CancellationToken(canceled: true)));
 
         Assert.True(target.Written.Count <= 1, "A stopped pass handed over " + target.Written.Count + " items.");
     }
@@ -177,7 +177,7 @@ public class ApplierTests
     [Fact]
     public void AnApplierWithNoTargetIsRefused()
     {
-        Assert.Throws<ArgumentNullException>(() => new Applier(null!));
+        Assert.Throws<ArgumentNullException>(() => new Applier(null!, new RecordingWrittenValues()));
     }
 
     /// <summary>
@@ -189,7 +189,7 @@ public class ApplierTests
     public async Task ApplyingAPlanThatIsNotThereIsRefused()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => new Applier(new RecordingPlanTarget()).ApplyAsync(null!, CancellationToken.None));
+            () => new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()).ApplyAsync(null!, CancellationToken.None));
     }
 
     /// <summary>

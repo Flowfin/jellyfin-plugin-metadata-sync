@@ -45,16 +45,59 @@ address is a string like any other and no reading of the type says which. What
 keeps the address out is that this plugin never learns one, which is #20 and is
 structural rather than a rule anybody keeps.
 
-## What does not exist yet
+## What writes to a disk
 
-The store does not. Nothing in this plugin writes anything to a disk today, and
-this is the command that shows it:
+The store exists. This section said it did not, under a command with an empty
+result pasted below it, and #16 built it. The same command returns something
+now, and what it returns is named rather than counted:
 
-    git grep -In "FileStream|StreamWriter|File.Write|File.Create|File.AppendAll" -- 'Jellyfin.Plugin.MetadataSync/'
-    # no output, exit 1
+    git grep -ln "FileStream\|StreamWriter\|File.Write\|File.Create\|File.AppendAll" -- 'Jellyfin.Plugin.MetadataSync/'
 
-What it does read is a set of declared tables, embedded in the assembly and read
-rather than kept, which is the opposite direction:
+<!-- the plugin sources that write to a disk: one per line, the file first, read by StorageStatementTests -->
+
+- `Jellyfin.Plugin.MetadataSync/Store/WrittenValues.cs`, the plugin's own store
+  of what this plugin wrote
+
+<!-- end of the sources that write -->
+
+That list is not maintained by hand. `StorageStatementTests` holds it against
+the plugin's own sources, in both directions, so a second file that writes to a
+disk arriving with no line here is red and a line here naming a file that has
+stopped writing is red too. A reader who wants to know what touches a disk in
+this plugin reads that list and nothing else.
+
+## What the store keeps, and what its bound costs
+
+One file under the plugin's own data folder, `written-values.jsonl`, carrying a
+line per write rather than one document rewritten. A first pass over a modest
+library writes tens of thousands of fields, and rewriting the whole file per
+field would cost the square of that. The cost of the shape it takes instead is
+stated rather than hidden: the file carries superseded lines until it is
+rewritten, and it rewrites itself once it is carrying enough of them to be worth
+the whole-file cost.
+
+**The bound is ten values per item and per field, oldest dropped first.** It was
+decided on #16 on 2026-08-24. It is a count rather than an age because nothing
+here compares two servers' clocks and an age would need one, and it is stated as
+a number because a number is what an operator can be told. Ten is more than the
+conflict rules need, which decide from the newest value alone; the rest is for
+#64, which cannot revert a field it holds no earlier value for.
+
+What the bound costs is that attribution is not permanent. A field this plugin
+wrote eleven times holds no record of the first, so an act asking what was there
+before that write cannot be answered for it. #66 is where a surface reporting on
+attribution has to say so rather than report a clean number, and a store that
+declared no bound would have made the same loss invisible instead of stating it.
+
+A line that never finished, which is what a pass killed part way through a write
+leaves behind, is dropped on the next read and counted rather than thrown. A
+store that refused to open after a power cut would have turned one lost write
+into every lost write.
+
+## What it reads rather than keeps
+
+Beside the store the plugin reads a set of declared tables, embedded in the
+assembly rather than kept anywhere, which is the opposite direction:
 
 <!-- the tables embedded in the assembly: one per line, the file first, read by StorageStatementTests -->
 
@@ -75,9 +118,14 @@ table added to the assembly with no line here is red and a line here naming a
 table the assembly does not carry is red too. This sentence used to say two, and
 the two that arrived after it was written are the third and fourth above.
 
-So the rows above that name the store are where those things will go and not
-where they are. #16 is the issue that builds it, #47 is the record it holds
-first, and #59 is how it survives a version change.
+Of the three rows in the table that name the store, one is a file on a disk now
+and two are still decisions about where something will go. What this plugin
+wrote, per item and per field, is the first: #16 built it, and #47 is the
+provenance the same record carries rather than a second copy of it. The conflict
+log and the unmatched register are the other two, and #48 and #29 are where they
+are built. #59 is how any of it survives a version change, and it is not built
+either.
 
-A reader should take the store rows as a decision already made about where
-something goes, and not as a description of a file on a disk.
+So a reader should take the conflict log row and the unmatched register row as a
+decision already made about where something goes, and the row above them as a
+description of a file that is there.

@@ -66,6 +66,11 @@ public class InvariantLintTests
             DeclaredBy: "#28",
             Kind: Refusal.AnyOccurrence,
             TokenPatterns: new[] { "System.IO", "Path.", "File.", "FileInfo", "DirectoryInfo", "Directory." },
+            AllowedIn: new[]
+            {
+                ("WrittenValues.cs",
+                 "Is the plugin's own store, which keeps what this plugin wrote in a file beside the plugin's data, so it names the file-system types on purpose. The invariant is about deciding that two items are the same, and nothing here takes part in that: the item arrives as an identifier the resolver already produced, it is written down and read back, and no property of a file, a path or a directory reaches a comparison. What the allowance costs is stated rather than hidden - a file-system read added to this file for some other reason is not refused by this rule, and what stands against that is the review and the walk in ResolutionPathTests, which starts at the resolvers and would reach a store only if a resolution called into one."),
+            },
             Regression: "var identity = Path.GetFileNameWithoutExtension(local.Path);",
             RegressionIsTheMistakeThat: "reaches for the filename when the provider identifiers came back empty, which is what every prior attempt in this space does.",
             NearMiss: "var identity = PathPolicyNeverReadsTheFileSystem(local);",
