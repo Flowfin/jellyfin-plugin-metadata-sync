@@ -343,7 +343,7 @@ public class RefusalTests
                  "there is somewhere to record what was written",
                  () => new Applier(new RecordingPlanTarget(), null!)),
 
-            ["Store/WrittenValues.cs -> ArgumentNullException.ThrowIfNull(directory);"] =
+            ["Store/WrittenValues.cs -> ArgumentException.ThrowIfNullOrWhiteSpace(directory);"] =
                 (nameof(WrittenValuesTests),
                  nameof(WrittenValuesTests.AStoreWithNoDirectoryIsRefused),
                  nameof(WrittenValuesTests.AFieldThatWasNeverWrittenHasNoRecord),

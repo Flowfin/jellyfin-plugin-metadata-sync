@@ -78,8 +78,9 @@ public sealed class WrittenValues : IWrittenValues
     /// <remarks>
     /// A store that compacted on every append would pay the whole-file cost the
     /// append exists to avoid; one that never compacted would grow without end
-    /// on a library that syncs the same fields every pass. The floor keeps a
-    /// small store from rewriting itself for a handful of lines.
+    /// on a library that syncs the same fields every pass. What the file is
+    /// carrying beyond what its values need is the superseded lines, and this is
+    /// how many of them are tolerated before the file is rewritten.
     /// </remarks>
     private const int CompactionFloor = 512;
 
@@ -89,7 +90,24 @@ public sealed class WrittenValues : IWrittenValues
     };
 
     private readonly object _gate = new();
-    private readonly Dictionary<Key, List<string?>> _held = new();
+
+    /// <summary>
+    /// What is held, filed under the pairing, the item and the field.
+    /// </summary>
+    /// <remarks>
+    /// The pairing is a component of the key because a revocation ends a pairing
+    /// permanently and the identifier that replaces it is a different one, so
+    /// rows of an ended pairing cannot be read as rows of the pairing that
+    /// followed it, and one pairing's rows can be found by the key alone.
+    /// <para>
+    /// It is a tuple rather than a type of its own. A record struct would carry
+    /// an equality, a printer and a deconstructor that nothing here calls, and
+    /// the decision-code bar reads a line nothing calls as a line nothing
+    /// exercises, which is the reading it should make.
+    /// </para>
+    /// </remarks>
+    private readonly Dictionary<(Guid Pairing, Guid Item, string Field), List<string?>> _held = new();
+    private readonly string _directory;
     private readonly string _path;
     private int _lines;
 
@@ -99,6 +117,7 @@ public sealed class WrittenValues : IWrittenValues
     /// </summary>
     /// <param name="directory">The directory this plugin keeps its own data in.</param>
     /// <exception cref="ArgumentNullException">There is no directory to keep the store in.</exception>
+    /// <exception cref="ArgumentException">The directory is named by nothing but space.</exception>
     /// <remarks>
     /// Reading in the constructor is what makes a restart invisible to a caller:
     /// an instance built over a directory an earlier instance wrote answers the
@@ -108,8 +127,9 @@ public sealed class WrittenValues : IWrittenValues
     /// </remarks>
     public WrittenValues(string directory)
     {
-        ArgumentNullException.ThrowIfNull(directory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(directory);
 
+        _directory = directory;
         _path = Path.Combine(directory, FileName);
         Load();
     }
@@ -138,7 +158,7 @@ public sealed class WrittenValues : IWrittenValues
     {
         lock (_gate)
         {
-            var key = new Key(pairingId, itemId, Named(field));
+            var key = (pairingId, itemId, Named(field));
 
             if (!_held.TryGetValue(key, out var values))
             {
@@ -171,7 +191,7 @@ public sealed class WrittenValues : IWrittenValues
     {
         lock (_gate)
         {
-            return _held.TryGetValue(new Key(pairingId, itemId, Named(field)), out var values) && values.Count > 0
+            return _held.TryGetValue((pairingId, itemId, Named(field)), out var values)
                 ? values[^1]
                 : null;
         }
@@ -182,7 +202,7 @@ public sealed class WrittenValues : IWrittenValues
     {
         lock (_gate)
         {
-            return _held.TryGetValue(new Key(pairingId, itemId, Named(field)), out var values)
+            return _held.TryGetValue((pairingId, itemId, Named(field)), out var values)
                 ? new ReadOnlyCollection<string?>(values.ToList())
                 : Array.Empty<string?>();
         }
@@ -251,7 +271,7 @@ public sealed class WrittenValues : IWrittenValues
                 continue;
             }
 
-            var key = new Key(row.Pairing, row.Item, row.Field);
+            var key = (row.Pairing, row.Item, row.Field);
 
             if (!_held.TryGetValue(key, out var values))
             {
@@ -274,19 +294,14 @@ public sealed class WrittenValues : IWrittenValues
     /// </summary>
     private void Append(Row row)
     {
-        var directory = Path.GetDirectoryName(_path);
-
-        if (!string.IsNullOrEmpty(directory))
-        {
-            Directory.CreateDirectory(directory);
-        }
+        Directory.CreateDirectory(_directory);
 
         File.AppendAllText(_path, JsonSerializer.Serialize(row, _json) + "\n", new UTF8Encoding(false));
         _lines++;
 
         var retained = _held.Values.Sum(values => values.Count);
 
-        if (_lines >= CompactionFloor && _lines >= retained * 2)
+        if (_lines - retained >= CompactionFloor)
         {
             Compact(retained);
         }
@@ -331,14 +346,6 @@ public sealed class WrittenValues : IWrittenValues
         _held.Values.Sum(values => values.Count),
         _held.Count,
         Bound);
-
-    /// <summary>
-    /// What a value is filed under. The pairing is a component because a
-    /// revocation ends a pairing permanently and the identifier that replaces
-    /// it is a different one, so rows of an ended pairing cannot be read as
-    /// rows of the pairing that followed it.
-    /// </summary>
-    private readonly record struct Key(Guid Pairing, Guid Item, string Field);
 
     /// <summary>
     /// What one line of the file carries. It is a type of its own so the

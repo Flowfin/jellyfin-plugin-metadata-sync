@@ -363,6 +363,63 @@ public class WrittenValuesTests
     }
 
     /// <summary>
+    /// A store told to keep itself nowhere is refused with the one told to keep
+    /// itself in nothing. Accepting an empty name would put the file in whatever
+    /// directory the server happened to be running from, which is a place
+    /// nobody chose and nobody would think to look.
+    /// </summary>
+    [Fact]
+    public void AStoreWithAnEmptyDirectoryIsRefusedToo()
+    {
+        Assert.Throws<ArgumentException>(() => new WrittenValues(" "));
+    }
+
+    /// <summary>
+    /// A blank line in the file is not a lost write. It is what a file ends with
+    /// after a write that reached the disk, and reading it as an unreadable
+    /// record would report a loss that did not happen.
+    /// </summary>
+    [Fact]
+    public void ABlankLineIsNotCountedAsALostWrite()
+    {
+        using var directory = new TemporaryDirectory();
+
+        new WrittenValues(directory.Path).Record(_pairing, _item, Field, "the write that finished");
+
+        var file = Path.Combine(directory.Path, WrittenValues.FileName);
+        File.AppendAllText(file, "\n\n", new UTF8Encoding(false));
+
+        var reopened = new WrittenValues(directory.Path);
+
+        Assert.Equal(0, reopened.Unreadable);
+        Assert.Equal("the write that finished", reopened.LastWritten(_pairing, _item, Field));
+    }
+
+    /// <summary>
+    /// A line that is readable JSON and names no field is counted as unreadable
+    /// rather than filed under an empty name. It is the same failure the field
+    /// refusal covers arriving from the disk instead of from a caller, and a
+    /// store that filed it would answer a later question about a real field with
+    /// it.
+    /// </summary>
+    [Fact]
+    public void ALineNamingNoFieldIsCountedRatherThanFiled()
+    {
+        using var directory = new TemporaryDirectory();
+
+        new WrittenValues(directory.Path).Record(_pairing, _item, Field, "the write that finished");
+
+        var file = Path.Combine(directory.Path, WrittenValues.FileName);
+        File.AppendAllText(file, "{\"Item\":\"aaaaaaaa-0000-0000-0000-000000000001\",\"Value\":\"orphaned\"}\n", new UTF8Encoding(false));
+        File.AppendAllText(file, "null\n", new UTF8Encoding(false));
+
+        var reopened = new WrittenValues(directory.Path);
+
+        Assert.Equal(2, reopened.Unreadable);
+        Assert.Equal("the write that finished", reopened.LastWritten(_pairing, _item, Field));
+    }
+
+    /// <summary>
     /// A field with no name is refused on all three members rather than answered.
     /// A store that filed a value under an empty name would answer a later
     /// question about a real field with it.
