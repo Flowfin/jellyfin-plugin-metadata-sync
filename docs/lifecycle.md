@@ -105,12 +105,31 @@ mechanisms that act on it do not.
 
 **This section said there was no store and that nothing in this plugin wrote
 anything to a disk.** #16 built one and both sentences stopped being true with
-it. Nothing here caught that: this document is held by no test, which
-`docs/storage.md` is, and the guard there reddened on the same change while this
-page went on describing the tree from before it.
+it. Nothing here caught that, because this page was held by no test while
+`docs/storage.md` was, so the guard there reddened on the change that falsified
+both and this page went on describing the tree from before it. That is repaired
+below rather than only regretted: every claim this section makes about the tree
+is now a list the suite reads back out of this file and compares with the tree,
+so the next one to go stale reds instead of waiting to be noticed.
+
+`LifecycleStatementTests` is what does the reading, and its own bound is written
+at it rather than here.
+
+What writes to a disk:
 
     git grep -ln "FileStream\|StreamWriter\|File.Write\|File.Create\|File.AppendAll" -- 'Jellyfin.Plugin.MetadataSync/'
-    Jellyfin.Plugin.MetadataSync/Store/WrittenValues.cs
+
+<!-- the plugin sources that write to a disk: one per line, the file first, read by LifecycleStatementTests -->
+
+- `Jellyfin.Plugin.MetadataSync/Store/WrittenValues.cs`, the plugin's own store
+  of what this plugin wrote
+
+<!-- end of the sources that write -->
+
+`docs/storage.md` carries the same list under its own guard. Two derived lists
+are not one list restated: neither is typed by hand, so a second file that writes
+to a disk reds both pages at once rather than reddening the one somebody
+remembered.
 
 What it keeps is what this plugin wrote, per pairing, per item and per field,
 bounded at ten values each with the oldest dropped first. `docs/storage.md` is
@@ -134,12 +153,36 @@ either way. What the row above decides is that nothing happens to the store on a
 uninstall, and a method whose body does nothing is not how a decision like that
 is recorded. #62 carries whether one is owed at all.
 
+That sentence is the one most likely to go stale, because #62's own third
+condition is the thing that would falsify it. What the suite holds is not the
+absence of one name but the whole set this plugin takes over from the server's
+plugin base, so the hook arriving reds this page, and so does any other member
+this page has not been told about:
+
+<!-- the members Jellyfin.Plugin.MetadataSync/Plugin.cs overrides: one per line, the member first, read by LifecycleStatementTests -->
+
+- `Name`, the name the server shows for this plugin
+- `Id`, the identifier the server files it under
+
+<!-- end of the members overridden -->
+
 Nothing here is told that a pairing was revoked either, so the fourth act has no
 way to start. This plugin codes against a consumer contract that is published
 nowhere yet, and the document stating what it would ask for is not in this tree:
 
     git ls-tree -r --name-only origin/master -- docs/ | grep -c 'consumer.md'
     0
+
+That is a negative and it stays one. What the suite holds is the absence itself,
+so the day the document arrives this page reds rather than going on saying it is
+missing:
+
+<!-- the paths this page says the tree does not carry: one per line, the path first, read by LifecycleStatementTests -->
+
+- `docs/consumer.md`, the document stating member by member what this plugin
+  would ask the pairing plugin for, which #20 writes
+
+<!-- end of the paths the tree does not carry -->
 
 Both halves of the answer above are therefore written and neither is built. The
 event that would start a revert still has nothing to arrive on. What has changed
