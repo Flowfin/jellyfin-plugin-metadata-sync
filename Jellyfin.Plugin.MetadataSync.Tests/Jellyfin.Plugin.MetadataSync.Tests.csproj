@@ -183,6 +183,30 @@
     <None Include="..\docs\storage.md" Link="storage.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The lifecycle document closes by saying what of its three acts is true of
+       the tree today, and LifecycleStatementTests holds those claims against
+       the plugin's own sources and against the documents copied here. It was
+       copied to nothing while it carried the same claim about the store that
+       the storage document does, so the change that reddened the one left the
+       other describing a tree that had moved. It is copied for the same reason
+       the field register is. -->
+  <ItemGroup>
+    <None Include="..\docs\lifecycle.md" Link="lifecycle.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- The lifecycle document also names paths it says this tree does not carry,
+       and LifecycleStatementTests asserts each of them is absent. Resolving one
+       against the documents copied by name above would answer for a file
+       nobody had added a copy line for, so that leg would pass on the day the
+       document arrived, which is the one day it exists to fail on. The whole
+       directory is copied instead, by a pattern rather than by name, so a
+       document added to it is here without anybody editing this file. -->
+  <ItemGroup>
+    <None Include="..\docs\**\*.md"
+          Link="documents\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- The security policy opens by saying what is in this tree and what is not,
        and SecurityPolicyTests holds that section against the plugin's own
        sources, which are copied below. It is copied for the same reason the
