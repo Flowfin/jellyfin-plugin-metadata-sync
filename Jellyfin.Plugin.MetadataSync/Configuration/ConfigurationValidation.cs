@@ -49,12 +49,51 @@ public static class ConfigurationValidation
 
         var problems = new List<ConfigurationProblem>();
 
+        Format(configuration, problems);
         Direction(configuration, problems);
         ParticipatingLibraries(configuration, librariesTheServerHolds, problems);
         ExcludedFields(configuration, problems);
         PairingId(configuration, problems);
 
         return problems;
+    }
+
+    /// <summary>
+    /// The range is the formats this build reads, plus the absent stamp every
+    /// configuration in existence carries today.
+    /// </summary>
+    /// <remarks>
+    /// This is checked first so a file this build cannot place is the first
+    /// thing said about it. Every other rule below reads a property under the
+    /// meaning the current shape gives it, so a list that led with those would
+    /// be a list of judgements made against the wrong shape.
+    /// <para>
+    /// It is a problem rather than a throw, which is the same answer the rest of
+    /// this type gives and matters more here than elsewhere: a configuration
+    /// written by a newer build is exactly the case an operator has to be told
+    /// about on a page, and a refusal that threw would disable the page's own
+    /// reading along with everything else.
+    /// </para>
+    /// </remarks>
+    private static void Format(PluginConfiguration configuration, List<ConfigurationProblem> problems)
+    {
+        if (ConfigurationFormat.Declared(configuration.Format) is not null)
+        {
+            return;
+        }
+
+        problems.Add(new ConfigurationProblem(
+            nameof(PluginConfiguration.Format),
+            configuration.Format > ConfigurationFormat.Current
+                ? string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Format says '{0}', which is a configuration shape newer than this build reads ('{1}').",
+                    configuration.Format,
+                    ConfigurationFormat.Current)
+                : string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Format says '{0}', which is no configuration shape this build can read.",
+                    configuration.Format)));
     }
 
     /// <summary>

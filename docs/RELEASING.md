@@ -154,9 +154,12 @@ into an old one. Where a released version turns out to describe the wrong thing,
 the repair is the next number plus a step from the one that was wrong, the same
 answer this document gives for a release that went out with the wrong contents.
 
-The store carries a format stamp now and the configuration carries no version,
-and nothing has been released, so this binds the first release rather than
-describing the current tree. Nothing refuses a
+Both artefacts carry a stamp now, and this sentence said the configuration
+carried none. What neither stamp is yet is a released version: nothing has been
+released, so the numbers say which shape a file is in rather than which release
+wrote it, and this section binds the first release rather than describing the
+current tree. The two coincide until that release and the reading has to be
+re-made then. Nothing refuses a
 violation of it either, here or anywhere else: what would refuse one is the step
 chain itself, which does not exist. #59 is where that mechanism is built, and
 `docs/storage.md` is where the two artefacts and the split between them are

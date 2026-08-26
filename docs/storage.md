@@ -26,6 +26,18 @@ not a preference. It is what makes the sentence in the operator guide, that a
 configuration file is safe to attach to a bug report, a true sentence rather
 than a hope.
 
+One member of the configuration is not a choice, and it is named here rather
+than left for a reader to find in the type. `Format` says which shape the file
+is written in. It is a stamp the same way `store-format.json` is one for the
+store, it is read and never chosen, and no page offers it. What the rule above
+is against is data - a value copied out of a library, a peer address, a
+credential - and a number naming this file's own shape is none of those: it says
+nothing about anybody and it is safe on the same route as everything beside it.
+The two stamps are separate numbers on purpose, because a configuration restored
+from a backup beside a store that was not is a state an operator reaches without
+doing anything unusual, and one number covering both would say the wrong thing
+about whichever of the two moved.
+
 ## What holds it up
 
 `ConfigurationShapeTests` in the suite reads the plugin's configuration type and
@@ -155,8 +167,12 @@ store into a write.
 from one to another and nothing has been migrated. What is built is the half
 that has to exist before the first shape change rather than after it: the
 artefact says which shape it is, and a build that meets a shape it does not know
-stops. The chain of steps, and the configuration's half of the same question,
-are where #59 says they are and neither is built.
+stops. This paragraph said the configuration's half of the same question was not
+built, and it is: the configuration carries its own stamp, read by the same
+validation that refuses every other unusable configuration, so a file written by
+a newer build disables every action instead of being acted on under rules it was
+not written under. The chain of steps is where #59 says it is and is not built,
+and it is the half neither stamp stands in for.
 
 ## What an operator can ask for, and what a removal is not
 
@@ -242,7 +258,8 @@ what each write replaced, which is the provenance the same record holds rather
 than a second copy of it. The conflict log and the unmatched register are the
 other two, and #48 and #29 are where they are built. #59 is how any of it
 survives a version change; the stamp above is the half of that which the store
-now carries, and the chain of steps is not built.
+now carries, the configuration carries a stamp of its own for the same reason,
+and the chain of steps is not built.
 
 So a reader should take the conflict log row and the unmatched register row as a
 decision already made about where something goes, and the row above them as a

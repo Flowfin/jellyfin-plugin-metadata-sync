@@ -86,6 +86,7 @@ public class ConfigurationRoundTripTests
     [InlineData(nameof(PluginConfiguration.Direction))]
     [InlineData(nameof(PluginConfiguration.ParticipatingLibraries))]
     [InlineData(nameof(PluginConfiguration.ExcludedFields))]
+    [InlineData(nameof(PluginConfiguration.Format))]
     public void TheComparisonNoticesAValueThatDidNotSurvive(string property)
     {
         var before = Everything();
@@ -104,6 +105,9 @@ public class ConfigurationRoundTripTests
                 break;
             case nameof(PluginConfiguration.ExcludedFields):
                 damaged.ExcludedFields.Clear();
+                break;
+            case nameof(PluginConfiguration.Format):
+                damaged.Format = ConfigurationFormat.Absent;
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(property), property, "No damage is declared for this property.");
@@ -160,6 +164,11 @@ public class ConfigurationRoundTripTests
         {
             PairingId = Guid.Parse("5c37c448-9d94-4fdd-a621-4238b859165b"),
             Direction = SyncDirection.TwoWay,
+
+            // Not the default, which is the absent stamp. A round trip over the
+            // value the serialiser would have left anyway proves nothing about
+            // whether this property survives the journey.
+            Format = ConfigurationFormat.Current,
         };
 
         configuration.ParticipatingLibraries.Add(Guid.Parse("11111111-1111-1111-1111-111111111111"));
