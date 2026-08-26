@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using Jellyfin.Plugin.MetadataSync.Configuration;
@@ -117,6 +118,74 @@ public class ConfigurationValidationTests
     /// is the point: it arrives from a file somebody edited or from a version
     /// that declared more than this one does.
     /// </summary>
+    /// <summary>
+    /// A configuration written by a build that came after this one. It is the
+    /// case #59 exists for and the only one here an operator cannot cause by
+    /// editing anything: they downgraded, and the file on disk is a shape this
+    /// build has never been told how to read.
+    /// </summary>
+    [Fact]
+    public void AConfigurationShapeNewerThanThisBuildIsRefused()
+    {
+        var configuration = Configured();
+        configuration.Format = ConfigurationFormat.Current + 1;
+
+        var problem = Assert.Single(ConfigurationValidation.Validate(configuration, WhatTheServerHolds));
+
+        Assert.Equal(nameof(PluginConfiguration.Format), problem.Property);
+        Assert.Contains(
+            (ConfigurationFormat.Current + 1).ToString(CultureInfo.InvariantCulture),
+            problem.Message,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A stamp naming no shape at all. It cannot arrive from the serialiser
+    /// filling in a default, so something typed it, and reading it as the
+    /// earliest shape is the generous assumption that acts on a file under rules
+    /// it was not written under.
+    /// </summary>
+    [Fact]
+    public void AConfigurationShapeThisBuildCannotPlaceIsRefused()
+    {
+        var configuration = Configured();
+        configuration.Format = -1;
+
+        var problem = Assert.Single(ConfigurationValidation.Validate(configuration, WhatTheServerHolds));
+
+        Assert.Equal(nameof(PluginConfiguration.Format), problem.Property);
+        Assert.Contains("-1", problem.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The neighbour, and it is the state every configuration in existence is
+    /// in: no stamp at all. It is read as the earliest shape rather than
+    /// refused, because a plugin that has never been configured and a file
+    /// written before the stamp existed both hold that shape.
+    /// </summary>
+    [Fact]
+    public void AConfigurationCarryingNoStampHasNothingToRefuse()
+    {
+        var configuration = Configured();
+        configuration.Format = ConfigurationFormat.Absent;
+
+        Assert.Empty(ConfigurationValidation.Validate(configuration, WhatTheServerHolds));
+    }
+
+    /// <summary>
+    /// The other neighbour: the shape this build writes, named explicitly. A
+    /// rule that refused it would refuse every configuration the first
+    /// migration step produces.
+    /// </summary>
+    [Fact]
+    public void TheShapeThisBuildReadsIsAccepted()
+    {
+        var configuration = Configured();
+        configuration.Format = ConfigurationFormat.Current;
+
+        Assert.Empty(ConfigurationValidation.Validate(configuration, WhatTheServerHolds));
+    }
+
     [Fact]
     public void ADirectionThisPluginDoesNotDeclareIsRefused()
     {
@@ -287,16 +356,18 @@ public class ConfigurationValidationTests
     public void AConfigurationWrongInSeveralWaysReportsAllOfThem()
     {
         var configuration = new PluginConfiguration();
+        configuration.Format = ConfigurationFormat.Current + 1;
         configuration.Direction = (SyncDirection)7;
         configuration.ParticipatingLibraries.Add(ALibraryThatWasRemoved);
         configuration.ExcludedFields.Add("Description");
 
         var problems = ConfigurationValidation.Validate(configuration, WhatTheServerHolds);
 
-        Assert.Equal(4, problems.Count);
+        Assert.Equal(5, problems.Count);
         Assert.Equal(
             new[]
             {
+                nameof(PluginConfiguration.Format),
                 nameof(PluginConfiguration.Direction),
                 nameof(PluginConfiguration.ParticipatingLibraries),
                 nameof(PluginConfiguration.ExcludedFields),
@@ -314,6 +385,14 @@ public class ConfigurationValidationTests
     private static IReadOnlyList<ConfigurationProblem> EveryProblemThisPluginCanReport()
     {
         var arrangements = new List<PluginConfiguration>();
+
+        var shapeFromTheFuture = Configured();
+        shapeFromTheFuture.Format = ConfigurationFormat.Current + 1;
+        arrangements.Add(shapeFromTheFuture);
+
+        var shapeThatIsNoShape = Configured();
+        shapeThatIsNoShape.Format = -1;
+        arrangements.Add(shapeThatIsNoShape);
 
         var wrongDirection = Configured();
         wrongDirection.Direction = (SyncDirection)7;

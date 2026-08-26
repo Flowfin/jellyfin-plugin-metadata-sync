@@ -40,8 +40,9 @@ public class ConfigurationShapeTests
 {
     /// <summary>
     /// The properties the configuration is allowed to carry, and why each one
-    /// is here. Four, and each is a thing an operator decides that this plugin
-    /// then acts on, with a validation rule that can refuse it.
+    /// is here. Four are a thing an operator decides that this plugin then acts
+    /// on, and the fifth is a stamp saying which shape the file is written in.
+    /// Every one of the five carries a validation rule that can refuse it.
     /// <list type="bullet">
     /// <item><description>
     /// PairingId. Which pairing this configuration is for. An identifier the
@@ -62,6 +63,18 @@ public class ConfigurationShapeTests
     /// operator does not want moved. Field names, which are this plugin's own
     /// vocabulary rather than anything out of a library.
     /// </description></item>
+    /// <item><description>
+    /// Format. Which shape this file is written in. It is the one member here
+    /// that nobody chooses, and admitting it is a widening of what this set is
+    /// for rather than one more of the same kind, so the reason is written
+    /// rather than assumed. What this guard is against is data - a value copied
+    /// out of a library, a peer address, a credential - and a number naming this
+    /// file's own shape is none of the three: it says nothing about anybody, it
+    /// is safe in the support thread this document is about, and it is refused
+    /// by the same validation as everything above. What it buys is that a
+    /// configuration written by a newer build is refused instead of being acted
+    /// on under rules it was not written under, which is #59.
+    /// </description></item>
     /// </list>
     /// </summary>
     private static readonly HashSet<string> AllowedProperties = new(StringComparer.Ordinal)
@@ -70,6 +83,7 @@ public class ConfigurationShapeTests
         nameof(PluginConfiguration.Direction),
         nameof(PluginConfiguration.ParticipatingLibraries),
         nameof(PluginConfiguration.ExcludedFields),
+        nameof(PluginConfiguration.Format),
     };
 
     /// <summary>

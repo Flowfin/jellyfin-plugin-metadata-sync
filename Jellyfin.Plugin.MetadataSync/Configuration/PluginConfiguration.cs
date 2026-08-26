@@ -25,6 +25,14 @@ namespace Jellyfin.Plugin.MetadataSync.Configuration;
 /// place, and it means the property is never null for a validator to have to
 /// think about.
 /// </para>
+/// <para>
+/// One property is not a choice an operator makes. <see cref="Format"/> says
+/// which shape this file is written in, and it is here rather than beside the
+/// store because it describes this file: a configuration restored from a backup
+/// carries its own shape with it, and a number kept anywhere else would describe
+/// whichever of the two artefacts moved last. It is a stamp rather than a
+/// setting, it is read and never chosen, and no page offers it.
+/// </para>
 /// </remarks>
 public class PluginConfiguration : BasePluginConfiguration
 {
@@ -71,4 +79,22 @@ public class PluginConfiguration : BasePluginConfiguration
     /// does something.
     /// </remarks>
     public Collection<string> ExcludedFields { get; } = new();
+
+    /// <summary>
+    /// Gets or sets the shape this configuration is written in.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="ConfigurationFormat.Absent"/> is what the serialiser leaves
+    /// for a file that carries no stamp, and it is read as
+    /// <see cref="ConfigurationFormat.Earliest"/>. A stamp this build cannot
+    /// place is refused by validation rather than read generously, which
+    /// disables every action the same way any other unusable configuration does.
+    /// <para>
+    /// Nothing in this plugin writes it. What would is the migration step that
+    /// changes the shape, and there has been one shape, so there is no step. The
+    /// property exists before that because a shape change met by a build with no
+    /// stamp to read is the case a stamp cannot be added after the fact for.
+    /// </para>
+    /// </remarks>
+    public int Format { get; set; }
 }
