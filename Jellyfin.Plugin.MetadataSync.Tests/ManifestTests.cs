@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Xunit;
@@ -16,6 +18,31 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// </summary>
 public class ManifestTests
 {
+    /// <summary>
+    /// The names the packaging tool reads before it reads `build.yaml`, from
+    /// the revision `.github/workflows/build.yaml` calls:
+    ///
+    ///     gh api repos/oddstr13/jellyfin-plugin-repository-manager/contents/jprm/__init__.py?ref=9497a0a499416cc572ed2e07a391d9f943a37b4d --jq '.content' | base64 -d | sed -n '37,45p'
+    ///     CONFIG_LOCATIONS = [
+    ///         "jprm.yaml",
+    ///         ".jprm.yaml",
+    ///         ".ci/jprm.yaml",
+    ///         ".github/jprm.yaml",
+    ///         ".gitlab/jprm.yaml",
+    ///         "meta.yaml",
+    ///         "build.yaml",
+    ///     ]
+    /// </summary>
+    private static readonly string[] AheadOfTheManifest =
+    {
+        "jprm.yaml",
+        ".jprm.yaml",
+        ".ci/jprm.yaml",
+        ".github/jprm.yaml",
+        ".gitlab/jprm.yaml",
+        "meta.yaml",
+    };
+
     /// <summary>
     /// The manifest is the single place a release version is written and the
     /// build reads it from there. A version restated in the build lets a plain
@@ -128,6 +155,93 @@ public class ManifestTests
         Assert.NotNull(unreadable);
         Assert.DoesNotContain("declares no quoted", unreadable, StringComparison.Ordinal);
         Assert.Contains("no field at all", unreadable, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// No file in this repository takes precedence over the manifest.
+    /// </summary>
+    /// <remarks>
+    /// The packaging tool does not take a manifest path. It walks a list of
+    /// names under the sources it is given and reads the first one that exists,
+    /// and `build.yaml` is the last entry on that list. So a file added under
+    /// any of the earlier names does not add a second manifest: it replaces the
+    /// one this repository builds, for every package, silently.
+    /// <para>
+    /// Nothing else here would catch that. Every leg in this suite that reads a
+    /// manifest opens `build.yaml` by name, so the suite would go on holding the
+    /// file the packaging tool had stopped reading, and a package would ship
+    /// declaring a version, an identity and a server line nobody had checked.
+    /// <para>
+    /// It is worth a guard now rather than when it happens, because the obvious
+    /// name for a second manifest is the first entry on that list, and #9 is
+    /// open for a second package. Whoever writes that should give the tool a
+    /// second path rather than a second name here.
+    /// </para>
+    /// <para>
+    /// The bound: this is the list at the pinned revision the build workflow
+    /// calls, copied rather than read, because reading it means reaching the
+    /// network from a test. A list that grows upstream is invisible here until
+    /// somebody re-reads it, which is the same bound every pinned vocabulary in
+    /// this suite carries.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void NoFileTakesPrecedenceOverTheManifest()
+    {
+        var found = TakingPrecedence().ToList();
+
+        Assert.True(
+            found.Count == 0,
+            "These take precedence over build.yaml for the packaging tool, so the package would be built from one of them: "
+                + string.Join(", ", found)
+                + ". A second manifest is a second path given to the tool, never a second name beside this one.");
+    }
+
+    /// <summary>
+    /// The list this leg is about is the one the tool actually walks, and a
+    /// guard whose vocabulary has drifted to nothing cannot fire.
+    /// </summary>
+    [Fact]
+    public void TheNamesThatWouldTakePrecedenceAreStillNamed()
+    {
+        Assert.NotEmpty(AheadOfTheManifest);
+        Assert.DoesNotContain("build.yaml", AheadOfTheManifest, StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// And the leg that says the check is looking at the repository rather than
+    /// at a directory that does not exist, in which case it would find nothing
+    /// and pass whatever the tree held.
+    /// </summary>
+    [Fact]
+    public void TheCheckIsLookingAtThisRepository()
+    {
+        Assert.True(File.Exists(Path.Combine(RepositoryRoot(), "build.yaml")));
+    }
+
+    /// <summary>
+    /// Whichever of the names ahead of the manifest are in the tree.
+    /// </summary>
+    /// <returns>The paths, relative to the repository root.</returns>
+    private static IEnumerable<string> TakingPrecedence()
+    {
+        var root = RepositoryRoot();
+
+        return AheadOfTheManifest.Where(name => File.Exists(Path.Combine(root, name)));
+    }
+
+    private static string RepositoryRoot([CallerFilePath] string thisFile = "")
+    {
+        // This file sits one directory below the repository root and the
+        // compiler writes its path in, which is the idiom RefusalTests uses for
+        // the same question. Walking up from the test binary would depend on
+        // the configuration and the target framework.
+        var testProjectDirectory = Path.GetDirectoryName(thisFile);
+        Assert.NotNull(testProjectDirectory);
+
+        var root = Path.GetDirectoryName(testProjectDirectory);
+        Assert.NotNull(root);
+        return root;
     }
 
     private static string ManifestField(string name)
