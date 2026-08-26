@@ -94,6 +94,47 @@ leaves behind, is dropped on the next read and counted rather than thrown. A
 store that refused to open after a power cut would have turned one lost write
 into every lost write.
 
+## What a line carries, and why the second half of it is not derived
+
+A line carries the value written and the value that was on the item immediately
+before it. That is one line rather than two because it is one write, and the
+second half is what makes the record readable by somebody other than the next
+pass: a conflict log entry showing a decision without it asks an operator to
+remember what their own overview used to say, and #64 has nothing to put back.
+
+**The value that was replaced arrives from the write path and is never worked out
+here.** The two candidates look interchangeable and are not. What this store
+already holds for a field is what this plugin wrote last time; what a write
+replaces is what the library held at the moment of the write. On a field nobody
+here touched between two passes those are the same string, and on the field this
+whole record exists for they are not, because an operator edited it in between.
+A store deriving the previous value from its own newest entry would record this
+plugin's own earlier value and lose exactly that edit, in the one place that
+could have shown it.
+
+A null on either half is a field that held nothing rather than a half nobody
+recorded. What says there is no record at all is an empty history, which is a
+different answer from an entry carrying nulls.
+
+## What happens to a record whose pairing no longer exists
+
+It stays, and nothing reads it as another pairing's.
+
+The pairing is a component of every key, and a pairing identifier is derived from
+the two servers' public keys with revocation terminal, so two servers that pair
+again after a revocation carry a different identifier. The rows of the pairing
+that ended are therefore inert rather than misleading: the key that would reach
+them is one nothing asks about again, and a later pairing between the same two
+servers reads none of them.
+
+They are not deleted either, and that is a decision rather than an omission.
+Removing them is #61, which is an act an operator asks for and is told the count
+of, and a store quietly dropping them at the next restart would have nothing left
+to report when they did ask. What that costs until #61 lands is stated here
+rather than left to be found: a server that has paired and revoked several times
+keeps every one of those pairings' rows, bounded per item and per field but not
+by the number of pairings, and nothing on any surface says so yet.
+
 ## What it reads rather than keeps
 
 Beside the store the plugin reads a set of declared tables, embedded in the
@@ -120,11 +161,11 @@ the two that arrived after it was written are the third and fourth above.
 
 Of the three rows in the table that name the store, one is a file on a disk now
 and two are still decisions about where something will go. What this plugin
-wrote, per item and per field, is the first: #16 built it, and #47 is the
-provenance the same record carries rather than a second copy of it. The conflict
-log and the unmatched register are the other two, and #48 and #29 are where they
-are built. #59 is how any of it survives a version change, and it is not built
-either.
+wrote, per item and per field, is the first: #16 built it and #47 made it carry
+what each write replaced, which is the provenance the same record holds rather
+than a second copy of it. The conflict log and the unmatched register are the
+other two, and #48 and #29 are where they are built. #59 is how any of it
+survives a version change, and it is not built either.
 
 So a reader should take the conflict log row and the unmatched register row as a
 decision already made about where something goes, and the row above them as a

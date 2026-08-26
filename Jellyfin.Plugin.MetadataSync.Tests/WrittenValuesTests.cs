@@ -67,7 +67,7 @@ public class WrittenValuesTests
         using var directory = new TemporaryDirectory();
         var store = new WrittenValues(directory.Path);
 
-        store.Record(_pairing, _item, Field, "what the peer said last time");
+        store.Record(_pairing, _item, Field, "what the peer said last time", null);
 
         var change = PlanOneField(
             local: "what the peer said last time",
@@ -90,7 +90,7 @@ public class WrittenValuesTests
         using var directory = new TemporaryDirectory();
         var store = new WrittenValues(directory.Path);
 
-        store.Record(_pairing, _item, Field, "what the peer said last time");
+        store.Record(_pairing, _item, Field, "what the peer said last time", null);
 
         var change = PlanOneField(
             local: "what the household actually wants to read",
@@ -138,14 +138,14 @@ public class WrittenValuesTests
 
         for (var n = 1; n <= WrittenValues.Bound + 3; n++)
         {
-            store.Record(_pairing, _item, Field, n.ToString(CultureInfo.InvariantCulture));
+            store.Record(_pairing, _item, Field, n.ToString(CultureInfo.InvariantCulture), (n - 1).ToString(CultureInfo.InvariantCulture));
         }
 
         var held = store.History(_pairing, _item, Field);
 
         Assert.Equal(WrittenValues.Bound, held.Count);
-        Assert.Equal("4", held[0]);
-        Assert.Equal("13", held[^1]);
+        Assert.Equal("4", held[0].Value);
+        Assert.Equal("13", held[^1].Value);
         Assert.Equal("13", store.LastWritten(_pairing, _item, Field));
     }
 
@@ -166,7 +166,7 @@ public class WrittenValuesTests
     {
         using var directory = new TemporaryDirectory();
 
-        new WrittenValues(directory.Path).Record(_pairing, _item, Field, "written before the restart");
+        new WrittenValues(directory.Path).Record(_pairing, _item, Field, "written before the restart", "what it replaced");
 
         var afterRestart = new WrittenValues(directory.Path);
 
@@ -186,15 +186,17 @@ public class WrittenValuesTests
 
         for (var n = 1; n <= WrittenValues.Bound + 3; n++)
         {
-            store.Record(_pairing, _item, Field, n.ToString(CultureInfo.InvariantCulture));
+            store.Record(_pairing, _item, Field, n.ToString(CultureInfo.InvariantCulture), (n - 1).ToString(CultureInfo.InvariantCulture));
         }
 
         var afterRestart = new WrittenValues(directory.Path);
         var held = afterRestart.History(_pairing, _item, Field);
 
         Assert.Equal(WrittenValues.Bound, held.Count);
-        Assert.Equal("4", held[0]);
-        Assert.Equal("13", held[^1]);
+        Assert.Equal("4", held[0].Value);
+        Assert.Equal("13", held[^1].Value);
+        Assert.Equal("3", held[0].Previous);
+        Assert.Equal("12", held[^1].Previous);
     }
 
     /// <summary>
@@ -210,7 +212,7 @@ public class WrittenValuesTests
         var otherPairing = new Guid("dddddddd-0000-0000-0000-000000000004");
         var otherItem = new Guid("eeeeeeee-0000-0000-0000-000000000005");
 
-        store.Record(_pairing, _item, Field, "this one");
+        store.Record(_pairing, _item, Field, "this one", null);
 
         Assert.Null(store.LastWritten(otherPairing, _item, Field));
         Assert.Null(store.LastWritten(_pairing, otherItem, Field));
@@ -229,7 +231,7 @@ public class WrittenValuesTests
     {
         using var directory = new TemporaryDirectory();
 
-        new WrittenValues(directory.Path).Record(_pairing, _item, Field, "the write that finished");
+        new WrittenValues(directory.Path).Record(_pairing, _item, Field, "the write that finished", null);
 
         var file = Path.Combine(directory.Path, WrittenValues.FileName);
         File.AppendAllText(file, "{\"Pairing\":\"cccccccc-0000-0000", new UTF8Encoding(false));
@@ -255,7 +257,7 @@ public class WrittenValuesTests
 
         for (var n = 1; n <= 2000; n++)
         {
-            store.Record(_pairing, _item, Field, n.ToString(CultureInfo.InvariantCulture));
+            store.Record(_pairing, _item, Field, n.ToString(CultureInfo.InvariantCulture), (n - 1).ToString(CultureInfo.InvariantCulture));
         }
 
         var lines = File.ReadAllLines(file).Length;
@@ -263,7 +265,78 @@ public class WrittenValuesTests
         Assert.True(lines < 2000, "The file still carries a line per write: " + lines.ToString(CultureInfo.InvariantCulture));
         Assert.Equal("2000", store.LastWritten(_pairing, _item, Field));
         Assert.Equal("2000", new WrittenValues(directory.Path).LastWritten(_pairing, _item, Field));
-        Assert.Equal(WrittenValues.Bound, new WrittenValues(directory.Path).History(_pairing, _item, Field).Count);
+
+        var afterTheRewrite = new WrittenValues(directory.Path).History(_pairing, _item, Field);
+
+        Assert.Equal(WrittenValues.Bound, afterTheRewrite.Count);
+        Assert.Equal("2000", afterTheRewrite[^1].Value);
+        Assert.Equal("1999", afterTheRewrite[^1].Previous);
+
+        // Those two members are read here and they are not what holds the rewrite
+        // up, which is worth saying where somebody would otherwise read them as
+        // the guard. A rewrite happens every so many writes and this run ends
+        // hundreds of writes after the last one, so the values it reads back were
+        // appended in the ordinary way and never went through a rewrite at all.
+        // Deleting what the rewrite writes for the second member leaves this leg
+        // green, measured rather than supposed, which is why
+        // TheRewriteKeepsWhatEachRetainedValueReplaced stops on the write that
+        // rewrites.
+    }
+
+    /// <summary>
+    /// The rewrite keeps both halves of every value it retains. It builds its
+    /// lines from what is held rather than copying the ones it replaces, so it is
+    /// the one place in this store where a member can be dropped from a line that
+    /// had it, and the loss is silent: every count stays right and the half a
+    /// revert reads is empty.
+    /// </summary>
+    /// <remarks>
+    /// It stops on the write that rewrites rather than after a round number of
+    /// writes, and that is the whole reason this case exists beside the one
+    /// above. A run that stops anywhere else reads back values that were appended
+    /// in the ordinary way, so it passes with the rewrite writing nothing at all.
+    /// The rewrite is detected by the file getting shorter, which is what it does
+    /// and is not a number this case has to know.
+    /// </remarks>
+    [Fact]
+    public void TheRewriteKeepsWhatEachRetainedValueReplaced()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new WrittenValues(directory.Path);
+        var file = Path.Combine(directory.Path, WrittenValues.FileName);
+
+        var longest = 0;
+        var written = 0;
+
+        while (written < 10000)
+        {
+            written++;
+            store.Record(
+                _pairing,
+                _item,
+                Field,
+                written.ToString(CultureInfo.InvariantCulture),
+                (written - 1).ToString(CultureInfo.InvariantCulture));
+
+            var lines = File.ReadAllLines(file).Length;
+
+            if (lines < longest)
+            {
+                break;
+            }
+
+            longest = lines;
+        }
+
+        Assert.True(written < 10000, "The file was never rewritten, so nothing here is about a rewrite.");
+
+        var retained = new WrittenValues(directory.Path).History(_pairing, _item, Field);
+
+        Assert.Equal(WrittenValues.Bound, retained.Count);
+        Assert.Equal(written.ToString(CultureInfo.InvariantCulture), retained[^1].Value);
+        Assert.Equal((written - 1).ToString(CultureInfo.InvariantCulture), retained[^1].Previous);
+        Assert.Equal((written - WrittenValues.Bound + 1).ToString(CultureInfo.InvariantCulture), retained[0].Value);
+        Assert.Equal((written - WrittenValues.Bound).ToString(CultureInfo.InvariantCulture), retained[0].Previous);
     }
 
     /// <summary>
@@ -278,7 +351,7 @@ public class WrittenValuesTests
         using var directory = new TemporaryDirectory();
         var store = new WrittenValues(directory.Path);
 
-        store.Record(_pairing, _item, Field, "data rather than a choice");
+        store.Record(_pairing, _item, Field, "data rather than a choice", null);
 
         Assert.Equal(Path.Combine(directory.Path, WrittenValues.FileName), store.Location);
         Assert.True(File.Exists(store.Location));
@@ -384,7 +457,7 @@ public class WrittenValuesTests
     {
         using var directory = new TemporaryDirectory();
 
-        new WrittenValues(directory.Path).Record(_pairing, _item, Field, "the write that finished");
+        new WrittenValues(directory.Path).Record(_pairing, _item, Field, "the write that finished", null);
 
         var file = Path.Combine(directory.Path, WrittenValues.FileName);
         File.AppendAllText(file, "\n\n", new UTF8Encoding(false));
@@ -407,7 +480,7 @@ public class WrittenValuesTests
     {
         using var directory = new TemporaryDirectory();
 
-        new WrittenValues(directory.Path).Record(_pairing, _item, Field, "the write that finished");
+        new WrittenValues(directory.Path).Record(_pairing, _item, Field, "the write that finished", null);
 
         var file = Path.Combine(directory.Path, WrittenValues.FileName);
         File.AppendAllText(file, "{\"Item\":\"aaaaaaaa-0000-0000-0000-000000000001\",\"Value\":\"orphaned\"}\n", new UTF8Encoding(false));
@@ -430,7 +503,7 @@ public class WrittenValuesTests
         using var directory = new TemporaryDirectory();
         var store = new WrittenValues(directory.Path);
 
-        Assert.Throws<ArgumentException>(() => store.Record(_pairing, _item, " ", "a value"));
+        Assert.Throws<ArgumentException>(() => store.Record(_pairing, _item, " ", "a value", null));
         Assert.Throws<ArgumentException>(() => store.LastWritten(_pairing, _item, " "));
         Assert.Throws<ArgumentException>(() => store.History(_pairing, _item, " "));
     }
@@ -445,12 +518,144 @@ public class WrittenValuesTests
         using var directory = new TemporaryDirectory();
         var store = new WrittenValues(directory.Path);
 
-        store.Record(_pairing, _item, Field, "one");
+        store.Record(_pairing, _item, Field, "one", null);
 
         var said = store.ToString();
 
         Assert.Contains(WrittenValues.FileName, said, StringComparison.Ordinal);
         Assert.Contains(WrittenValues.Bound.ToString(CultureInfo.InvariantCulture), said, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The value that was replaced is recorded beside the value that was
+    /// written, on the same write. Everything downstream of the record needs the
+    /// pair rather than either half: a conflict log entry an operator can read
+    /// without remembering what their overview used to say, and a revert with
+    /// something to put back.
+    /// </summary>
+    [Fact]
+    public async Task TheValueThatWasThereBeforeIsRecordedBesideTheValueWritten()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new WrittenValues(directory.Path);
+
+        await new Applier(new RecordingPlanTarget(), store)
+            .ApplyAsync(PlanThatOverwrites(), CancellationToken.None);
+
+        var written = Assert.Single(store.History(_pairing, _item, Field));
+
+        Assert.Equal("what the peer holds", written.Value);
+        Assert.Equal("what this server held", written.Previous);
+    }
+
+    /// <summary>
+    /// The near miss, and the reason the write path passes what it replaced
+    /// rather than the store looking it up. A store deriving the previous value
+    /// from its own newest entry answers with what this plugin wrote last time,
+    /// which is right on a field nobody touched in between and wrong on exactly
+    /// the field this record exists for.
+    /// </summary>
+    /// <remarks>
+    /// The arrangement is the one the whole store is about: this plugin wrote a
+    /// value, somebody here edited it afterwards, and a later pass overwrites the
+    /// edit. What the second write replaced is the operator's text. A lookup
+    /// would record the plugin's own earlier value instead, and the edit would be
+    /// gone from the only place that could have shown it.
+    /// </remarks>
+    [Fact]
+    public async Task WhatWasReplacedIsWhatTheLibraryHeldRatherThanWhatThisPluginWroteLastTime()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new WrittenValues(directory.Path);
+
+        store.Record(_pairing, _item, Field, "what this plugin wrote last pass", null);
+
+        await new Applier(new RecordingPlanTarget(), store).ApplyAsync(
+            PlanThatOverwrites(local: "what the operator typed afterwards"),
+            CancellationToken.None);
+
+        Assert.Equal(
+            new string?[] { null, "what the operator typed afterwards" },
+            store.History(_pairing, _item, Field).Select(written => written.Previous).ToArray());
+    }
+
+    /// <summary>
+    /// A write onto a field that held nothing records that it replaced nothing.
+    /// The empty history is what says no record exists, so an entry carrying a
+    /// null previous value is a write that replaced an absence rather than a
+    /// write whose previous value was never captured.
+    /// </summary>
+    [Fact]
+    public async Task AWriteOntoAnEmptyFieldRecordsThatItReplacedNothing()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new WrittenValues(directory.Path);
+
+        await new Applier(new RecordingPlanTarget(), store)
+            .ApplyAsync(PlanThatWrites(), CancellationToken.None);
+
+        var written = Assert.Single(store.History(_pairing, _item, Field));
+
+        Assert.Equal("the value the plan carried", written.Value);
+        Assert.Null(written.Previous);
+        Assert.Empty(store.History(_pairing, _item, "Tagline"));
+    }
+
+    /// <summary>
+    /// What was replaced outlives the instance that recorded it. A store keeping
+    /// the pair in memory and writing half of it to the file would answer every
+    /// case above and lose the previous value at the first restart, which is the
+    /// one moment nobody is watching.
+    /// </summary>
+    [Fact]
+    public void WhatWasReplacedSurvivesTheInstanceThatRecordedIt()
+    {
+        using var directory = new TemporaryDirectory();
+
+        new WrittenValues(directory.Path)
+            .Record(_pairing, _item, Field, "written before the restart", "replaced before the restart");
+
+        var written = Assert.Single(new WrittenValues(directory.Path).History(_pairing, _item, Field));
+
+        Assert.Equal("written before the restart", written.Value);
+        Assert.Equal("replaced before the restart", written.Previous);
+    }
+
+    /// <summary>
+    /// What happens to the rows of a pairing that no longer exists: they stay,
+    /// and nothing reads them as another pairing's.
+    /// </summary>
+    /// <remarks>
+    /// A pairing identifier is derived from the two servers' public keys and a
+    /// revocation is terminal, so a pairing established after one carries a
+    /// different identifier. The rows of the ended pairing are therefore inert
+    /// rather than misleading: the key that would reach them is one nothing asks
+    /// about again.
+    /// <para>
+    /// They are also not deleted, and this asserts that in the direction that
+    /// will change. Removing them is #61, which is a thing an operator asks for
+    /// and is told the count of, and a store quietly dropping them at the next
+    /// restart would have nothing left to report when they did ask.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void TheRowsOfAPairingThatEndedAreKeptAndAreNotAnotherPairingsRows()
+    {
+        using var directory = new TemporaryDirectory();
+        var thePairingThatFollowed = new Guid("dddddddd-0000-0000-0000-000000000004");
+
+        new WrittenValues(directory.Path)
+            .Record(_pairing, _item, Field, "written under the pairing that ended", "what it replaced");
+
+        var afterRestart = new WrittenValues(directory.Path);
+
+        Assert.Empty(afterRestart.History(thePairingThatFollowed, _item, Field));
+        Assert.Null(afterRestart.LastWritten(thePairingThatFollowed, _item, Field));
+
+        var kept = Assert.Single(afterRestart.History(_pairing, _item, Field));
+
+        Assert.Equal("written under the pairing that ended", kept.Value);
+        Assert.Equal("what it replaced", kept.Previous);
     }
 
     /// <summary>
@@ -523,6 +728,39 @@ public class WrittenValuesTests
             Writes = false,
             ValueToWrite = null,
             Reason = "there is nothing to decide",
+        });
+
+        plan.Items.Add(item);
+        return plan;
+    }
+
+    /// <summary>
+    /// A plan carrying one row that overwrites a value this server already
+    /// holds, so a case can tell what a write replaced from what it wrote.
+    /// </summary>
+    private static Plan PlanThatOverwrites(string? local = "what this server held")
+    {
+        var plan = new Plan { PairingId = _pairing, Direction = SyncDirection.TwoWay };
+
+        var item = new ItemPlan
+        {
+            LocalItemId = _item,
+            PeerItemId = new Guid("bbbbbbbb-0000-0000-0000-000000000002"),
+            Kind = AKindEveryGroupHolds,
+            LastSavedWhenPlanned = "a stamp",
+        };
+
+        item.Changes.Add(new PlannedChange
+        {
+            Field = Field,
+            LocalValue = local,
+            PeerValue = "what the peer holds",
+            Disposition = PlanDisposition.Decided,
+            Outcome = ConflictOutcome.TakePeer,
+            Rule = "local-unchanged-since-this-plugin-wrote-it",
+            Writes = true,
+            ValueToWrite = "what the peer holds",
+            Reason = "nobody here has touched it since this plugin wrote it",
         });
 
         plan.Items.Add(item);
