@@ -31,6 +31,17 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
                 () => Plugin.Instance!.Configuration,
                 () => ServerLibraries.Held(services.GetRequiredService<ILibraryManager>())));
 
+        // The format the store directory is written in. It is registered as a
+        // store of its own because it persists, and it answers every pairing
+        // with no rows: what it holds is not data about a relationship with
+        // another server. It reads the stamp on every question rather than
+        // keeping one, so this instance and the one the store reads through
+        // cannot drift apart.
+        serviceCollection.AddSingleton(
+            _ => new StoreFormat(Plugin.Instance!.DataFolderPath));
+        serviceCollection.AddSingleton<IPairingStore>(
+            services => services.GetRequiredService<StoreFormat>());
+
         // One instance for the whole server. The store keeps what it holds in
         // memory and appends to one file, so a second instance over the same
         // directory would be a second answer to the same question with its own
