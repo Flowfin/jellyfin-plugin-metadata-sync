@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Text.RegularExpressions;
+using Jellyfin.Plugin.MetadataSync.Store;
 using Xunit;
 
 namespace Jellyfin.Plugin.MetadataSync.Tests;
@@ -137,6 +140,108 @@ public class StorageStatementTests
         Assert.Contains(WritersClose, lines, StringComparer.Ordinal);
         Assert.NotEmpty(Declared(WritersOpen, WritersClose));
     }
+
+    /// <summary>
+    /// The store files the document names are the files the stores actually
+    /// keep, as a set and in both directions.
+    /// </summary>
+    /// <remarks>
+    /// The two lists above are held and the names inside the prose beside them
+    /// were not. `written-values.jsonl` has been in this document since #16 and
+    /// `store-format.json` arrived with #59, and until this leg a store that
+    /// renamed its file left both sentences describing a file that is not there,
+    /// with every route in this repository green. That is the residual #87
+    /// records for the prose around a rendered table, met here in the one form
+    /// where it is decidable rather than a judgement: a file name is a literal
+    /// in a document and a literal in a type, and the two either agree or they
+    /// do not.
+    /// <para>
+    /// The document's side is derived rather than listed. An inline-code span
+    /// naming no directory is a bare file name, and every one of them in this
+    /// document is a file a store keeps; the paths in the two fenced lists carry
+    /// a directory and are outside it by that alone.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void TheStoreFilesTheDocumentNamesAreTheFilesTheStoresKeep()
+    {
+        Assert.Equal(
+            StoreFileNames().OrderBy(name => name, StringComparer.Ordinal).ToList(),
+            BareFileNamesInTheProse().OrderBy(name => name, StringComparer.Ordinal).ToList());
+    }
+
+    /// <summary>
+    /// Every store that keeps a file declares its name in one place, and the two
+    /// sides of the comparison above are not empty.
+    /// </summary>
+    /// <remarks>
+    /// Without the first half the comparison passes for the wrong reason the day
+    /// a store keeps a file under a name spelled at the site that opens it: the
+    /// reflection finds no constant, the document names nothing new, and the two
+    /// empty answers agree. A store that persists is already required to be one
+    /// of these types, so what is added here is that it says which file it is.
+    /// </remarks>
+    [Fact]
+    public void EveryStoreThatKeepsAFileSaysWhichFileItIs()
+    {
+        var persisting = Writing()
+            .Select(path => Path.GetFileNameWithoutExtension(path))
+            .ToList();
+
+        var declaring = StoreTypes()
+            .Where(type => FileNameOf(type) is not null)
+            .Select(type => type.Name)
+            .ToList();
+
+        Assert.NotEmpty(persisting);
+        Assert.Empty(persisting.Where(name => !declaring.Contains(name, StringComparer.Ordinal)).ToList());
+        Assert.NotEmpty(StoreFileNames());
+        Assert.NotEmpty(BareFileNamesInTheProse());
+    }
+
+    /// <summary>
+    /// The stores this plugin declares, found rather than listed, which is the
+    /// same reading <see cref="PairingStoresTests"/> makes for the report.
+    /// </summary>
+    /// <returns>The concrete types implementing the store shape.</returns>
+    private static IEnumerable<Type> StoreTypes() =>
+        typeof(Plugin).Assembly
+            .GetTypes()
+            .Where(type => type.IsClass && !type.IsAbstract && typeof(IPairingStore).IsAssignableFrom(type));
+
+    /// <summary>
+    /// The file name a store declares, or null where it keeps no file.
+    /// </summary>
+    /// <param name="type">The store type.</param>
+    /// <returns>The declared name, or null.</returns>
+    private static string? FileNameOf(Type type) =>
+        type.GetField("FileName", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+            ?.GetRawConstantValue() as string;
+
+    /// <summary>
+    /// The file names the stores declare.
+    /// </summary>
+    /// <returns>The names.</returns>
+    private static List<string> StoreFileNames() =>
+        StoreTypes()
+            .Select(FileNameOf)
+            .Where(name => name is not null)
+            .Select(name => name!)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>
+    /// The bare file names the document's prose carries in inline code, which is
+    /// every quoted span naming no directory and carrying an extension.
+    /// </summary>
+    /// <returns>The names.</returns>
+    private static List<string> BareFileNamesInTheProse() =>
+        Regex.Matches(File.ReadAllText(_document), "`([^`]+)`")
+            .Select(match => match.Groups[1].Value)
+            .Where(span => !span.Contains('/', StringComparison.Ordinal))
+            .Where(span => Regex.IsMatch(span, @"^[A-Za-z0-9._-]+\.[A-Za-z0-9]+$"))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
 
     /// <summary>
     /// The plugin sources that name a call that writes to a disk.
