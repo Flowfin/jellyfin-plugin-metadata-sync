@@ -269,13 +269,74 @@ public class WrittenValuesTests
         var afterTheRewrite = new WrittenValues(directory.Path).History(_pairing, _item, Field);
 
         Assert.Equal(WrittenValues.Bound, afterTheRewrite.Count);
-
-        // Both members, because the rewrite builds its lines from what is held
-        // rather than copying the ones it replaces. A rewrite carrying the values
-        // and dropping what each one replaced would keep every count above
-        // correct and silently empty the half a revert reads.
         Assert.Equal("2000", afterTheRewrite[^1].Value);
         Assert.Equal("1999", afterTheRewrite[^1].Previous);
+
+        // Those two members are read here and they are not what holds the rewrite
+        // up, which is worth saying where somebody would otherwise read them as
+        // the guard. A rewrite happens every so many writes and this run ends
+        // hundreds of writes after the last one, so the values it reads back were
+        // appended in the ordinary way and never went through a rewrite at all.
+        // Deleting what the rewrite writes for the second member leaves this leg
+        // green, measured rather than supposed, which is why
+        // TheRewriteKeepsWhatEachRetainedValueReplaced stops on the write that
+        // rewrites.
+    }
+
+    /// <summary>
+    /// The rewrite keeps both halves of every value it retains. It builds its
+    /// lines from what is held rather than copying the ones it replaces, so it is
+    /// the one place in this store where a member can be dropped from a line that
+    /// had it, and the loss is silent: every count stays right and the half a
+    /// revert reads is empty.
+    /// </summary>
+    /// <remarks>
+    /// It stops on the write that rewrites rather than after a round number of
+    /// writes, and that is the whole reason this case exists beside the one
+    /// above. A run that stops anywhere else reads back values that were appended
+    /// in the ordinary way, so it passes with the rewrite writing nothing at all.
+    /// The rewrite is detected by the file getting shorter, which is what it does
+    /// and is not a number this case has to know.
+    /// </remarks>
+    [Fact]
+    public void TheRewriteKeepsWhatEachRetainedValueReplaced()
+    {
+        using var directory = new TemporaryDirectory();
+        var store = new WrittenValues(directory.Path);
+        var file = Path.Combine(directory.Path, WrittenValues.FileName);
+
+        var longest = 0;
+        var written = 0;
+
+        while (written < 10000)
+        {
+            written++;
+            store.Record(
+                _pairing,
+                _item,
+                Field,
+                written.ToString(CultureInfo.InvariantCulture),
+                (written - 1).ToString(CultureInfo.InvariantCulture));
+
+            var lines = File.ReadAllLines(file).Length;
+
+            if (lines < longest)
+            {
+                break;
+            }
+
+            longest = lines;
+        }
+
+        Assert.True(written < 10000, "The file was never rewritten, so nothing here is about a rewrite.");
+
+        var retained = new WrittenValues(directory.Path).History(_pairing, _item, Field);
+
+        Assert.Equal(WrittenValues.Bound, retained.Count);
+        Assert.Equal(written.ToString(CultureInfo.InvariantCulture), retained[^1].Value);
+        Assert.Equal((written - 1).ToString(CultureInfo.InvariantCulture), retained[^1].Previous);
+        Assert.Equal((written - WrittenValues.Bound + 1).ToString(CultureInfo.InvariantCulture), retained[0].Value);
+        Assert.Equal((written - WrittenValues.Bound).ToString(CultureInfo.InvariantCulture), retained[0].Previous);
     }
 
     /// <summary>
