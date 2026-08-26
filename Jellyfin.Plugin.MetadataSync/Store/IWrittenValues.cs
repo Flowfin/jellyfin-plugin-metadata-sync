@@ -38,7 +38,18 @@ public interface IWrittenValues
     /// <param name="itemId">The item on this server that was written.</param>
     /// <param name="field">The field, named as the register names it.</param>
     /// <param name="value">The value that was written, or null where the write cleared the field.</param>
-    void Record(Guid pairingId, Guid itemId, string field, string? value);
+    /// <param name="previousValue">The value that was on the item before this write, or null where the field held nothing.</param>
+    /// <remarks>
+    /// The previous value is a parameter rather than something this store works
+    /// out, and that is the point of it. A store deriving it from its own newest
+    /// entry would answer with the value this plugin wrote last time, which on
+    /// the field this whole record exists for is not what was replaced: an
+    /// operator edited it in between, and the edit is exactly what would be lost.
+    /// The caller is the write path, it has both values on the plan row, and it
+    /// is the only place that knows what the library held at the moment of the
+    /// write.
+    /// </remarks>
+    void Record(Guid pairingId, Guid itemId, string field, string? value, string? previousValue);
 
     /// <summary>
     /// The newest value this plugin wrote for one field on one item, or null
@@ -56,18 +67,18 @@ public interface IWrittenValues
     string? LastWritten(Guid pairingId, Guid itemId, string field);
 
     /// <summary>
-    /// Every value this plugin still holds for one field on one item, oldest
-    /// first.
+    /// Every write this plugin still holds for one field on one item, oldest
+    /// first, each carrying the value written and the value it replaced.
     /// </summary>
     /// <param name="pairingId">The pairing to ask about.</param>
     /// <param name="itemId">The item on this server.</param>
     /// <param name="field">The field, named as the register names it.</param>
-    /// <returns>The values still held, oldest first, empty where there is no record.</returns>
+    /// <returns>The writes still held, oldest first, empty where there is no record.</returns>
     /// <remarks>
     /// Bounded, and the bound is <see cref="WrittenValues.Bound"/>. A caller
     /// reading this as a full history is reading it wrong: what a bound has
     /// discarded is gone, and #66 is where a surface reporting on it has to say
     /// so rather than report a clean number.
     /// </remarks>
-    IReadOnlyList<string?> History(Guid pairingId, Guid itemId, string field);
+    IReadOnlyList<WrittenValue> History(Guid pairingId, Guid itemId, string field);
 }

@@ -20,28 +20,28 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// </remarks>
 internal sealed class RecordingWrittenValues : IWrittenValues
 {
-    private readonly Dictionary<(Guid Pairing, Guid Item, string Field), List<string?>> _held = new();
+    private readonly Dictionary<(Guid Pairing, Guid Item, string Field), List<WrittenValue>> _held = new();
 
     /// <summary>
     /// Gets every value recorded, in the order it was recorded, so a case can
     /// assert the order of a pass as well as its result.
     /// </summary>
-    public Collection<(Guid Pairing, Guid Item, string Field, string? Value)> Recorded { get; } = new();
+    public Collection<(Guid Pairing, Guid Item, string Field, string? Value, string? Previous)> Recorded { get; } = new();
 
     /// <inheritdoc />
-    public void Record(Guid pairingId, Guid itemId, string field, string? value)
+    public void Record(Guid pairingId, Guid itemId, string field, string? value, string? previousValue)
     {
-        Recorded.Add((pairingId, itemId, field, value));
+        Recorded.Add((pairingId, itemId, field, value, previousValue));
 
         var key = (pairingId, itemId, field);
 
         if (!_held.TryGetValue(key, out var values))
         {
-            values = new List<string?>();
+            values = new List<WrittenValue>();
             _held[key] = values;
         }
 
-        values.Add(value);
+        values.Add(new WrittenValue { Value = value, Previous = previousValue });
 
         while (values.Count > WrittenValues.Bound)
         {
@@ -53,15 +53,15 @@ internal sealed class RecordingWrittenValues : IWrittenValues
     public string? LastWritten(Guid pairingId, Guid itemId, string field)
     {
         return _held.TryGetValue((pairingId, itemId, field), out var values) && values.Count > 0
-            ? values[^1]
+            ? values[^1].Value
             : null;
     }
 
     /// <inheritdoc />
-    public IReadOnlyList<string?> History(Guid pairingId, Guid itemId, string field)
+    public IReadOnlyList<WrittenValue> History(Guid pairingId, Guid itemId, string field)
     {
         return _held.TryGetValue((pairingId, itemId, field), out var values)
-            ? new ReadOnlyCollection<string?>(values.ToList())
-            : Array.Empty<string?>();
+            ? new ReadOnlyCollection<WrittenValue>(values.ToList())
+            : Array.Empty<WrittenValue>();
     }
 }

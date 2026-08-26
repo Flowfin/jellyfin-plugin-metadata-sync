@@ -145,11 +145,19 @@ public sealed class Applier
             // difference is this plugin's own work rather than an operator's.
             // The write path is all or nothing per item, so an item that
             // reached here had every one of its rows assigned.
+            //
+            // What was replaced is the plan row's local value, which is what the
+            // library held when the item was read. It is passed rather than
+            // looked up, because the store's own newest entry is what this plugin
+            // wrote last time and an operator may have edited the field since:
+            // asking the store would record this plugin's own last write as the
+            // thing it replaced and lose the edit, which is the one value a
+            // conflict log entry and a revert both need.
             foreach (var change in item.Changes)
             {
                 if (change.Writes)
                 {
-                    _written.Record(plan.PairingId, item.LocalItemId, change.Field, change.ValueToWrite);
+                    _written.Record(plan.PairingId, item.LocalItemId, change.Field, change.ValueToWrite, change.LocalValue);
                 }
             }
 

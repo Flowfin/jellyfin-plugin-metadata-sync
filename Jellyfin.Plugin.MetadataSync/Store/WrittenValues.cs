@@ -41,6 +41,17 @@ namespace Jellyfin.Plugin.MetadataSync.Store;
 /// that rather than report a clean number.
 /// </para>
 /// <para>
+/// A line carries the value written and the value that was there before it,
+/// which is one line rather than two because they are one write. The previous
+/// value arrives from the caller and is never worked out here: what this store
+/// holds from the last pass is what this plugin wrote, and what a write replaces
+/// is what the library held at the moment of the write. The two differ by
+/// exactly the edit an operator made in between, which is the one thing a
+/// conflict log entry and a revert both need. A null on either member is a field
+/// that held nothing rather than a member nobody recorded, and the empty history
+/// is what says there is no record at all.
+/// </para>
+/// <para>
 /// What this type does not do. It does not decide anything - which value wins is
 /// the conflict rules' answer and this is one of their inputs. It does not know
 /// what a field means, so it never asks the register. And it holds nothing about
@@ -106,7 +117,7 @@ public sealed class WrittenValues : IWrittenValues
     /// exercises, which is the reading it should make.
     /// </para>
     /// </remarks>
-    private readonly Dictionary<(Guid Pairing, Guid Item, string Field), List<string?>> _held = new();
+    private readonly Dictionary<(Guid Pairing, Guid Item, string Field), List<WrittenValue>> _held = new();
     private readonly string _directory;
     private readonly string _path;
     private int _lines;
@@ -154,7 +165,7 @@ public sealed class WrittenValues : IWrittenValues
     public int Unreadable { get; private set; }
 
     /// <inheritdoc />
-    public void Record(Guid pairingId, Guid itemId, string field, string? value)
+    public void Record(Guid pairingId, Guid itemId, string field, string? value, string? previousValue)
     {
         lock (_gate)
         {
@@ -162,11 +173,11 @@ public sealed class WrittenValues : IWrittenValues
 
             if (!_held.TryGetValue(key, out var values))
             {
-                values = new List<string?>();
+                values = new List<WrittenValue>();
                 _held[key] = values;
             }
 
-            values.Add(value);
+            values.Add(new WrittenValue { Value = value, Previous = previousValue });
 
             // Trimmed on the way in rather than on the way out, so the answer a
             // reader gets and the answer a compaction writes are the same list
@@ -182,6 +193,7 @@ public sealed class WrittenValues : IWrittenValues
                 Item = itemId,
                 Field = field,
                 Value = value,
+                Previous = previousValue,
             });
         }
     }
@@ -192,19 +204,19 @@ public sealed class WrittenValues : IWrittenValues
         lock (_gate)
         {
             return _held.TryGetValue((pairingId, itemId, Named(field)), out var values)
-                ? values[^1]
+                ? values[^1].Value
                 : null;
         }
     }
 
     /// <inheritdoc />
-    public IReadOnlyList<string?> History(Guid pairingId, Guid itemId, string field)
+    public IReadOnlyList<WrittenValue> History(Guid pairingId, Guid itemId, string field)
     {
         lock (_gate)
         {
             return _held.TryGetValue((pairingId, itemId, Named(field)), out var values)
-                ? new ReadOnlyCollection<string?>(values.ToList())
-                : Array.Empty<string?>();
+                ? new ReadOnlyCollection<WrittenValue>(values.ToList())
+                : Array.Empty<WrittenValue>();
         }
     }
 
@@ -275,11 +287,11 @@ public sealed class WrittenValues : IWrittenValues
 
             if (!_held.TryGetValue(key, out var values))
             {
-                values = new List<string?>();
+                values = new List<WrittenValue>();
                 _held[key] = values;
             }
 
-            values.Add(row.Value);
+            values.Add(new WrittenValue { Value = row.Value, Previous = row.Previous });
 
             while (values.Count > Bound)
             {
@@ -321,12 +333,13 @@ public sealed class WrittenValues : IWrittenValues
         var replacement = _path + ".compacting";
 
         var lines = _held
-            .SelectMany(entry => entry.Value.Select(value => new Row
+            .SelectMany(entry => entry.Value.Select(written => new Row
             {
                 Pairing = entry.Key.Pairing,
                 Item = entry.Key.Item,
                 Field = entry.Key.Field,
-                Value = value,
+                Value = written.Value,
+                Previous = written.Previous,
             }))
             .Select(row => JsonSerializer.Serialize(row, _json));
 
@@ -361,5 +374,7 @@ public sealed class WrittenValues : IWrittenValues
         public string Field { get; set; } = string.Empty;
 
         public string? Value { get; set; }
+
+        public string? Previous { get; set; }
     }
 }

@@ -355,7 +355,7 @@ public class RefusalTests
                  nameof(WrittenValuesTests.AFieldWithNoNameIsRefusedRatherThanAnswered),
                  nameof(WrittenValuesTests.EachPairingItemAndFieldIsItsOwnRecord),
                  "the field has a name",
-                 () => StoreInATemporaryDirectory().Record(Guid.Empty, Guid.Empty, " ", "a value")),
+                 () => StoreInATemporaryDirectory().Record(Guid.Empty, Guid.Empty, " ", "a value", null)),
 
             ["Reconciliation/Applier.cs -> ArgumentNullException.ThrowIfNull(plan);"] =
                 (nameof(ApplierTests),
