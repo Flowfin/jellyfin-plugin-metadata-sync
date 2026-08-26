@@ -1,0 +1,160 @@
+# Reads `.github/labels.yaml` against the labels this board actually carries and
+# reports both directions. It repairs nothing.
+#
+# Why the two can disagree at all: `sync-labels.yaml` applies the file with
+# `delete-other-labels: true`, so the file is the whole board rather than a list
+# of labels the board should have among others. A label the board carries and
+# the file does not declare is deleted by the next sync run. A label the file
+# declares and the board does not carry is offered by the hygiene gate in the
+# message a refused change reads, so the repair it suggests does not exist.
+# Both directions were live on 2026-08-23 and both were found by hand.
+#
+# Why it lives here rather than in the suite. The comparison needs the board,
+# and the suite runs with no network by policy - `docs/testing.md` holds that
+# policy. What the suite does hold is the file against `docs/changelog.md` and
+# against the drafter configuration, which is three declarations agreeing with
+# each other and none of them being the board. The sync run is the only other
+# thing that touches both, and it writes rather than reports except under a
+# `dry_run` input nothing schedules.
+#
+# Why it reports and does not repair. A run that quietly restored a deleted
+# label would remove the reading somebody needs in order to know it was
+# deleted. The job fails on a difference, because a scheduled report that
+# always succeeds is one nobody opens.
+#
+# Hardened per the workflow policy in `zizmor.yml`: the action is SHA-pinned,
+# checkout runs with persist-credentials:false, and the write scopes are none -
+# both permissions below are reads.
+name: Label drift
+
+on:
+  # Weekly, which bounds how long a hand-added label can sit undeclared before
+  # the monthly sync deletes it. `sync-labels.yaml` carries that monthly cron.
+  schedule:
+    - cron: '23 6 * * 2'
+  workflow_dispatch:
+
+permissions: {}
+
+# One comparison at a time, and a superseded one is not cancelled: each run is
+# a reading of a board that moves, and a cancelled reading reports nothing.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  compare:
+    name: Compare the label file with the board
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read # check out the label file and the comparison
+      issues: read # list the labels this board carries
+    steps:
+      - name: Check out the label file and the comparison
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Prove the comparison bites, in each direction
+        # The live comparison below is a reading of a board that moves, so a run
+        # in which it reports nothing is not by itself evidence that it would
+        # have reported something. These four cases are, and they run first so
+        # the report underneath is read against a comparison that has just been
+        # shown to work on this runner.
+        shell: bash
+        run: |
+          set -euo pipefail
+          work=$(mktemp -d)
+
+          cat > "$work/agreeing.yaml" <<'YAML'
+          - name: "area: fields"
+            color: "006b75"
+          - name: "documentation"
+            color: "0075ca"
+          YAML
+          printf 'documentation\narea: fields\n' > "$work/agreeing.txt"
+
+          cat > "$work/drifted.yaml" <<'YAML'
+          - name: "area: fields"
+            color: "006b75"
+          - name: "declared-and-absent"
+            color: "0075ca"
+          YAML
+          printf 'area: fields\ncarried-and-undeclared\n' > "$work/drifted.txt"
+
+          cat > "$work/unreadable.yaml" <<'YAML'
+          - name: "area: fields"
+            color: "006b75"
+          - name: unquoted-label
+            color: "0075ca"
+          YAML
+          : > "$work/empty.txt"
+
+          out=""
+          run_case() {
+            local expected=$1 label_file=$2 live_file=$3 code=0
+            out=$(.github/scripts/label-drift.sh "$work/$label_file" "$work/$live_file" 2>&1) || code=$?
+            echo "--- $label_file against $live_file -> exit $code, expected $expected"
+            echo "$out"
+            echo
+            if [ "$code" -ne "$expected" ]; then
+              echo "the comparison answered $code where $expected is what this case is about" >&2
+              exit 1
+            fi
+          }
+
+          named_under() {
+            local heading=$1 name=$2
+            # The line after the heading, rather than the name anywhere in the
+            # output: the mistake this is against is the two directions swapped,
+            # and a search of the whole report passes that unchanged.
+            if ! echo "$out" | grep -A 1 "^$heading" | grep -qx "  $name"; then
+              echo "'$name' is not named under '$heading'" >&2
+              exit 1
+            fi
+          }
+
+          run_case 0 agreeing.yaml agreeing.txt
+          named_under 'Declared and not carried' 'none'
+          named_under 'Carried by the board and not declared' 'none'
+
+          run_case 1 drifted.yaml drifted.txt
+          named_under 'Declared and not carried' 'declared-and-absent'
+          named_under 'Carried by the board and not declared' 'carried-and-undeclared'
+
+          # A `- name:` line the parsing cannot read is refused rather than
+          # skipped. Skipped, it would shorten the declared set, and a declared
+          # set short of a row reports nothing in the direction that row was the
+          # only member of.
+          run_case 2 unreadable.yaml agreeing.txt
+
+          # An empty board reading is refused for the same reason in the other
+          # direction: it compares clean against every declared label.
+          run_case 2 agreeing.yaml empty.txt
+
+          echo "The comparison answered all four cases as each is about."
+
+      - name: Read the labels this board carries
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/labels" --paginate --jq '.[].name' > live-labels.txt
+          echo "the board reports $(wc -l < live-labels.txt) label(s)"
+
+      - name: Compare the label file with the board
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          {
+            echo '### The label file against the board'
+            echo
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          .github/scripts/label-drift.sh .github/labels.yaml live-labels.txt 2>&1 | tee -a "$GITHUB_STEP_SUMMARY"
+          status=${PIPESTATUS[0]}
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
