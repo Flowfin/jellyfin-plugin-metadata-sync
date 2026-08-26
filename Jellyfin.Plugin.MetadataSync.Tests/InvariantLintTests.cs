@@ -68,6 +68,8 @@ public class InvariantLintTests
             TokenPatterns: new[] { "System.IO", "Path.", "File.", "FileInfo", "DirectoryInfo", "Directory." },
             AllowedIn: new[]
             {
+                ("StoreFormat.cs",
+                 "Is the stamp saying which format the files in the plugin's store directory are written in, so it names the file-system types on purpose. Nothing here takes part in deciding that two items are the same: it reads and writes one number, it is handed no item and no resolution, and the only thing it compares is that number against the two this build declares. What the allowance costs is the same as the one below it - a file-system read added to this file for another reason is not refused by this rule - and what stands against that is the review and the walk in ResolutionPathTests, which starts at the resolvers and reaches no store."),
                 ("WrittenValues.cs",
                  "Is the plugin's own store, which keeps what this plugin wrote in a file beside the plugin's data, so it names the file-system types on purpose. The invariant is about deciding that two items are the same, and nothing here takes part in that: the item arrives as an identifier the resolver already produced, it is written down and read back, and no property of a file, a path or a directory reaches a comparison. What the allowance costs is stated rather than hidden - a file-system read added to this file for some other reason is not refused by this rule, and what stands against that is the review and the walk in ResolutionPathTests, which starts at the resolvers and would reach a store only if a resolution called into one."),
             },

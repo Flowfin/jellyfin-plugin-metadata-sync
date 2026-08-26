@@ -357,6 +357,27 @@ public class RefusalTests
                  "the store removed the number of rows it had just reported holding",
                  () => new PairingStores(new IPairingStore[] { AStoreThatDisagreesWithItself() }).Remove(Guid.Empty)),
 
+            ["Store/StoreFormat.cs -> ArgumentException.ThrowIfNullOrWhiteSpace(directory);"] =
+                (nameof(StoreFormatTests),
+                 nameof(StoreFormatTests.AStampWithNoDirectoryIsRefused),
+                 nameof(StoreFormatTests.ADirectoryWithNoStampIsTheEarliestFormat),
+                 "the directory the stamp is read from is there",
+                 () => new StoreFormat(null!)),
+
+            ["Store/StoreFormat.cs -> throw new StoreFormatRefusedException(_path, \"no store format this build can read\", Current);"] =
+                (nameof(StoreFormatTests),
+                 nameof(StoreFormatTests.AStampThatCannotBeReadIsRefused),
+                 nameof(StoreFormatTests.ADirectoryWithNoStampIsTheEarliestFormat),
+                 "the stamp says a format rather than something unreadable",
+                 () => FormatOverAStampSaying("this is not a stamp").Declared()),
+
+            ["Store/StoreFormat.cs -> throw new StoreFormatRefusedException(_path, Says(stamp.Format), Current);"] =
+                (nameof(StoreFormatTests),
+                 nameof(StoreFormatTests.AFormatFromTheFutureIsRefused),
+                 nameof(StoreFormatTests.ADirectoryThisPluginHasWrittenToSaysWhichFormatItIsIn),
+                 "the format the stamp declares is one this build writes",
+                 () => FormatOverAStampSaying("{\"format\":" + (StoreFormat.Current + 1) + "}").Declared()),
+
             ["Store/WrittenValues.cs -> ArgumentException.ThrowIfNullOrWhiteSpace(directory);"] =
                 (nameof(WrittenValuesTests),
                  nameof(WrittenValuesTests.AStoreWithNoDirectoryIsRefused),
@@ -625,6 +646,20 @@ public class RefusalTests
     /// in a register entry would be the register doing work of its own.
     /// </summary>
     /// <returns>The store.</returns>
+    private static StoreFormat FormatOverAStampSaying(string stamp)
+    {
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            "metadata-sync-refusals-" + Guid.NewGuid().ToString("n", CultureInfo.InvariantCulture));
+
+        Directory.CreateDirectory(directory);
+
+        var format = new StoreFormat(directory);
+
+        File.WriteAllText(format.Location, stamp);
+        return format;
+    }
+
     private static WrittenValues StoreInATemporaryDirectory()
     {
         var directory = Path.Combine(

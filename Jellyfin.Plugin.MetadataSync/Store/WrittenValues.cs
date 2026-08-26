@@ -118,9 +118,11 @@ public sealed class WrittenValues : IWrittenValues, IPairingStore
     /// </para>
     /// </remarks>
     private readonly Dictionary<(Guid Pairing, Guid Item, string Field), List<WrittenValue>> _held = new();
+    private readonly StoreFormat _format;
     private readonly string _directory;
     private readonly string _path;
     private int _lines;
+    private bool _stamped;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="WrittenValues"/> class over
@@ -142,6 +144,15 @@ public sealed class WrittenValues : IWrittenValues, IPairingStore
 
         _directory = directory;
         _path = Path.Combine(directory, FileName);
+
+        // The format the directory declares is read before a line of it is,
+        // because a file written by a newer build is dropped to what this build
+        // understands the moment it is loaded and written back that way at the
+        // next compaction. Refusing here is the only place that loss can still
+        // be prevented rather than reported.
+        _format = new StoreFormat(directory);
+        _format.Declared();
+
         Load();
     }
 
@@ -394,6 +405,17 @@ public sealed class WrittenValues : IWrittenValues, IPairingStore
     private void Append(Row row)
     {
         Directory.CreateDirectory(_directory);
+
+        // Stamped at the first write rather than at construction, so a plugin
+        // that has been installed and has written nothing still leaves an empty
+        // directory rather than a file. Once per instance: the stamp does not
+        // change under a running plugin, and a check per appended line would be
+        // one file system call per written field.
+        if (!_stamped)
+        {
+            _format.Stamp();
+            _stamped = true;
+        }
 
         File.AppendAllText(_path, JsonSerializer.Serialize(row, _json) + "\n", new UTF8Encoding(false));
         _lines++;
