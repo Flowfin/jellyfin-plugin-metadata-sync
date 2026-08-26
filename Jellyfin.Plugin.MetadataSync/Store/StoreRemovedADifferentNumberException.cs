@@ -14,36 +14,17 @@ namespace Jellyfin.Plugin.MetadataSync.Store;
 /// reported has deleted rows of a pairing nobody asked about; a store removing
 /// fewer has left rows an operator has already been told are gone, which is a
 /// false assurance in the one act this plugin performs on somebody's behalf.
+/// <para>
+/// One constructor, and the three an exception usually carries are absent on
+/// purpose. `CA1032` is set to `Info` in `jellyfin.ruleset` with the reason
+/// written at it - constructors nothing calls are code nothing tests - and the
+/// coverage bar reads such a constructor as a decision nothing exercises. This
+/// exception is thrown from one line with both numbers in hand, so that is the
+/// only way to build one.
+/// </para>
 /// </remarks>
 public sealed class StoreRemovedADifferentNumberException : InvalidOperationException
 {
-    /// <summary>
-    /// Initializes a new instance of the <see cref="StoreRemovedADifferentNumberException"/> class.
-    /// </summary>
-    public StoreRemovedADifferentNumberException()
-        : base("A store removed a different number of rows than it reported holding.")
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="StoreRemovedADifferentNumberException"/> class.
-    /// </summary>
-    /// <param name="message">What disagreed.</param>
-    public StoreRemovedADifferentNumberException(string message)
-        : base(message)
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="StoreRemovedADifferentNumberException"/> class.
-    /// </summary>
-    /// <param name="message">What disagreed.</param>
-    /// <param name="innerException">What was being done when it did.</param>
-    public StoreRemovedADifferentNumberException(string message, Exception innerException)
-        : base(message, innerException)
-    {
-    }
-
     /// <summary>
     /// Initializes a new instance of the <see cref="StoreRemovedADifferentNumberException"/> class
     /// naming the store and both numbers.
