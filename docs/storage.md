@@ -57,6 +57,8 @@ now, and what it returns is named rather than counted:
 
 - `Jellyfin.Plugin.MetadataSync/Store/WrittenValues.cs`, the plugin's own store
   of what this plugin wrote
+- `Jellyfin.Plugin.MetadataSync/Store/StoreFormat.cs`, the stamp saying which
+  format the files in that directory are written in
 
 <!-- end of the sources that write -->
 
@@ -115,6 +117,46 @@ could have shown it.
 A null on either half is a field that held nothing rather than a half nobody
 recorded. What says there is no record at all is an empty history, which is a
 different answer from an entry carrying nulls.
+
+## What says which format the store is in
+
+A file in that directory says which format the files beside it are written in.
+It is `store-format.json`, it carries one number, and it is read before any
+other file in the directory is opened.
+
+The case it exists for is a downgrade. A newer build writes the store, the
+operator puts an older build back, and the older build meets a file whose shape
+it does not know. Every reader here drops what it does not understand - that is
+what a JSON reader does with a member it has no property for - so the loss is
+silent, and the next compaction rewrites the file without what the newer build
+had put in it. Reading half of a newer file successfully is how a downgrade
+destroys data, and the only moment that can still be prevented is before the
+first line is read.
+
+**So a store this build cannot place is not opened at all.** A stamp naming a
+format newer than this build is refused, and a stamp this build cannot read is
+refused as well rather than being taken for the earliest format: a newer file
+whose stamp was damaged would otherwise be opened, dropped to what this build
+understands, and written back that way. Neither refusal writes anything, so the
+directory an operator has to put the newer build back for is exactly as the
+newer build left it.
+
+A directory with no stamp is the earliest format rather than an error. Two
+things produce one - a plugin that has never written, and a directory written
+before the stamp existed - and both hold files of that format. Every later
+format is stamped, so an absent stamp cannot mean anything else.
+
+The stamp arrives with the first write and not before it. Reading a store does
+not create one, because a directory with no store in it is the state a plugin is
+installed in, and a read that stamped it would turn every question about the
+store into a write.
+
+**What this is not is a migration.** One format has existed, so there is no step
+from one to another and nothing has been migrated. What is built is the half
+that has to exist before the first shape change rather than after it: the
+artefact says which shape it is, and a build that meets a shape it does not know
+stops. The chain of steps, and the configuration's half of the same question,
+are where #59 says they are and neither is built.
 
 ## What an operator can ask for, and what a removal is not
 
@@ -199,7 +241,8 @@ wrote, per item and per field, is the first: #16 built it and #47 made it carry
 what each write replaced, which is the provenance the same record holds rather
 than a second copy of it. The conflict log and the unmatched register are the
 other two, and #48 and #29 are where they are built. #59 is how any of it
-survives a version change, and it is not built either.
+survives a version change; the stamp above is the half of that which the store
+now carries, and the chain of steps is not built.
 
 So a reader should take the conflict log row and the unmatched register row as a
 decision already made about where something goes, and the row above them as a

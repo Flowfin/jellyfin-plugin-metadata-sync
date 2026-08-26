@@ -154,8 +154,9 @@ into an old one. Where a released version turns out to describe the wrong thing,
 the repair is the next number plus a step from the one that was wrong, the same
 answer this document gives for a release that went out with the wrong contents.
 
-Neither artefact carries a version today and nothing has been released, so this
-binds the first release rather than describing the current tree. Nothing refuses a
+The store carries a format stamp now and the configuration carries no version,
+and nothing has been released, so this binds the first release rather than
+describing the current tree. Nothing refuses a
 violation of it either, here or anywhere else: what would refuse one is the step
 chain itself, which does not exist. #59 is where that mechanism is built, and
 `docs/storage.md` is where the two artefacts and the split between them are

@@ -123,6 +123,8 @@ What writes to a disk:
 
 - `Jellyfin.Plugin.MetadataSync/Store/WrittenValues.cs`, the plugin's own store
   of what this plugin wrote
+- `Jellyfin.Plugin.MetadataSync/Store/StoreFormat.cs`, the stamp saying which
+  format the files in that directory are written in
 
 <!-- end of the sources that write -->
 
@@ -134,8 +136,11 @@ remembered.
 What it keeps is what this plugin wrote, per pairing, per item and per field,
 bounded at ten values each with the oldest dropped first. `docs/storage.md` is
 where that is argued and what the bound costs is stated; it is not restated here.
-#59 is still how a store survives a version change, and that is where the refusal
-of a newer-version store belongs.
+#59 is still how a store survives a version change. The refusal of a store
+written by a newer build is landed: the directory carries a stamp saying which
+format it is in, and a build meeting a format it does not read opens nothing in
+that directory. `docs/storage.md` is where that is argued. What is not built is
+the chain of steps between two formats, because one format has existed.
 
 So the uninstall row above is now a decision about a file that exists rather than
 about one that will. Deleting the store would make a reinstall start blind and
