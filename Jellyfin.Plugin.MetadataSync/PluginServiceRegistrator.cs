@@ -37,7 +37,24 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         // copy of the file's tail. It is built lazily for the same reason the
         // library is resolved inside the delegate: nothing may touch a disk
         // while the container is still being assembled.
-        serviceCollection.AddSingleton<IWrittenValues>(
+        //
+        // The concrete type is what the container holds and the two interfaces
+        // are forwarded to it, so both faces of the store are the same object.
+        // Registering each interface with its own factory would have built two
+        // stores over one file, and the one that reported what is held would
+        // have been a different one from the one a pass wrote to.
+        serviceCollection.AddSingleton(
             _ => new WrittenValues(Plugin.Instance!.DataFolderPath));
+        serviceCollection.AddSingleton<IWrittenValues>(
+            services => services.GetRequiredService<WrittenValues>());
+        serviceCollection.AddSingleton<IPairingStore>(
+            services => services.GetRequiredService<WrittenValues>());
+
+        // What an operator asks what this plugin holds about one pairing, and
+        // asks to have removed. It is given every store rather than a list
+        // written here, so a store added later reaches the report by being
+        // registered rather than by somebody remembering this line.
+        serviceCollection.AddSingleton(
+            services => new PairingStores(services.GetServices<IPairingStore>()));
     }
 }

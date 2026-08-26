@@ -203,6 +203,19 @@ It says nothing about the administrator surface, the conflict log or an export.
 Those are three more places a value appears, they are governed by the issues
 that build them, and none of them is covered here.
 
+**One of those three is now built, and this paragraph is not widened for it.**
+The export exists: #61 landed the report of what this plugin holds for one
+pairing, and its document carries the values that were written and the values
+they replaced, which is the most personal artefact this plugin produces. The
+logging guard does not reach it and is not asked to, because what a log line may
+name and what an operator may be handed on purpose are different questions. What
+the export owes instead is that it says what it is carrying before it carries any
+of it, which the suite asserts by position rather than by presence, and that it
+is produced rather than written to a disk, so nothing is left lying beside the
+store with nothing to clean it up. Which surface hands it to an operator is #51,
+and that is where what an operator is told about the file becomes a screen rather
+than a paragraph.
+
 It currently sweeps a plugin with no logging call in it at all:
 
     git grep -c "LogInformation\|LogWarning\|LogError\|LogCritical\|LogDebug\|LogTrace" origin/master -- 'Jellyfin.Plugin.MetadataSync/*.cs'

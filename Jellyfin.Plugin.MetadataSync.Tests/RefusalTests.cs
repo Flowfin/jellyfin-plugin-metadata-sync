@@ -343,6 +343,20 @@ public class RefusalTests
                  "there is somewhere to record what was written",
                  () => new Applier(new RecordingPlanTarget(), null!)),
 
+            ["Store/PairingStores.cs -> ArgumentNullException.ThrowIfNull(stores);"] =
+                (nameof(PairingStoresTests),
+                 nameof(PairingStoresTests.NoStoresIsAnAnswerAndNoSetOfStoresIsARefusal),
+                 nameof(PairingStoresTests.EveryStoreContributesToTheReportIncludingTheOnesHoldingNothing),
+                 "the set of stores is there, even where it is empty",
+                 () => new PairingStores(null!)),
+
+            ["Store/PairingStores.cs -> throw new StoreRemovedADifferentNumberException(removing.Holdings[n].Store, removing.Holdings[n].Count, removed);"] =
+                (nameof(PairingStoresTests),
+                 nameof(PairingStoresTests.AStoreThatRemovesADifferentNumberThanItReportedIsRefused),
+                 nameof(PairingStoresTests.RemovalDeletesOnePairingAndLeavesTheOtherWhereItWas),
+                 "the store removed the number of rows it had just reported holding",
+                 () => new PairingStores(new IPairingStore[] { AStoreThatDisagreesWithItself() }).Remove(Guid.Empty)),
+
             ["Store/WrittenValues.cs -> ArgumentException.ThrowIfNullOrWhiteSpace(directory);"] =
                 (nameof(WrittenValuesTests),
                  nameof(WrittenValuesTests.AStoreWithNoDirectoryIsRefused),
@@ -619,6 +633,22 @@ public class RefusalTests
 
         Directory.CreateDirectory(directory);
         return new WrittenValues(directory);
+    }
+
+    /// <summary>
+    /// A store that reports holding one row and answers a removal with another
+    /// number. No honest store produces that, and it is the arrangement the
+    /// report refuses.
+    /// </summary>
+    /// <returns>The store.</returns>
+    private static AStoreOfItsOwn AStoreThatDisagreesWithItself()
+    {
+        var store = new AStoreOfItsOwn("AStoreThatDisagreesWithItself", "one row");
+
+        store.Add(Guid.Empty, "the row it reports");
+        store.AnswersRemovalWith = 4;
+
+        return store;
     }
 
     private static string SiteThatRefused(Exception refusal)

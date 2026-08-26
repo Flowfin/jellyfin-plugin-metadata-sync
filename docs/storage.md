@@ -116,9 +116,38 @@ A null on either half is a field that held nothing rather than a half nobody
 recorded. What says there is no record at all is an empty history, which is a
 different answer from an entry carrying nulls.
 
+## What an operator can ask for, and what a removal is not
+
+Two questions, and they are the same question asked before and after a decision:
+what does this plugin hold about one pairing, and let go of it.
+
+The answer to the first is a report over every store this plugin owns, one entry
+per store, the stores holding nothing included. It carries a count per store and
+every row behind that count, and it can be handed over as a document. The
+document is produced rather than written to a disk: an export saved into the
+plugin's own data folder would be the most personal artefact this plugin makes,
+sitting beside the store with nothing to clean it up. Which surface hands it to
+an operator is #51, and until that exists nothing offers the document to anybody.
+
+**Removing these records does not change the library.** Metadata this plugin
+already wrote stays on the items it was written to. An operator asking for a
+pairing to be gone may mean either act, so the document says which one this is in
+its own opening lines, and a walk in the suite refuses a removal path that can
+reach the library at all. Putting values back is #64 and is a different act with
+a different confirmation.
+
+Every store answers for a pairing through one interface, and that is a constraint
+on how a store is built rather than on the report. A report assembled from a list
+of stores somebody wrote down goes on passing the day a sixth store is added and
+stops being true in the same act, so the suite derives the set in two directions:
+every plugin source that persists declares a store of that shape, and every store
+of that shape is registered. #61 asked for exactly this before any store existed,
+on the ground that it costs a sentence now and a migration of every store later.
+
 ## What happens to a record whose pairing no longer exists
 
-It stays, and nothing reads it as another pairing's.
+It stays until somebody asks for it to go, and nothing reads it as another
+pairing's.
 
 The pairing is a component of every key, and a pairing identifier is derived from
 the two servers' public keys with revocation terminal, so two servers that pair
@@ -127,13 +156,18 @@ that ended are therefore inert rather than misleading: the key that would reach
 them is one nothing asks about again, and a later pairing between the same two
 servers reads none of them.
 
-They are not deleted either, and that is a decision rather than an omission.
-Removing them is #61, which is an act an operator asks for and is told the count
-of, and a store quietly dropping them at the next restart would have nothing left
-to report when they did ask. What that costs until #61 lands is stated here
-rather than left to be found: a server that has paired and revoked several times
-keeps every one of those pairings' rows, bounded per item and per field but not
-by the number of pairings, and nothing on any surface says so yet.
+Nothing deletes them on its own, and that is a decision rather than an omission.
+A store dropping them at the next restart would have nothing left to report the
+day an operator asked what it held. They go when somebody asks, through the
+removal above, and the file is rewritten from what is left rather than having
+lines struck out of it.
+
+What that costs while nothing asks is stated here rather than left to be found: a
+server that has paired and revoked several times keeps every one of those
+pairings' rows, bounded per item and per field but not by the number of pairings.
+Nothing offers an operator the question yet either, because the surface that
+would ask it is #51, so today the removal is reachable from the container and
+from nowhere a person can press.
 
 ## What it reads rather than keeps
 

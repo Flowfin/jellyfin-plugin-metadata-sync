@@ -59,7 +59,7 @@ namespace Jellyfin.Plugin.MetadataSync.Store;
 /// the row <c>docs/storage.md</c> gives to neither place.
 /// </para>
 /// </remarks>
-public sealed class WrittenValues : IWrittenValues
+public sealed class WrittenValues : IWrittenValues, IPairingStore
 {
     /// <summary>
     /// How many values are kept per item and per field, oldest dropped first.
@@ -165,6 +165,13 @@ public sealed class WrittenValues : IWrittenValues
     public int Unreadable { get; private set; }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Written for somebody reading a list of stores rather than reading this
+    /// file, so it says what the rows are about instead of naming the type.
+    /// </remarks>
+    public string Held => "what this plugin wrote to this server's library, with the value each write replaced";
+
+    /// <inheritdoc />
     public void Record(Guid pairingId, Guid itemId, string field, string? value, string? previousValue)
     {
         lock (_gate)
@@ -219,6 +226,86 @@ public sealed class WrittenValues : IWrittenValues
                 : Array.Empty<WrittenValue>();
         }
     }
+
+    /// <inheritdoc />
+    public PairingHolding Holding(Guid pairingId)
+    {
+        lock (_gate)
+        {
+            return new PairingHolding
+            {
+                Store = nameof(WrittenValues),
+                Held = Held,
+                Rows = _held
+                    .Where(entry => entry.Key.Pairing == pairingId)
+                    .OrderBy(entry => entry.Key.Item)
+                    .ThenBy(entry => entry.Key.Field, StringComparer.Ordinal)
+                    .SelectMany(entry => entry.Value.Select(written => Sentence(entry.Key.Item, entry.Key.Field, written)))
+                    .ToList(),
+            };
+        }
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The file is rewritten from what is left rather than having lines struck
+    /// out of it. A store that removed a pairing from memory and appended
+    /// nothing would answer correctly until the next restart and then read every
+    /// removed row back off the disk, which is the shape of a deletion that
+    /// looks like it worked.
+    /// </remarks>
+    public int Remove(Guid pairingId)
+    {
+        lock (_gate)
+        {
+            var going = _held.Keys.Where(key => key.Pairing == pairingId).ToList();
+            var removed = 0;
+
+            foreach (var key in going)
+            {
+                removed += _held[key].Count;
+                _held.Remove(key);
+            }
+
+            if (removed > 0)
+            {
+                Compact(_held.Values.Sum(values => values.Count));
+            }
+
+            return removed;
+        }
+    }
+
+    /// <summary>
+    /// One row of this store, said in a sentence.
+    /// </summary>
+    /// <param name="item">The item on this server.</param>
+    /// <param name="field">The field, as the register names it.</param>
+    /// <param name="written">What was written and what it replaced.</param>
+    /// <returns>The sentence.</returns>
+    /// <remarks>
+    /// A value that was empty is said as empty rather than left out. A row
+    /// reading as though a field held nothing when it held an empty string is a
+    /// distinction an operator cannot recover from the document afterwards.
+    /// </remarks>
+    private static string Sentence(Guid item, string field, WrittenValue written)
+    {
+        return string.Format(
+            CultureInfo.InvariantCulture,
+            "{0} on item {1}: wrote {2}, replacing {3}",
+            field,
+            item,
+            Said(written.Value),
+            Said(written.Previous));
+    }
+
+    /// <summary>
+    /// A value as the document says it.
+    /// </summary>
+    /// <param name="value">The value, or null where the field held nothing.</param>
+    /// <returns>The value in quotation marks, or the word for an absence.</returns>
+    private static string Said(string? value) =>
+        value is null ? "nothing" : string.Format(CultureInfo.InvariantCulture, "\"{0}\"", value);
 
     /// <summary>
     /// The field a caller named, refused where it has no name.
