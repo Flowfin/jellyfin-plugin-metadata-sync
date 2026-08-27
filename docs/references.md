@@ -147,10 +147,28 @@ readable.
 
 ## What this does not do
 
-It creates nothing. `Create` says what would be created and stops there, because
-an entry that arrived through a sync has to carry a mark saying so and there is
-nowhere yet to keep one. That store is #47, and the field register's rows for
-genres, studios and people still declare that they do not move until it exists.
+It creates nothing. `Create` says what would be created and stops there. Where
+that mark would be kept is no longer the missing half: #47 landed the record of
+what this plugin wrote, and #61 gave every store this plugin owns one shape, so
+a store holding those marks is three members and a registration rather than a
+design nobody has taken.
+
+What is missing is at the other end. Nothing in this plugin asks this resolver
+anything, so no reference is ever created and there is no mark to keep. The only
+source that names it is its own:
+
+<!-- the plugin sources that name the reference resolver: one per line, the file first, read by ReferenceCreationTests -->
+
+- `Jellyfin.Plugin.MetadataSync/References/ReferenceResolver.cs`, where the resolver is declared
+
+<!-- end of the sources that name the resolver -->
+
+That list is held against the plugin's own sources in both directions, so a
+second source naming the resolver reddens this paragraph rather than leaving it
+to go quietly stale, which is what the sentence it replaces did between the
+store landing and somebody reading this file. The caller belongs inside a pass,
+which is #36, #38 and #40, and the field register's rows for genres, studios and
+people declare that they do not move until the mark is produced.
 
 It records nothing. An outcome is returned to whatever asked for it and written
 to no register, because the log a non-resolution belongs in is #48 and it is not
