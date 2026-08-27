@@ -115,24 +115,38 @@ this document exists to remove.
 
 The reasoning is one line. The case for adopting the tool is that the decision
 code in this plan is pure by construction and its rules are exactly the kind a
-test can pass without really checking, and at the commit under review that
-decision code does not exist:
+test can pass without really checking, and when this answer was taken that
+decision code did not exist. The tree was a plugin entry point, a configuration
+holder, a configuration provider with its interface, and a service
+registration. A mutation run over them would have scored a skeleton, the score
+would have been a number nobody would act on, and a repository that adopts the
+tool and then works nothing from its output has bought a report, which is the
+case against.
 
-    git ls-files -- 'Jellyfin.Plugin.MetadataSync/*.cs' | wc -l
-    5
+**The condition this section named has arrived, and the question has not been
+asked again.** It said to ask once the pure planner in #35 and the conflict
+resolver in #44 were both in the tree and carried rules. Both are:
 
-Those five files are a plugin entry point, a configuration holder, a
-configuration provider with its interface, and a service registration. A
-mutation run over them would score a skeleton. The score would be a number
-nobody would act on, and a repository that adopts the tool and then works
-nothing from its output has bought a report, which is the case against.
+    git ls-files -- Jellyfin.Plugin.MetadataSync/Reconciliation/Planner.cs Jellyfin.Plugin.MetadataSync/Conflicts/ConflictResolver.cs
+    Jellyfin.Plugin.MetadataSync/Conflicts/ConflictResolver.cs
+    Jellyfin.Plugin.MetadataSync/Reconciliation/Planner.cs
 
-The condition that changes the answer sits here next to it. Ask the question
-again once the pure planner asked for in #35 and the conflict resolver asked
-for in #44 are both in the tree and carry rules. Those two are the decision
-code the case for adoption is about, and until they exist the case cannot be
-tested against anything. The count above moves as the plugin grows, so re-run
-it rather than quoting this number.
+and how much of this plugin is decision code is derived by the suite rather
+than counted by hand, which is what to read instead of a number written here:
+
+    git grep -n '"Decision code"' -- Jellyfin.Plugin.MetadataSync.Tests/CoverageReport.cs
+
+So the paragraph above describes the commit this answer was taken at and not
+this one, and the sentence it rests on is the half that stopped being true.
+Not adopted for 1.0 stands as the recorded answer, and it stands on a tree that
+has moved rather than on a fresh reading. Whether it is asked again is a
+decision this document does not take; #81 is where it was taken the first time.
+
+This section carried the count that produced the drift and no longer does. It
+said the plugin was five files, told the reader in the next paragraph that the
+count moves as the plugin grows and to re-run it rather than quote it, and left
+the number in anyway. Nothing here reads a figure in a document, so the command
+is handed over in place of its output.
 
 What the shape would be if the answer became yes is written in #81 and is not
 copied here, because a second copy of it would drift against the issue that
