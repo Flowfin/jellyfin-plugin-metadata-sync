@@ -21,10 +21,13 @@ namespace Jellyfin.Plugin.MetadataSync.References;
 /// create an entry from it.
 /// <para>
 /// Nothing here creates anything. <see cref="ReferenceOutcome.Create"/> says
-/// what would be created and no more, because an entry created by a sync has to
-/// carry a mark saying so and there is nowhere yet to keep one. That store is
-/// #47, and until it exists an outcome is something a plan shows rather than
-/// something a pass does.
+/// what would be created and no more. The store a created entry's mark would be
+/// kept in is not what is missing: #47 landed the record of what this plugin
+/// wrote and #61 gave every store this plugin owns one shape. What is missing is
+/// a caller. Nothing in this plugin asks this type anything, so an outcome is
+/// something a plan shows rather than something a pass does, and
+/// <c>docs/references.md</c> carries that claim as a list the suite holds
+/// against these sources rather than as a sentence nothing reads.
 /// </para>
 /// <para>
 /// The table is an embedded resource for the same reason the field register and

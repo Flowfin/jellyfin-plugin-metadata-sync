@@ -283,9 +283,11 @@ are one entry, and which pair is too close for this plugin to decide either way,
 is declared in `docs/references.md` and not in a row above.
 
 The three rows still say they do not move, and the comparison landing does not
-change that. What is missing is the mark: an entry created by a sync has to
-carry one, there is nowhere yet to keep it, and until there is, a resolution is
-something a plan can show rather than something a pass performs.
+change that. What is missing is the mark an entry created by a sync has to
+carry, and where that stands is argued in `docs/references.md` rather than
+restated here, because the sentence that stood in this place said the mark had
+nowhere to be kept and went on saying it after the store landed. A resolution is
+still something a plan can show rather than something a pass performs.
 
 It does not carry the identity an image could be fetched from. The two image
 rows above refuse the bytes, and what could move in their place is a provider
