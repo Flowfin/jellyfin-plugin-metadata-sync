@@ -20,14 +20,21 @@ rather than the source to say so.
 
 The read exists as well now. `ItemReader` asks the server for the items of the
 libraries that take part, which is the subject of `## Which libraries a pass
-reads` below. So four files in the plugin name the server's library, and each
-of them asks it something different:
+reads` below. So the plugin names the server's library in the files below, and
+each of them asks it something different:
 
     git grep -Iln "ILibraryManager" -- 'Jellyfin.Plugin.MetadataSync/*.cs'
     Jellyfin.Plugin.MetadataSync/Configuration/ServerLibraries.cs
     Jellyfin.Plugin.MetadataSync/PluginServiceRegistrator.cs
     Jellyfin.Plugin.MetadataSync/Reconciliation/ItemReader.cs
     Jellyfin.Plugin.MetadataSync/Reconciliation/LibraryPlanTarget.cs
+
+`ReconciliationStatementTests` re-runs that reading against the plugin's own
+sources in both directions, so a fifth file naming the library reds this
+paragraph and a line naming a file that has stopped naming it reds it too. The
+count that stood in the sentence above is gone rather than corrected: a numeral
+beside a list is a second answer to the question the list answers, and it is the
+half nothing could hold.
 
 That paste named one file and the command returned three, before this change
 added the fourth. It was found by running the command rather than by reading the

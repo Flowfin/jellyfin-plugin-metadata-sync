@@ -207,6 +207,17 @@
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The reconciliation document pastes a reading of which plugin sources name
+       the server's library, and ReconciliationStatementTests re-runs it. That
+       paste named one file while the command returned three, and the repair was
+       made by somebody running the line for another reason, so the file is
+       copied here for the same reason the field register is rather than left as
+       the one paste on this board with a drift already behind it and nothing
+       reading it. -->
+  <ItemGroup>
+    <None Include="..\docs\reconciliation.md" Link="reconciliation.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- The readme's uninstall section names the files this plugin leaves in its
        data folder, and ReadmeStatementTests holds that list against the file
        names the stores themselves declare. It was copied to nothing while it
