@@ -103,6 +103,30 @@ before that write cannot be answered for it. #66 is where a surface reporting on
 attribution has to say so rather than report a clean number, and a store that
 declared no bound would have made the same loss invisible instead of stating it.
 
+**The discard itself is not recorded, so the loss is unaskable as well as
+unrecoverable.** A field this plugin wrote eleven times and a field it wrote
+exactly ten are the same store afterwards: the same history, the same last
+written value, the same rows in the report, the same counts. Nothing separates a
+field whose earliest value the bound dropped from a field that was never written
+that far back. `BoundDiscardTests` holds that as a negative disclosure, in both
+halves - the two stores are asked every question this one takes and agree on all
+of them, and the set of members the disclosure is about is compared with the set
+the store carries, so a member added to answer this reddens rather than leaving
+this paragraph saying the opposite of the tree.
+
+What that costs is carried by two issues rather than by this file. The surface
+#66 owes, which has to say attribution is incomplete where the bound has
+discarded records, cannot derive that from this store; nor can the confirmation
+#64 owes, which has to state counts before a revert touches anything. Both would
+be reporting a clean number because a clean number is the only one there is.
+
+It is not a counter somebody forgot. A count kept only in memory is lost at the
+next restart, and one written into the file is lost at the next compaction,
+because the file is rewritten from what is retained rather than having lines
+struck out of it. Making the loss attributable therefore changes what a line
+carries, which is a step of the format above and belongs with the migration
+mechanism in #59 rather than being added beside the bound.
+
 A line that never finished, which is what a pass killed part way through a write
 leaves behind, is dropped on the next read and counted rather than thrown. A
 store that refused to open after a power cut would have turned one lost write
