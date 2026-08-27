@@ -156,7 +156,25 @@ The uninstall hook is still not overridden:
 and with the store kept rather than deleted, an override would be an empty method
 either way. What the row above decides is that nothing happens to the store on an
 uninstall, and a method whose body does nothing is not how a decision like that
-is recorded. #62 carries whether one is owed at all.
+is recorded.
+
+**No override is owed, and that is decided here rather than deferred.** #62 asked
+whether one was, and the answer is no, for three reasons that hold together. An
+empty body records nothing a reader can act on: it is indistinguishable from a
+method somebody began and did not finish, and whoever opens it learns less than
+whoever opens this page. The absence is not assumed either, which is what would
+have made the answer unsafe - the list below is the whole set this plugin takes
+over from the server's plugin base, compared in both directions, so the hook
+arriving reddens this page and the decision is read again at that moment rather
+than being quietly replaced by a body. And the one thing an override would
+provide, a place for a later act to sit, is not worth having early: a site that
+runs at uninstall arrives with the act that needs it and with the proof that it
+bites, and one waiting empty for that act has neither.
+
+So this plugin contributes no code at all to an uninstall. Nothing of its own
+runs, so nothing of its own can reach the library at that moment, and that is the
+form the guarantee takes here rather than a check over a method that does not
+exist.
 
 That sentence is the one most likely to go stale, because #62's own third
 condition is the thing that would falsify it. What the suite holds is not the
