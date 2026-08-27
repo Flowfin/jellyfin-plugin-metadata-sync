@@ -147,10 +147,26 @@ treats every field it previously wrote as somebody's local edit, and produces a
 conflict on each one. A destructive default that fires on an accidental
 uninstall is worse than a remnant that is written down here.
 
-Removing those records is therefore a deliberate action rather than a side
-effect, and the plugin will carry one. That action does not exist yet, and
-neither do the records, because the store they live in is not built. When both
-are, this section says so; until then there is nothing on disk to leave behind.
+Those records exist. They are files in the plugin's own data folder, and they
+are what an uninstall leaves behind:
+
+<!-- the files this plugin leaves in its data folder: one per line, the file first, read by ReadmeStatementTests -->
+
+- `written-values.jsonl`, what this plugin wrote to your library and what stood
+  there before each write, keyed by pairing, item and field, and bounded at ten
+  values per field
+- `store-format.json`, one number saying which format the files beside it are
+  written in
+
+<!-- end of the files left behind -->
+
+`docs/storage.md` is where each of them is argued and where that bound is
+costed.
+
+Removing them is therefore a deliberate action rather than a side effect. The
+plugin carries the removal itself, per pairing, and what is missing is a route
+an operator can take to it: the administrator surface is not written, which the
+section at the top of this file states with the command behind it.
 
 Nothing this plugin does ever deletes an item.
 

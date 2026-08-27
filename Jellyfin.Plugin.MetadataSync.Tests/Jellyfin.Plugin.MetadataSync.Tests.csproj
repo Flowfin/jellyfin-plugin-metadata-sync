@@ -207,6 +207,17 @@
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The readme's uninstall section names the files this plugin leaves in its
+       data folder, and ReadmeStatementTests holds that list against the file
+       names the stores themselves declare. It was copied to nothing while it
+       told a reader the store was not built and there was nothing on disk, so
+       the changes that built the store reddened the two documents that were
+       read and left the one an operator meets first describing a tree from
+       before them. It is copied for the same reason the field register is. -->
+  <ItemGroup>
+    <None Include="..\README.md" Link="README.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- The security policy opens by saying what is in this tree and what is not,
        and SecurityPolicyTests holds that section against the plugin's own
        sources, which are copied below. It is copied for the same reason the
