@@ -62,11 +62,25 @@ regression and a near-miss that are both run:
 
     dotnet test --filter InvariantLintTests
 
-Its reach is wider than the rule as stated, and deliberately so. There is no
-resolution path in this tree yet, so the scan covers every plugin source rather
-than one directory. Wider is the fail-closed direction. A legitimate file-system
-read outside the resolution path costs one entry in that rule's allowed set with
-the reason written next to it; one inside it costs a red suite.
+Its reach is wider than the rule as stated, and deliberately so. This paragraph
+said the reason was that there is no resolution path in this tree yet. There is
+one, and `ResolutionPathTests` walks it: the walk starts at the types this
+plugin declares under the namespaces below and asks what a call from them
+arrives at, so a filename read three helpers deep is refused where the spelling
+alone would not have found it.
+
+<!-- the namespaces the resolution walk starts from: one per line, read by MatchingStatementTests -->
+- `Jellyfin.Plugin.MetadataSync.Matching.`
+- `Jellyfin.Plugin.MetadataSync.References.`
+<!-- end of the namespaces the resolution walk starts from -->
+
+The lint stays wider than that walk rather than being narrowed onto it, because
+the two ask different questions. The walk follows a call and stops where it
+cannot follow one; the lint matches a spelling anywhere in the plugin's sources,
+so a read the walk has no edge to reach still costs a red suite wherever it is
+written. Wider is the fail-closed direction. A legitimate file-system read
+outside the resolution path costs one entry in that rule's allowed set with the
+reason written next to it; one inside it costs a red suite.
 
 What it cannot catch is written at the rule and is repeated here because it is
 the part a reader has to weigh. It matches a spelling and never an intent. A
