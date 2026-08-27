@@ -132,6 +132,27 @@ leaves behind, is dropped on the next read and counted rather than thrown. A
 store that refused to open after a power cut would have turned one lost write
 into every lost write.
 
+**A library that disappears leaves its rows exactly where they are.** #42 asks
+for that state to be chosen rather than inherited, and this is the choice: rows
+for an item that is in no library any more are kept, are still counted in the
+report an operator is shown, and go when that pairing's rows go and not before.
+
+It is the answer rather than the absence of one, and the reason is what the key
+already says. A row is filed under a pairing, an item and a field, and under
+nothing else; this store asks the server nothing, so a library disappearing is
+not an event it can see. Cleaning up after one would mean keying the store
+differently in order to know what to clean, and then deleting this plugin's own
+proof that it wrote a value on an event it cannot distinguish from a library that
+is temporarily unavailable. A record deleted is a field that can no longer be
+attributed, which is the direction #66 refuses.
+
+What is refused instead is the configuration still naming a library the server
+does not hold, which is where a disappearance is visible and is caught before a
+pass reads anything. `OrphanedRowTests` holds the key this choice rests on: a
+question about a written value that grew a fourth thing to be filed under reddens
+it, because that is the change that would make pruning by library possible in the
+first place.
+
 ## What a line carries, and why the second half of it is not derived
 
 A line carries the value written and the value that was on the item immediately
