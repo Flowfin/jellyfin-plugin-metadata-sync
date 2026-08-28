@@ -29,14 +29,36 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// question the list answers, it drifts on the change the list survives, and
 /// deleting it costs a reader nothing that the list does not already give them.
 ///
+/// It also holds the absences the paragraph under that paste states. Those are
+/// spellings rather than judgements: a construction of the read or of the write
+/// path is a line somebody writes, so the day a pass builds either, the
+/// paragraph reds instead of going on saying nothing does. That is a negative
+/// disclosure and it stays one - what is asserted is the absence the page states
+/// and never that the absence is harmless.
+///
+/// The third claim that stood in that sentence is deliberately not read here.
+/// That nothing turns items into the observations a plan is made from is the
+/// same claim <c>docs/conflicts.md</c> fences and
+/// <see cref="ConflictStatementTests"/> holds, and a second copy is the
+/// arrangement where the unheld one goes stale in silence while the other reds.
+/// The page points there instead.
+///
+/// The absence list carries one bound that the paste beside it does not, and it
+/// is stated on the page as well. A comparison of two sets reds in both
+/// directions; a list of absences reds in one. Every spelling written down is
+/// refused, and a line taken out stops being checked, so narrowing the list is a
+/// change to what the page claims rather than a failure - the same bound the
+/// rule table in <c>docs/conflicts.md</c> states about a rule that stops being
+/// declared, and the same one <see cref="ConflictStatementTests"/> carries.
+///
 /// What it cannot reach, stated rather than left to be assumed. The reading is
 /// by the spelling of the interface's name in the source text, which is what
 /// the pasted command does too, so a library reached through an alias or handed
-/// in as something else is outside both. It judges this one paste and never the
-/// prose around it, so every other sentence in that document is still read by
-/// nothing, which is the residual <c>#87</c> records and this does not narrow.
-/// And it compares against the sources this run copied rather than against the
-/// mainline.
+/// in as something else is outside both. It judges this one paste and one fenced
+/// list, and never the prose around them, so every other sentence in that
+/// document is still read by nothing, which is the residual <c>#87</c> records
+/// and this does not narrow. And it compares against the sources this run copied
+/// rather than against the mainline.
 /// </summary>
 public class ReconciliationStatementTests
 {
@@ -57,6 +79,31 @@ public class ReconciliationStatementTests
     /// under.
     /// </summary>
     private const string ProjectPrefix = "Jellyfin.Plugin.MetadataSync/";
+
+    /// <summary>
+    /// The comment that opens the fence around the spellings the paragraph says
+    /// are nowhere in the plugin.
+    /// </summary>
+    private const string AbsentOpen = "<!-- the spellings this page says appear nowhere in the plugin's sources: one per line, the spelling first, read by ReconciliationStatementTests -->";
+
+    /// <summary>
+    /// The comment that closes it.
+    /// </summary>
+    private const string AbsentClose = "<!-- end of the spellings that appear nowhere -->";
+
+    /// <summary>
+    /// The marker a fenced line opens with, up to and including the backtick the
+    /// spelling starts at.
+    /// </summary>
+    private const string EntryOpen = "- `";
+
+    /// <summary>
+    /// A spelling the plugin's sources do carry, read by the same function the
+    /// absences are read by. It is a fenced entry minus the word that makes it a
+    /// construction, so the control differs from the claim in the characters that
+    /// decide it rather than being an unrelated name.
+    /// </summary>
+    private const string Control = "LibraryPlanTarget";
 
     /// <summary>
     /// The document, copied to the output for the reason every other document
@@ -113,6 +160,106 @@ public class ReconciliationStatementTests
             SourceFiles().Select(Relative).ToList(),
             StringComparer.Ordinal);
     }
+
+    /// <summary>
+    /// Every spelling the paragraph says appears nowhere in the plugin appears
+    /// nowhere in the plugin. The failure names the spellings that arrived and
+    /// the files they arrived in, because the repair is a rewrite of the
+    /// paragraph rather than a deletion of the line.
+    /// </summary>
+    [Fact]
+    public void NoSpellingThisPageSaysIsAbsentIsInThePluginsSources()
+    {
+        var arrived = Fenced()
+            .Select(spelling => new { Spelling = spelling, In = Carrying(spelling) })
+            .Where(found => found.In.Count > 0)
+            .Select(found => found.Spelling + " in " + string.Join(", ", found.In))
+            .ToList();
+
+        Assert.Empty(arrived);
+    }
+
+    /// <summary>
+    /// The fence is still there and the list inside it is not empty. Without
+    /// this leg a renamed comment, or a list somebody emptied, would leave the
+    /// assertion above passing over a read of nothing rather than asserting
+    /// anything at all.
+    /// </summary>
+    [Fact]
+    public void TheFenceTheAbsenceComparisonReadsIsStillThere()
+    {
+        var lines = Lines(_document);
+
+        Assert.Contains(AbsentOpen, lines, StringComparer.Ordinal);
+        Assert.Contains(AbsentClose, lines, StringComparer.Ordinal);
+        Assert.NotEmpty(Fenced());
+    }
+
+    /// <summary>
+    /// The reading that answers with nothing would answer with something if
+    /// there were something. An empty answer from a scan over an empty directory
+    /// reads exactly like an empty answer from a scan over the whole plugin, and
+    /// that is the way an absence guard passes for the wrong reason.
+    /// </summary>
+    [Fact]
+    public void TheAbsenceReadingFindsASpellingThatIsThere()
+    {
+        Assert.Contains(
+            ProjectPrefix + "Reconciliation/LibraryPlanTarget.cs",
+            Carrying(Control),
+            StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// The spellings the paragraph fences off, in the order it writes them. A
+    /// line that is not an entry, including the wrapped remainder of one, is
+    /// passed over, so the reading is of the spelling and never of the sentence
+    /// beside it.
+    /// </summary>
+    /// <returns>The spellings, as the document writes them.</returns>
+    private static List<string> Fenced()
+    {
+        var lines = Lines(_document);
+        var opens = lines.IndexOf(AbsentOpen);
+        var closes = lines.IndexOf(AbsentClose);
+
+        if (opens < 0 || closes < opens)
+        {
+            return new List<string>();
+        }
+
+        var spellings = new List<string>();
+
+        foreach (var line in lines.Skip(opens + 1).Take(closes - opens - 1))
+        {
+            if (!line.StartsWith(EntryOpen, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var ends = line.IndexOf('`', EntryOpen.Length);
+
+            if (ends < 0)
+            {
+                continue;
+            }
+
+            spellings.Add(line[EntryOpen.Length..ends]);
+        }
+
+        return spellings;
+    }
+
+    /// <summary>
+    /// The plugin sources whose text carries a spelling.
+    /// </summary>
+    /// <param name="spelling">The text to look for.</param>
+    /// <returns>The paths, relative to the repository root.</returns>
+    private static List<string> Carrying(string spelling) =>
+        SourceFiles()
+            .Where(path => File.ReadAllText(path).Contains(spelling, StringComparison.Ordinal))
+            .Select(Relative)
+            .ToList();
 
     /// <summary>
     /// The plugin sources whose text names the library.

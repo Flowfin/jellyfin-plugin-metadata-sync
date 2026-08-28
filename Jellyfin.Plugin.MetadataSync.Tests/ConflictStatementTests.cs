@@ -41,6 +41,12 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// spelling that has arrived is a failure naming it rather than a line quietly
 /// deleted from the list.
 ///
+/// One bound belongs beside that. A comparison of two sets reds in both
+/// directions; a list of absences reds in one. Every spelling written down is
+/// refused, and a line taken out stops being checked, so narrowing the list is a
+/// change to what the page claims rather than a failure - the same bound the
+/// rule table in this document states about a rule that stops being declared.
+///
 /// The leg an absence guard fails silently on is the one where it read nothing
 /// at all. An empty answer from a scan over an empty directory reads exactly
 /// like an empty answer from a scan over the whole plugin, so the same reading

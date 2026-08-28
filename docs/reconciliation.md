@@ -46,11 +46,40 @@ library inside a delegate so that range is read when somebody asks rather than
 at start-up. Neither is a pass reaching a library, which is what the sentence
 above the paste is about, and neither was excluded on purpose.
 
-What does not exist is a pass. Nothing reads the peer, nothing turns items into
-the observations a plan is made from, and nothing constructs a reader or
-registers the write path as a service, so the three halves can be held together
-in a test and nowhere else. Every sentence below about the server was read out
-of the server.
+What does not exist is a pass. Nothing reads the peer, and nothing constructs
+the two halves this document is about or registers either as a service, so they
+can be held together in a test and nowhere else. Every sentence below about the
+server was read out of the server.
+
+The constructions are spellings rather than judgements, so they are held. Each
+line below is one `ReconciliationStatementTests` looks for in the plugin's own
+sources, and the claim is that it finds none, so the day a pass builds a reader
+or a write path this paragraph reds instead of going on saying nothing does.
+
+<!-- the spellings this page says appear nowhere in the plugin's sources: one per line, the spelling first, read by ReconciliationStatementTests -->
+
+- `new ItemReader`, the construction that would build the read this document
+  describes
+- `new LibraryPlanTarget`, the construction that would build the write path a
+  plan is carried out through
+
+<!-- end of the spellings that appear nowhere -->
+
+That is a negative disclosure and it stays one. What is asserted is the absence
+this paragraph states, never that the absence is harmless.
+
+What the list cannot reach is a line taken out of it. Every spelling written here
+is refused, and a claim this paragraph stops making stops being checked along
+with it, which is the same bound the rule table in `docs/conflicts.md` states
+about a rule that stops being declared. Narrowing this list is a change to what
+the page claims, and a reader of the diff is what stands in the way of it.
+
+The third half of the sentence that stood here, that nothing turns items into
+the observations a plan is made from, is not repeated. It is the same claim
+`docs/conflicts.md` fences and holds, and two documents stating one fact is the
+arrangement where the one nobody reads goes stale in silence while the other
+reds - which is what this document's own opening paste already cost once. Read
+it there.
 
 The window and the deferral are code rather than a decision taken ahead of it.
 The item is fetched again immediately before its plan is carried out, its
