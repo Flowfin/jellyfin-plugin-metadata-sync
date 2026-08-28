@@ -114,6 +114,18 @@ public class StoreShapeTests
         {
             "Format",
         },
+
+        // The progress record carries two of the five above and nothing else.
+        // Pairing is the same pairing identity, for the same reason; Item is an
+        // item on this server, under the identifier this server already files it
+        // under. What is deliberately absent is the rest: this line says an item
+        // was finished with and never what was written to it, so a value out of
+        // a library cannot reach this file at all.
+        ["Jellyfin.Plugin.MetadataSync.Store.PassProgress+Row"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Pairing",
+            "Item",
+        },
     };
 
     /// <summary>
@@ -189,6 +201,10 @@ public class StoreShapeTests
             "what the peer said",
             "what was here before");
 
+        new PassProgress(directory.Path).Completed(
+            new Guid("cccccccc-0000-0000-0000-000000000003"),
+            new Guid("aaaaaaaa-0000-0000-0000-000000000001"));
+
         var read = 0;
         var outside = new List<string>();
 
@@ -215,10 +231,10 @@ public class StoreShapeTests
 
         Assert.Empty(outside.Order(StringComparer.Ordinal).ToList());
 
-        // A comparison over no lines agrees with anything. Both files are
-        // written by the one Record above, so a run that read fewer than two
+        // A comparison over no lines agrees with anything. Three files are
+        // written by the two calls above, so a run that read fewer than three
         // read a store that stopped writing one of them.
-        Assert.Equal(2, read);
+        Assert.Equal(3, read);
     }
 
     /// <summary>
@@ -253,6 +269,7 @@ public class StoreShapeTests
         var stores = StoreTypes().Select(type => type.FullName).ToList();
 
         Assert.Contains("Jellyfin.Plugin.MetadataSync.Store.WrittenValues", stores, StringComparer.Ordinal);
+        Assert.Contains("Jellyfin.Plugin.MetadataSync.Store.PassProgress", stores, StringComparer.Ordinal);
         Assert.Contains("Jellyfin.Plugin.MetadataSync.Store.StoreFormat", stores, StringComparer.Ordinal);
 
         Assert.NotEmpty(LineTypes());

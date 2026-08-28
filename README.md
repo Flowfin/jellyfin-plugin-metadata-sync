@@ -155,6 +155,9 @@ are what an uninstall leaves behind:
 - `written-values.jsonl`, what this plugin wrote to your library and what stood
   there before each write, keyed by pairing, item and field, and bounded at ten
   values per field
+- `pass-progress.jsonl`, which items a sync had finished with when it was
+  interrupted, so the next one continues instead of starting again. It is
+  emptied whenever a sync runs to the end
 - `store-format.json`, one number saying which format the files beside it are
   written in
 

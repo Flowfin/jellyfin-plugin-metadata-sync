@@ -409,6 +409,45 @@ public class RefusalTests
                      .GetAwaiter()
                      .GetResult()),
 
+            ["Reconciliation/Pass.cs -> ArgumentNullException.ThrowIfNull(applier);"] =
+                (nameof(PassResumptionTests),
+                 nameof(PassResumptionTests.APassWithNoApplierIsRefused),
+                 nameof(PassResumptionTests.AnOrdinaryPassWritesEveryItemAndRecordsEachOne),
+                 "the half of the pass that writes is there",
+                 () => new Pass(null!, new RecordingPassProgress())),
+
+            ["Reconciliation/Pass.cs -> ArgumentNullException.ThrowIfNull(progress);"] =
+                (nameof(PassResumptionTests),
+                 nameof(PassResumptionTests.APassWithNowhereToRecordProgressIsRefused),
+                 nameof(PassResumptionTests.AnOrdinaryPassWritesEveryItemAndRecordsEachOne),
+                 "there is somewhere to record how far the pass got",
+                 () => new Pass(new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()), null!)),
+
+            ["Reconciliation/Pass.cs -> ArgumentNullException.ThrowIfNull(request);"] =
+                (nameof(PassResumptionTests),
+                 nameof(PassResumptionTests.RunningAPassWithNoRequestIsRefused),
+                 nameof(PassResumptionTests.AnOrdinaryPassWritesEveryItemAndRecordsEachOne),
+                 "there is something to run the pass over",
+                 () => _ = new Pass(new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()), new RecordingPassProgress())
+                     .RunAsync(null!, CancellationToken.None)),
+
+            ["Reconciliation/Pass.cs -> cancellationToken.ThrowIfCancellationRequested();"] =
+                (nameof(PassResumptionTests),
+                 nameof(PassResumptionTests.ACancelledPassStopsBeforeTheItem),
+                 nameof(PassResumptionTests.AnOrdinaryPassWritesEveryItemAndRecordsEachOne),
+                 "the operator has not asked the pass to stop",
+                 () => new Pass(new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()), new RecordingPassProgress())
+                     .RunAsync(OneItemToPlan(), new CancellationToken(canceled: true))
+                     .GetAwaiter()
+                     .GetResult()),
+
+            ["Store/PassProgress.cs -> ArgumentException.ThrowIfNullOrWhiteSpace(directory);"] =
+                (nameof(PassProgressTests),
+                 nameof(PassProgressTests.AStoreWithNoDirectoryIsRefused),
+                 nameof(PassProgressTests.APairingWithNoInterruptedPassHasNothingRecorded),
+                 "the directory the record keeps itself in is there",
+                 () => new PassProgress(null!)),
+
             ["Reconciliation/ItemReader.cs -> ArgumentNullException.ThrowIfNull(library);"] =
                 (nameof(ParticipatingLibraryTests),
                  nameof(ParticipatingLibraryTests.AReaderRefusesAMissingLibrary),
@@ -797,6 +836,30 @@ public class RefusalTests
         var plan = new Plan();
         plan.Items.Add(Writing("Name", "theirs"));
         return plan;
+    }
+
+    private static PlanRequest OneItemToPlan()
+    {
+        var item = new ItemObservation
+        {
+            LocalItemId = new Guid("aaaaaaaa-0000-0000-0000-000000000001"),
+            PeerItemId = new Guid("bbbbbbbb-0000-0000-0000-000000000002"),
+            Kind = "Movie",
+        };
+
+        item.Fields.Add(new FieldObservation
+        {
+            Field = "Overview",
+            LocalValue = null,
+            PeerValue = "theirs",
+            LastWrittenByThisPlugin = null,
+            FieldLockedHere = false,
+            FieldLockedOnPeer = false,
+        });
+
+        var request = new PlanRequest { Direction = SyncDirection.TwoWay };
+        request.Items.Add(item);
+        return request;
     }
 
     private static bool IsUnder(string root, string file)

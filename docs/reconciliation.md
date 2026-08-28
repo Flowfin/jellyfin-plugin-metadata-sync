@@ -46,10 +46,12 @@ library inside a delegate so that range is read when somebody asks rather than
 at start-up. Neither is a pass reaching a library, which is what the sentence
 above the paste is about, and neither was excluded on purpose.
 
-What does not exist is a pass. Nothing reads the peer, and nothing constructs
-the two halves this document is about or registers either as a service, so they
-can be held together in a test and nowhere else. Every sentence below about the
-server was read out of the server.
+What does not exist is a pass that runs. A `Pass` type exists, and what it adds
+to the two halves is an ordering rather than a step: it drives them item by item
+and records how far it got, which is `## A pass that was stopped is continued`
+below. Nothing constructs it, nothing reads the peer, and nothing registers it or
+either half as a service, so all three can be held together in a test and nowhere
+else. Every sentence below about the server was read out of the server.
 
 The constructions are spellings rather than judgements, so they are held. Each
 line below is one `ReconciliationStatementTests` looks for in the plugin's own
@@ -89,8 +91,10 @@ names the check behind each of those and what removing it reddens.
 
 One half of the deferral is still a decision taken before the code, and it is
 named where the deferral is described rather than here: a deferred item is
-counted and handed back to whoever asked for the apply, and nothing picks it up
-on a later pass, because there is no later pass.
+counted and handed back to whoever asked for the apply. What a later pass does
+with it is now decided rather than absent - a deferred item is not recorded as
+finished with, so the pass that runs next reaches it again - and nothing runs a
+later pass, because nothing runs a pass at all.
 
 ## Which libraries a pass reads
 
@@ -499,6 +503,43 @@ lost. The suite drives an item that moves between planning and applying and
 asserts the deferral, on one thread and between two statements, so what is proved
 is the comparison and the counting and never a race.
 
+## A pass that was stopped is continued
+
+An interrupted pass leaves a record of the items it had finished with, and the
+pass that runs next over the same pairing does not consider them again. The
+record is a store of its own, `pass-progress.jsonl`, and what it is and what it
+costs is argued in `docs/storage.md` rather than restated here.
+
+**It resumes and it never replays.** What survives an interruption is a set of
+item identifiers and nothing that could be obeyed. The items are observed again
+by whoever runs the pass, the plan for what is left is built again by the
+planner, and the values written are the ones the two servers hold when the
+resumed pass runs. A plan stored at the interruption and replayed afterwards
+would write the value the peer held before the interruption over a value the peer
+has since changed, which is the failure this shape exists against. Nothing in
+this plugin serialises a plan, and `PassResumptionTests` refuses a store made of
+one rather than leaving the sentence to be trusted.
+
+**The items are applied one at a time.** That is the whole reason a pass drives
+the applier instead of calling it once with everything: the moment between an
+item's write and the record that the item is done has to be somewhere a resume
+can reason about, and inside a loop over a whole plan it is nowhere at all. The
+accounting is the applier's four numbers summed, plus one a plan cannot carry -
+how many items this pass never considered because an earlier one had finished
+with them.
+
+**What it does not promise is that an interruption is free.** The record is
+written after the item was written and after what was written was recorded, so an
+interruption in between costs that item being written a second time when the pass
+resumes. The other ordering costs a library left unsynced with nothing saying so,
+and the choice between them is not close. `docs/storage.md` states the same
+residual where the record is argued.
+
+It reports nothing about how far a stopped pass got, and that is unchanged. A
+stopped pass throws where it was stopped; what it got through is on the disk
+rather than in a value nobody received. Turning an interruption into a result is
+still #37.
+
 ## What holds this up
 
 The write is refused by a machine now, in three places, and each was proved by
@@ -556,4 +597,15 @@ reader, which is a test asserting its own fixture.
 One more thing nothing holds. A stopped pass stops within one item, and it
 reports nothing about how far it got: the applier throws where the operator
 asked it to stop. Turning that into a result carrying the items already written
-is the pass's own bound, #37, and its resumption is #38.
+is the pass's own bound, #37, and it is unchanged by the resumption above. What
+#38 landed is the record on the disk, not a result a stopped pass hands back.
+
+The resumption is held by legs of its own. A pass that stops at each boundary
+its loop has is run to that boundary and then resumed, and the union of the two
+runs is asserted to be exactly the plan with no item written twice. Recording an
+item before its write instead of after it reddens the leg that kills a pass
+between the two. Clearing the record at the start of a pass rather than at its
+end reddens the leg that asserts a finished pass leaves nothing behind, and
+skipping the clear altogether reddens the leg that asserts the pass after a
+finished one considers every item again. A resumed pass that reused the plan the
+first one built reddens the leg that changes a peer value in between.
