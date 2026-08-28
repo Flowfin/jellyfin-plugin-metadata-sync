@@ -302,12 +302,30 @@ down that it did, because there is nowhere yet to write it; #48 is the conflict
 log that entry is owed to. Until then a refused write is visible to the caller
 that asked for it and to nobody else.
 
-It does not know the peer's lock state. The lock table above is about locks on
-this server. A field the operator locked on the other server has to refuse a
-send rather than a write, which means the answer this plugin gets back has to
-carry that state, and it comes from a contract this plugin does not yet
-reference. Nothing here covers that direction, and a reader should assume it is
-uncovered rather than covered elsewhere.
+It does not obtain the peer's lock state, and this paragraph said it did not
+know one. Those are different sentences and the difference stood for nineteen
+days: the rule that decides on such a claim was declared the day after this
+paragraph was written, and nothing here moved for it. The lock table above is
+about locks on this server, and it is also what gates the other side. The
+planner hands the rules a claim the peer reports only where a row names a lock,
+and the rule below refuses when the values differ. It is argued in
+`docs/conflicts.md` rather than restated here.
+
+<!-- the conflict rules that decide on a lock claimed on the peer: one per line, the rule first, read by FieldRegisterStatementTests -->
+
+- `peer-field-locked`, which refuses where the values differ and the peer reports
+  the lock that governs this field as set on their side
+
+<!-- end of the rules that decide on a claim the peer reports -->
+
+What is absent is the route such a claim arrives on and the direction it would
+refuse, and both stay negative. This plugin references no contract, and nothing
+in it constructs the observation the claim would travel in, which
+`docs/conflicts.md` fences, so every value that input has ever held was handed in
+by a test. And a lock on the other server has to refuse a send rather than a
+write, which is not what the rule above does: it refuses the write on this side.
+A reader should assume the send direction is uncovered rather than covered
+elsewhere.
 
 ## What 1.0 does not carry, and which of those can change
 
