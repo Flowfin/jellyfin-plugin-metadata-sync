@@ -123,6 +123,8 @@ What writes to a disk:
 
 - `Jellyfin.Plugin.MetadataSync/Store/WrittenValues.cs`, the plugin's own store
   of what this plugin wrote
+- `Jellyfin.Plugin.MetadataSync/Store/PassProgress.cs`, the record of which
+  items a pass had finished with when it was interrupted
 - `Jellyfin.Plugin.MetadataSync/Store/StoreFormat.cs`, the stamp saying which
   format the files in that directory are written in
 

@@ -10,6 +10,7 @@ rediscover.
 | Which libraries take part, which direction a pairing runs, how often a pass runs, and every other choice an operator makes | the plugin configuration | A choice is a decision somebody made and can hand to somebody else. It is also the only thing safe to paste into a support thread, and that is a property this table exists to keep true. |
 | What this plugin wrote, per item and per field, and the value that was there before | the plugin's own store | It is data rather than a decision, it grows with the library, and it is what makes a later pass able to tell a value it wrote from a value an operator edited. |
 | The conflict log and the unmatched register | the plugin's own store | Same reason. Both grow with the library, both are read behind an administrator surface, and neither is anybody's setting. |
+| Which items a pass had finished with when it was interrupted | the plugin's own store | It is data, it is true of one pass rather than of the library, and it is the only thing that makes a stopped pass continuable. It is emptied when the pass that wrote it finishes. |
 | Key material, a peer address, a credential, a pairing secret | neither | This plugin holds none of it, in any form, at any moment. Pairing, trust and transport belong to the pairing plugin, and the rule that keeps this true is structural rather than remembered. |
 | Played state, playback position, favourites, a personal rating | neither | Nothing scoped to a person is read or written here at all. The plugin that moves it is the watch history plugin, and the plugin assembly is scanned for the server types that carry it. |
 | Image bytes and media files | neither | Permanent non-goals. Neither is copied, so neither is stored. |
@@ -69,6 +70,8 @@ now, and what it returns is named rather than counted:
 
 - `Jellyfin.Plugin.MetadataSync/Store/WrittenValues.cs`, the plugin's own store
   of what this plugin wrote
+- `Jellyfin.Plugin.MetadataSync/Store/PassProgress.cs`, the record of which
+  items a pass had finished with when it was interrupted
 - `Jellyfin.Plugin.MetadataSync/Store/StoreFormat.cs`, the stamp saying which
   format the files in that directory are written in
 
@@ -152,6 +155,50 @@ pass reads anything. `OrphanedRowTests` holds the key this choice rests on: a
 question about a written value that grew a fourth thing to be filed under reddens
 it, because that is the change that would make pruning by library possible in the
 first place.
+
+## What the second store keeps, and why it is not the first one
+
+A second file under the same folder, `pass-progress.jsonl`, carrying a line per
+item a pass has finished with. It is what #38 asks for, and it is a store of its
+own rather than a column on the first one.
+
+The two are different records with different keys and different lifetimes. What
+this plugin wrote is true until the value is overwritten and is read by every
+later pass; how far a pass got is true of that pass and is thrown away when it
+ends. Reading a resume out of the first store would also read it out of a bounded
+history: an item whose oldest write the bound above discarded would come back as
+an item nothing wrote, and the resumed pass would write it again for a reason
+that has nothing to do with the pass being interrupted.
+
+**It is emptied when the pass that wrote it finishes.** So rows here are the
+progress of a pass that did not finish and of nothing else, and the two states a
+reader can meet are an interrupted pass and a pairing whose last pass ran to the
+end. That is what bounds the file without a bound being declared for it: an
+interrupted pass leaves at most one pass's worth of identifiers, and the pass
+that continues it removes them by finishing.
+
+**An item that was considered and had nothing to write is recorded, and a
+deferred item is not.** The first is a decision this pass made and repeating it
+would repeat the work; the second was never written, because something else was
+holding the item, so the next pass has to reach it again. What the first costs is
+stated rather than hidden: a first pass over a library that changes little still
+writes a line per item, and that file is thrown away when the pass ends.
+
+**A line is written after the item was written and after what was written was
+recorded, never before either.** The two orderings fail in opposite directions
+and only one of them is survivable. Recorded first, an interruption between the
+record and the write leaves an item marked done that nothing wrote, and the
+resume skips it: a library left unsynced with nothing saying so. Recorded last,
+the same interruption costs the item being written a second time, and writing an
+item a second time writes the values it already holds. **Nothing here makes an
+interrupted pass free, and the residual is that second write.**
+
+Nothing about a plan survives an interruption, and that is the property rather
+than an omission. What is on the disk is a set of item identifiers, which is not
+a thing that can be obeyed: the items are observed again and the plan for what is
+left is built again, so a resumed pass writes what the two servers hold when it
+runs rather than what they held before the interruption. A stored plan replayed
+afterwards is how a pass writes over a value the peer has since changed.
 
 ## What a line carries, and why the second half of it is not derived
 
