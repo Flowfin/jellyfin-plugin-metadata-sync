@@ -81,4 +81,27 @@ public interface IWrittenValues
     /// so rather than report a clean number.
     /// </remarks>
     IReadOnlyList<WrittenValue> History(Guid pairingId, Guid itemId, string field);
+
+    /// <summary>
+    /// Every field on every item this plugin has a record of writing for one
+    /// pairing.
+    /// </summary>
+    /// <param name="pairingId">The pairing to ask about.</param>
+    /// <returns>The keys held, ordered by item and then by field, empty where there is no record.</returns>
+    /// <remarks>
+    /// This is what makes the set of fields one pairing touched enumerable
+    /// without reading a library, which is #64's first condition and is a
+    /// property of the key rather than of an index: the pairing is a component
+    /// of every key, so the answer is a filter over what this store holds and
+    /// never a walk over items.
+    /// <para>
+    /// It answers keys and never counts. A caller learns which fields to ask
+    /// about and asks <see cref="History"/> about each one, so nothing here
+    /// separates a field whose earliest write the bound discarded from a field
+    /// written exactly <see cref="WrittenValues.Bound"/> times - which is the
+    /// disclosure in <c>docs/storage.md</c> and is unchanged by this member
+    /// existing.
+    /// </para>
+    /// </remarks>
+    IReadOnlyList<WrittenField> Fields(Guid pairingId);
 }

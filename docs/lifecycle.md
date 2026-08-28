@@ -96,12 +96,33 @@ moment they are least able to study it. It is not refused on principle. What
 refuses it is that it is strictly more than the answer above, and the answer
 above has to exist either way.
 
-The mechanism is #64 and none of it is built.
+The mechanism is #64. **The half that decides is built and the half that starts
+it is not.** `Revert` reads the record and what the library holds now and
+answers with what it would put back and what it would leave alone, which is a
+plan and a set of counts that change nothing by existing; carrying it out is the
+ordinary write path's. What has nothing to arrive on is the revocation itself,
+which reaches this plugin over a contract published nowhere, and what has nowhere
+to be shown is the confirmation, which needs an administrator surface.
+
+The bound above is where the decision is sharpest, and it is worth reading before
+the counts are trusted. A value goes back only where this plugin can prove two
+things: that it wrote what is there now, and that it can produce what was there
+before it ever wrote. The second is not free. A field's history is bounded and
+the discard is not recorded, so a history standing AT the bound may already have
+lost the write that came first and its earliest surviving value may itself have
+come from the peer. Restoring that would put the peer's own value back in the
+name of removing it, so it is left alone and counted. A history shorter than the
+bound has had nothing discarded, which is what makes this decidable rather than
+assumed. `docs/storage.md` argues the bound and this consequence of it.
 
 ## What of this is true of the tree today
 
-The decisions above are made. The store they are decisions about exists; the two
-mechanisms that act on it do not.
+The decisions above are made. The store they are decisions about exists, and so
+does the half of the revert that decides what it would do; what does not exist
+is anything that would start one. **This paragraph said neither mechanism was
+built.** `Revert` is in the tree and is exercised by the suite, and nothing
+constructs it, so what changed is what a reader is owed rather than what an
+operator can do.
 
 **This section said there was no store and that nothing in this plugin wrote
 anything to a disk.** #16 built one and both sentences stopped being true with
@@ -209,7 +230,9 @@ missing:
 
 <!-- end of the paths the tree does not carry -->
 
-Both halves of the answer above are therefore written and neither is built. The
-event that would start a revert still has nothing to arrive on. What has changed
-is the other half: the record that would bound a revert is no longer absent, so
-what #64 waits on is the event and the operation rather than the store as well.
+Both halves of the answer above are written, and the operation is now built as
+well. What this paragraph said was that neither half was built and that #64
+waited on the event and the operation; the operation landed with #64's own
+change, so what is left is the event and the surface. The revocation reaches this
+plugin over a contract published nowhere, and the confirmation the counts are for
+has no administrator surface to be shown on.

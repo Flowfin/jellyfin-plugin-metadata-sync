@@ -64,6 +64,7 @@ public class BoundDiscardTests
     /// </remarks>
     private static readonly string[] _answers =
     {
+        "Fields",
         "Held",
         "History",
         "Holding",
@@ -190,6 +191,11 @@ public class BoundDiscardTests
             discarded.Holding(_pairing).Rows.ToList());
 
         Assert.Equal(complete.Holding(_pairing).Count, discarded.Holding(_pairing).Count);
+
+        // The keys one pairing touched. It answers which fields to ask about and
+        // never how many times each was written, so the store that lost a write
+        // to the bound and the store that never made one name the same one key.
+        Assert.Equal(complete.Fields(_pairing).ToList(), discarded.Fields(_pairing).ToList());
 
         // The file's own name is the same on both and the directory around it is
         // not, so the sentence is compared with the path taken out of it. What is

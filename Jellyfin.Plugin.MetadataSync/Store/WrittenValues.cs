@@ -239,6 +239,20 @@ public sealed class WrittenValues : IWrittenValues, IPairingStore
     }
 
     /// <inheritdoc />
+    public IReadOnlyList<WrittenField> Fields(Guid pairingId)
+    {
+        lock (_gate)
+        {
+            return new ReadOnlyCollection<WrittenField>(_held.Keys
+                .Where(key => key.Pairing == pairingId)
+                .OrderBy(key => key.Item)
+                .ThenBy(key => key.Field, StringComparer.Ordinal)
+                .Select(key => new WrittenField { Item = key.Item, Field = key.Field })
+                .ToList());
+        }
+    }
+
+    /// <inheritdoc />
     public PairingHolding Holding(Guid pairingId)
     {
         lock (_gate)
