@@ -35,6 +35,16 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// refuses.
 /// </para>
 /// <para>
+/// THE COMPARISON IS A PREFIX OF THE KEY AND IT WAS THE WHOLE OF IT. A question
+/// about one pairing arrived with #64 - the fields a pairing touched, which have
+/// to be enumerable without reading a library - and a guard demanding all three
+/// components of every question would have refused it for being filed under
+/// less rather than under more. What it refuses is unchanged: a fourth thing to
+/// be filed under is not a prefix of three however it is ordered, and the two
+/// theories below run that in both directions rather than leaving the widening
+/// to be trusted.
+/// </para>
+/// <para>
 /// What it does not reach. It judges the parameters of the questions and never
 /// what is done with them, so a store that filed rows by library inside a
 /// parameter it already takes would pass. And the second case is about
@@ -74,14 +84,48 @@ public class OrphanedRowTests
     {
         foreach (var question in Questions())
         {
-            Assert.Equal(
-                _filedUnder,
-                question.GetParameters()
-                    .Select(parameter => parameter.Name)
-                    .Where(name => !string.Equals(name, "value", StringComparison.Ordinal)
-                                   && !string.Equals(name, "previousValue", StringComparison.Ordinal))
-                    .ToArray());
+            Assert.True(
+                IsPartOfTheKey(FiledUnder(question)),
+                question.Name + " is filed under " + string.Join(", ", FiledUnder(question)));
         }
+    }
+
+    /// <summary>
+    /// The comparison this guard makes is a prefix of the key rather than the
+    /// whole of it, and the two legs below are why that is not a weakening.
+    /// </summary>
+    /// <remarks>
+    /// It compared the whole key until a question about one pairing arrived,
+    /// which is <c>Fields</c>, and #64 needs it: the set of fields a pairing
+    /// touched has to be enumerable without reading a library, so a question
+    /// filed under the pairing alone is the point rather than a lapse. A prefix
+    /// is the widest reading that still refuses what this guard exists against,
+    /// because a fourth thing to be filed under is not a prefix of three however
+    /// it is ordered.
+    /// </remarks>
+    /// <param name="parameters">A parameter list a question might have.</param>
+    [Theory]
+    [InlineData("pairingId,itemId,field,libraryId")]
+    [InlineData("libraryId")]
+    [InlineData("pairingId,libraryId")]
+    [InlineData("itemId,field")]
+    public void AQuestionFiledUnderSomethingElseIsRefused(string parameters)
+    {
+        Assert.False(IsPartOfTheKey(parameters.Split(',')));
+    }
+
+    /// <summary>
+    /// The neighbour. These are the prefixes of the key, and a guard refusing
+    /// them would refuse the questions this store already answers.
+    /// </summary>
+    /// <param name="parameters">A parameter list a question might have.</param>
+    [Theory]
+    [InlineData("pairingId")]
+    [InlineData("pairingId,itemId")]
+    [InlineData("pairingId,itemId,field")]
+    public void AQuestionFiledUnderPartOfTheKeyIsAccepted(string parameters)
+    {
+        Assert.True(IsPartOfTheKey(parameters.Split(',')));
     }
 
     /// <summary>
@@ -91,7 +135,7 @@ public class OrphanedRowTests
     [Fact]
     public void TheReadingFindsTheQuestionsRatherThanNone()
     {
-        Assert.Equal(3, Questions().Count);
+        Assert.Equal(4, Questions().Count);
     }
 
     /// <summary>
@@ -127,7 +171,30 @@ public class OrphanedRowTests
     }
 
     /// <summary>
-    /// The questions this store takes about one written value.
+    /// What one question is filed under, with the values a write carries taken
+    /// out, since those are what is recorded rather than what it is filed under.
+    /// </summary>
+    /// <param name="question">The question.</param>
+    /// <returns>The names it is filed under, in the order it takes them.</returns>
+    private static IReadOnlyList<string?> FiledUnder(MethodBase question) =>
+        question.GetParameters()
+            .Select(parameter => parameter.Name)
+            .Where(name => !string.Equals(name, "value", StringComparison.Ordinal)
+                           && !string.Equals(name, "previousValue", StringComparison.Ordinal))
+            .ToList();
+
+    /// <summary>
+    /// Whether a list of names is the key or the beginning of it.
+    /// </summary>
+    /// <param name="names">The names.</param>
+    /// <returns>Whether every name is the key's own, in the key's own order, from the start.</returns>
+    private static bool IsPartOfTheKey(IReadOnlyList<string?> names) =>
+        names.Count > 0
+        && names.Count <= _filedUnder.Length
+        && names.Select((name, at) => string.Equals(name, _filedUnder[at], StringComparison.Ordinal)).All(same => same);
+
+    /// <summary>
+    /// The questions this store takes.
     /// </summary>
     /// <returns>The methods.</returns>
     private static IReadOnlyList<MethodInfo> Questions() =>

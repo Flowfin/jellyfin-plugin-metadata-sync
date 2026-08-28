@@ -117,11 +117,22 @@ of them, and the set of members the disclosure is about is compared with the set
 the store carries, so a member added to answer this reddens rather than leaving
 this paragraph saying the opposite of the tree.
 
-What that costs is carried by two issues rather than by this file. The surface
-#66 owes, which has to say attribution is incomplete where the bound has
-discarded records, cannot derive that from this store; nor can the confirmation
-#64 owes, which has to state counts before a revert touches anything. Both would
-be reporting a clean number because a clean number is the only one there is.
+What that costs is carried by two issues rather than by this file, and one of
+the two has been answered in a way worth reading here. The surface #66 owes,
+which has to say attribution is incomplete where the bound has discarded
+records, still cannot derive that from this store: it would report a clean
+number because a clean number is the only one there is.
+
+**The confirmation #64 owes does not report one, and it does not by refusing
+rather than by counting what it cannot see.** A revert puts a value back only
+where the field's history is SHORTER than the bound, because nothing is
+discarded below the bound and a history standing at it may already have lost the
+write that came first. So a field whose earlier value cannot be shown to predate
+the pairing is left alone and counted under its own name, and the number an
+operator confirms against says how many fields the bound has taken out of reach
+instead of quietly restoring a value that may have come from the peer. That is a
+decision about what a revert may do rather than a way of asking this store a
+question it cannot answer.
 
 It is not a counter somebody forgot. A count kept only in memory is lost at the
 next restart, and one written into the file is lost at the next compaction,

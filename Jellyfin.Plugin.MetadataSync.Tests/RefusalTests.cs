@@ -409,6 +409,20 @@ public class RefusalTests
                      .GetAwaiter()
                      .GetResult()),
 
+            ["Reconciliation/Revert.cs -> ArgumentNullException.ThrowIfNull(request);"] =
+                (nameof(RevertTests),
+                 nameof(RevertTests.ARevertWithNoRequestIsRefused),
+                 nameof(RevertTests.AFieldThisPluginWroteGoesBackToWhatWasThereBefore),
+                 "there is something to decide the revert from",
+                 () => Revert.Plan(null!, new RecordingWrittenValues())),
+
+            ["Reconciliation/Revert.cs -> ArgumentNullException.ThrowIfNull(written);"] =
+                (nameof(RevertTests),
+                 nameof(RevertTests.ARevertWithNoRecordIsRefused),
+                 nameof(RevertTests.AFieldThisPluginWroteGoesBackToWhatWasThereBefore),
+                 "there is a record to prove what this plugin wrote",
+                 () => Revert.Plan(new RevertRequest(), null!)),
+
             ["Reconciliation/Pass.cs -> ArgumentNullException.ThrowIfNull(applier);"] =
                 (nameof(PassResumptionTests),
                  nameof(PassResumptionTests.APassWithNoApplierIsRefused),

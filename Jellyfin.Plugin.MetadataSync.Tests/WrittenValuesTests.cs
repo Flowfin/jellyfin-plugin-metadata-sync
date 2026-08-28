@@ -56,6 +56,40 @@ public class WrittenValuesTests
     }
 
     /// <summary>
+    /// The fields one pairing touched are that pairing's own, read back off a
+    /// real store rather than off a double. It is what #64 needs before a revert
+    /// can be decided at all - the set has to be enumerable without reading a
+    /// library - and it is the leg that reddens if the filter over the key goes,
+    /// which is a change no case about one pairing on its own would see.
+    /// </summary>
+    [Fact]
+    public void TheFieldsOnePairingTouchedAreItsOwn()
+    {
+        using var directory = new TemporaryDirectory();
+
+        var other = new Guid("cccccccc-0000-0000-0000-000000000009");
+        var second = new Guid("aaaaaaaa-0000-0000-0000-000000000002");
+
+        var store = new WrittenValues(directory.Path);
+        store.Record(_pairing, _item, Field, "theirs", "ours");
+        store.Record(other, second, Field, "theirs", "ours");
+
+        Assert.Equal(
+            new[] { new WrittenField { Item = _item, Field = Field } },
+            store.Fields(_pairing).ToArray());
+
+        Assert.Equal(
+            new[] { new WrittenField { Item = second, Field = Field } },
+            store.Fields(other).ToArray());
+
+        // And it survives the process that wrote it, like every other question
+        // this store takes.
+        Assert.Equal(
+            new[] { new WrittenField { Item = _item, Field = Field } },
+            new WrittenValues(directory.Path).Fields(_pairing).ToArray());
+    }
+
+    /// <summary>
     /// The second of the three cases. This plugin wrote a value, nobody here has
     /// touched it since, and the peer has moved on: the values differ and the
     /// difference is this plugin's own work catching up rather than two

@@ -50,6 +50,15 @@ internal sealed class RecordingWrittenValues : IWrittenValues
     }
 
     /// <inheritdoc />
+    public IReadOnlyList<WrittenField> Fields(Guid pairingId) =>
+        _held.Keys
+            .Where(key => key.Pairing == pairingId)
+            .OrderBy(key => key.Item)
+            .ThenBy(key => key.Field, StringComparer.Ordinal)
+            .Select(key => new WrittenField { Item = key.Item, Field = key.Field })
+            .ToList();
+
+    /// <inheritdoc />
     public string? LastWritten(Guid pairingId, Guid itemId, string field)
     {
         return _held.TryGetValue((pairingId, itemId, field), out var values) && values.Count > 0
