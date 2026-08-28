@@ -295,6 +295,31 @@ public class PassResumptionTests
     }
 
     /// <summary>
+    /// What an operator excluded reaches the plan the pass builds. The pass
+    /// rebuilds the request for what is left, and a rebuild that dropped the
+    /// exclusions would write a field the operator had turned off - which is
+    /// worse under a resume than without one, because it would happen only to
+    /// the items an interruption left over.
+    /// </summary>
+    /// <returns>A task.</returns>
+    [Fact]
+    public async Task WhatTheOperatorExcludedIsStillExcludedAfterAResume()
+    {
+        var items = Items(1);
+        var progress = new RecordingPassProgress();
+        var target = new TargetThatStops(Guid.Empty);
+
+        var request = RequestFor(items);
+        request.ExcludedFields.Add("Overview");
+
+        var result = await new Pass(new Applier(target, new RecordingWrittenValues()), progress)
+            .RunAsync(request, CancellationToken.None);
+
+        Assert.Empty(target.Written);
+        Assert.Equal(1, result.ItemsPassedOver);
+    }
+
+    /// <summary>
     /// A pass with nowhere to write is refused as it is built.
     /// </summary>
     [Fact]

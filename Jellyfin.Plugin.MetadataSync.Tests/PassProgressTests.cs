@@ -183,6 +183,53 @@ public class PassProgressTests
     }
 
     /// <summary>
+    /// A line that reads back as nothing at all is dropped and counted too. It
+    /// is a different shape from the short line above - the reader returns no
+    /// row rather than refusing the text - and the two arrive by different
+    /// routes, so one leg cannot stand for both.
+    /// </summary>
+    [Fact]
+    public void ALineThatReadsBackAsNothingIsDroppedAndCounted()
+    {
+        using var directory = new TemporaryDirectory();
+
+        new PassProgress(directory.Path).Completed(_pairing, _item);
+
+        File.AppendAllText(Path.Combine(directory.Path, PassProgress.FileName), "null\n", new UTF8Encoding(false));
+
+        var reopened = new PassProgress(directory.Path);
+
+        Assert.Equal(1, reopened.Unreadable);
+        Assert.Equal(new[] { _item }, reopened.CompletedItems(_pairing).ToArray());
+    }
+
+    /// <summary>
+    /// A file carrying enough repeated lines is rewritten from what is held. The
+    /// repeats are what an interrupted-and-resumed pass leaves, so the file of a
+    /// pairing that keeps being interrupted over the same items does not grow
+    /// without end.
+    /// </summary>
+    [Fact]
+    public void AFileCarryingEnoughRepeatedLinesIsRewritten()
+    {
+        using var directory = new TemporaryDirectory();
+
+        var store = new PassProgress(directory.Path);
+
+        for (var n = 0; n < 513; n++)
+        {
+            store.Completed(_pairing, _item);
+        }
+
+        var lines = File.ReadAllLines(Path.Combine(directory.Path, PassProgress.FileName))
+            .Where(line => line.Length > 0)
+            .ToList();
+
+        Assert.Single(lines);
+        Assert.Equal(new[] { _item }, new PassProgress(directory.Path).CompletedItems(_pairing).ToArray());
+    }
+
+    /// <summary>
     /// Nothing is created by reading. A directory with no store in it is the
     /// state a plugin is installed in, and a read that stamped it would turn
     /// every question about the store into a write.
