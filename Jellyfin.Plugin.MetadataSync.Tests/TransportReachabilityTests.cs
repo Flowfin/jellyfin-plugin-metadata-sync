@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using MediaBrowser.Controller.Entities;
 using Xunit;
@@ -90,6 +91,16 @@ public class TransportReachabilityTests
         "System.Uri",
         "System.UriBuilder",
     };
+
+    /// <summary>
+    /// The same vocabulary, for the other guard that needs it.
+    /// <see cref="StoreShapeTests"/> asks a different question - what the store
+    /// is DECLARED to be made of rather than what a pass reaches - and answers
+    /// it over types a call graph never arrives at. A second copy of these names
+    /// would drift against this one in the direction where both read as passing.
+    /// </summary>
+    /// <returns>The names.</returns>
+    internal static IReadOnlyList<string> TransportVocabulary() => TransportTypes;
 
     /// <summary>
     /// The rule. No code path that starts in a pass arrives at a way off this
