@@ -72,6 +72,8 @@ now, and what it returns is named rather than counted:
   of what this plugin wrote
 - `Jellyfin.Plugin.MetadataSync/Store/PassProgress.cs`, the record of which
   items a pass had finished with when it was interrupted
+- `Jellyfin.Plugin.MetadataSync/Store/ConflictLog.cs`, the account of what this
+  plugin decided about each field it looked at
 - `Jellyfin.Plugin.MetadataSync/Store/StoreFormat.cs`, the stamp saying which
   format the files in that directory are written in
 
@@ -210,6 +212,48 @@ a thing that can be obeyed: the items are observed again and the plan for what i
 left is built again, so a resumed pass writes what the two servers hold when it
 runs rather than what they held before the interruption. A stored plan replayed
 afterwards is how a pass writes over a value the peer has since changed.
+
+## What the third store keeps, and what its bound costs
+
+A third file under the same folder, `conflict-log.jsonl`, carrying a line per
+decision this plugin took about a field. It is what #48 asks for, and it is a
+store of its own for the same reason the second one is: a different key and a
+different lifetime. What this plugin wrote is filed per item and per field and
+is true until the value is overwritten; how far a pass got is true of one pass;
+a decision is true of the moment it was taken, and it includes the decisions
+that wrote nothing, which is most of what an operator opens the log to read.
+
+**The bound is five thousand decisions per pairing, oldest dropped first.** Per
+pairing rather than in total, so an operator who pairs with two households does
+not lose one relationship's account to the other's first pass. It is a count
+rather than an age for the reason the first bound is one: nothing here compares
+two servers' clocks.
+
+It is deliberately not the ten-per-item-and-field bound above, and the
+difference is the point rather than a detail. A log bounded per field would drop
+the refusals an operator opens it to find, because a field that is refused every
+pass would push its own history out while a field nobody argues about kept all
+ten of its lines. Five thousand holds a whole pass over a few hundred items,
+which is the case somebody is reading after, and it bounds the file at a few
+megabytes per pairing instead of at the size of a library.
+
+**What the bound discarded is gone, and how much of it there was is not.** Each
+line carries the position it occupies in that pairing's log, so how far the log
+has got survives both a restart and the rewrite that drops superseded lines, and
+what was dropped is that number less what is held. Keeping a tally beside the
+entries instead would have been reset by the rewrite, and the number an operator
+would then be shown is a clean one - which is the failure #48 and #66 both name,
+arriving through the repair rather than through the bound.
+
+What that number is not is a claim about the decisions that went. This store
+knows how many it dropped and nothing about them, which is what a bound costs.
+A surface showing what is left has to say the account is incomplete rather than
+reporting the rows it has as though they were all of them.
+
+**A line carries the values as a row shows them, cut, with the cut recorded.**
+Keeping the whole of both sides would put two overviews on this disk per
+decision, for a page that shows neither of them whole. `docs/conflict-log.md`
+is where the cut and its bound are argued.
 
 ## What a line carries, and why the second half of it is not derived
 

@@ -7,9 +7,9 @@ happen and is gone when the pass ends, the store says what was written and is
 silent about a field where nothing was, and the library shows the result
 without the reason.
 
-This page is about the row. The register the rows are kept in, the bound on how
-many are kept, the grouping an operator reads them under and the export are the
-rest of #48 and are not built. Nothing in this tree holds an entry today.
+This page is about the row and about what keeps it. The grouping an operator
+reads the rows under and the export are the rest of #48 and are not built, and
+both of them want a surface this plugin has not got. Nothing shows a row today.
 
 ## What a row carries
 
@@ -79,6 +79,35 @@ character with no glyph, because the rules read both as text somebody can have
 typed, and a row that tidied either would explain a decision the resolver did
 not make.
 
+## What keeps the rows, and what it loses
+
+The rows are kept in a file of this plugin's own, `conflict-log.jsonl`, which is
+argued in `docs/storage.md` beside the other two stores. What belongs here is
+what the bound does to the account rather than where the file is.
+
+**Five thousand rows per pairing, oldest dropped first.** Per pairing, so an
+operator paired with two households does not lose one account to the other's
+first pass, and a count rather than an age because nothing here compares two
+servers' clocks.
+
+**An account that has lost its beginning says how much it lost.** Each row
+carries the position it occupies in that pairing's log, so how far the log has
+got outlives both a restart and the rewrite that drops the lines the bound
+pushed out, and what was dropped is that number less what is held. That is the
+one number a surface needs in order to say the account is incomplete instead of
+reporting the rows it has as though they were all of them, which is what #48
+asks for and what #66 refuses from the other side.
+
+It is a count and never a description. This store knows how many rows it dropped
+and nothing at all about them, which is what a bound costs and is why the
+sentence a surface owes is that the account is incomplete rather than a list of
+what is missing.
+
+A row that did not reach the disk whole is dropped on the next read and counted
+rather than refused, because a log that will not open after a power cut is one an
+operator meets at the moment they most need it. That count is separate from the
+bound's, and a surface owes the same sentence about it.
+
 ## The fixture table
 
 Every row here is a value and what a log row shows of it. The suite reads these
@@ -126,8 +155,15 @@ What no check reads is whether the sentence in the last column is true of the
 row it sits on. A row could name a mistake it would not catch and every route
 here would pass it.
 
-What is not checked at all is anything about a log, because there is no log. No
-row above has been through a pass, nothing keeps an entry, nothing bounds a
-collection of them and nothing shows one. A green run here says a decision
-becomes a row that carries what this page says it carries, and it says nothing
-yet about what an operator sees.
+What the store is held to is in `ConflictLogTests` rather than restated here: a
+row is read back by a second instance with every column it carried, the bound
+keeps the newest and says how many it dropped, and that number survives both a
+restart and the rewrite of the file. The rewrite is provoked rather than assumed,
+and the case reads the file to say so before it concludes anything.
+
+What is not checked is what an operator sees, because nothing shows a row. No
+row above has been through a pass either: nothing reads a peer and nothing
+schedules anything, so every row here was handed over by a case. A green run
+here says a decision becomes a row carrying what this page says it carries, and
+that the store keeps and loses what this page says it keeps and loses. It says
+nothing yet about a library or a page.

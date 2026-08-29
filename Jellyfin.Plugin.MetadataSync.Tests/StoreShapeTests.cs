@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
+using Jellyfin.Plugin.MetadataSync.Configuration;
+using Jellyfin.Plugin.MetadataSync.Conflicts;
 using Jellyfin.Plugin.MetadataSync.Store;
 using Xunit;
 
@@ -126,6 +128,35 @@ public class StoreShapeTests
             "Pairing",
             "Item",
         },
+
+        // The account of a decision carries the three above and the columns that
+        // make a decision arguable. Local and Peer are the two values as the row
+        // shows them, cut, which is library data on this server and library data
+        // the peer sent about a work rather than about anybody; LocalCut and
+        // PeerCut say whether the cut took anything, which is a flag and names
+        // nothing. Rule and Outcome are this plugin's own vocabulary, declared in
+        // its own table. Direction is which way the pairing moves, which is a
+        // choice an operator made. At is a moment on this server's clock, never
+        // one the peer produced. Reached is a position in this pairing's own log,
+        // which is how the bound's losses are counted without keeping what was
+        // lost; it names nothing and nobody. What is absent is the same thing
+        // absent everywhere else here: nothing about the peer's copy of the item
+        // and nothing about where the peer is.
+        ["Jellyfin.Plugin.MetadataSync.Store.ConflictLog+Row"] = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Pairing",
+            "Reached",
+            "Item",
+            "Field",
+            "Local",
+            "LocalCut",
+            "Peer",
+            "PeerCut",
+            "Rule",
+            "Outcome",
+            "Direction",
+            "At",
+        },
     };
 
     /// <summary>
@@ -205,6 +236,20 @@ public class StoreShapeTests
             new Guid("cccccccc-0000-0000-0000-000000000003"),
             new Guid("aaaaaaaa-0000-0000-0000-000000000001"));
 
+        new ConflictLog(directory.Path).Record(
+            new Guid("cccccccc-0000-0000-0000-000000000003"),
+            new ConflictEntry
+            {
+                Item = new Guid("aaaaaaaa-0000-0000-0000-000000000001"),
+                Field = "Overview",
+                LocalValue = ShownValue.Of("what was here before"),
+                PeerValue = ShownValue.Of("what the peer said"),
+                Rule = "peer-field-locked",
+                Outcome = ConflictOutcome.Refuse,
+                Direction = SyncDirection.TwoWay,
+                At = DateTimeOffset.UnixEpoch,
+            });
+
         var read = 0;
         var outside = new List<string>();
 
@@ -231,10 +276,10 @@ public class StoreShapeTests
 
         Assert.Empty(outside.Order(StringComparer.Ordinal).ToList());
 
-        // A comparison over no lines agrees with anything. Three files are
-        // written by the two calls above, so a run that read fewer than three
+        // A comparison over no lines agrees with anything. Four files are
+        // written by the three calls above, so a run that read fewer than four
         // read a store that stopped writing one of them.
-        Assert.Equal(3, read);
+        Assert.Equal(4, read);
     }
 
     /// <summary>
@@ -270,6 +315,7 @@ public class StoreShapeTests
 
         Assert.Contains("Jellyfin.Plugin.MetadataSync.Store.WrittenValues", stores, StringComparer.Ordinal);
         Assert.Contains("Jellyfin.Plugin.MetadataSync.Store.PassProgress", stores, StringComparer.Ordinal);
+        Assert.Contains("Jellyfin.Plugin.MetadataSync.Store.ConflictLog", stores, StringComparer.Ordinal);
         Assert.Contains("Jellyfin.Plugin.MetadataSync.Store.StoreFormat", stores, StringComparer.Ordinal);
 
         Assert.NotEmpty(LineTypes());
