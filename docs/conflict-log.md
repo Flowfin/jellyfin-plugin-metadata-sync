@@ -108,6 +108,32 @@ rather than refused, because a log that will not open after a power cut is one a
 operator meets at the moment they most need it. That count is separate from the
 bound's, and a surface owes the same sentence about it.
 
+## What an operator can take away
+
+The difference between a log and a support burden is whether the operator can
+hand it over. A page they have to screenshot is a page somebody transcribes
+wrongly into an issue, so the account leaves this plugin as one text with
+everything in it.
+
+**It is the account and not the rows.** Every number above goes out with them:
+how many the bound dropped, how many lines could not be read back, and what the
+bound is. A file carrying only the rows reads as the whole account to whoever
+opens it, and an operator who exports a log, finds the field they are arguing
+about missing from it and concludes it was never decided is wrong in the one
+direction this register cannot afford.
+
+**The rows are written as the decision declares them rather than as the store's
+line.** The two carry the same columns, and a second shape written out beside the
+first is the copy that drifts. What it costs is that the file is not the store's
+file: it is nested where the line is flat, and nothing reads one as the other.
+
+**Nothing here chooses where a file goes.** What is produced is the content of a
+file, and handing it to an operator is the surface's business, which is the part
+of #48 that is still owed. A text that is not an account is refused when it is
+read back rather than answered with an empty one, because an empty account and an
+unreadable file are the same object to whoever asked and only one of them means
+nothing was decided.
+
 ## The fixture table
 
 Every row here is a value and what a log row shows of it. The suite reads these

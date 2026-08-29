@@ -420,6 +420,27 @@ public class RefusalTests
                  "the decision to keep is there",
                  () => LogInATemporaryDirectory().Record(Guid.Empty, null!)),
 
+            ["Store/ConflictExport.cs -> ArgumentNullException.ThrowIfNull(account);"] =
+                (nameof(ConflictExportTests),
+                 nameof(ConflictExportTests.AnAccountThatIsNotThereIsRefused),
+                 nameof(ConflictExportTests.APairingNothingWasDecidedForStillExportsAnAccount),
+                 "the account to write out is there",
+                 () => ConflictExport.Written(null!)),
+
+            ["Store/ConflictExport.cs -> ArgumentException.ThrowIfNullOrWhiteSpace(text);"] =
+                (nameof(ConflictExportTests),
+                 nameof(ConflictExportTests.ATextThatIsNotThereIsRefused),
+                 nameof(ConflictExportTests.AnAccountSurvivesBeingWrittenOutAndReadBack),
+                 "the text to read is there",
+                 () => ConflictExport.Read("   ")),
+
+            ["Store/ConflictExport.cs -> throw new JsonException(\"The text names nothing, so it is not an account.\");"] =
+                (nameof(ConflictExportTests),
+                 nameof(ConflictExportTests.ATextThatIsNotAnAccountIsRefused),
+                 nameof(ConflictExportTests.AnAccountSurvivesBeingWrittenOutAndReadBack),
+                 "the text names an account rather than nothing",
+                 () => ConflictExport.Read("null")),
+
             ["Reconciliation/Applier.cs -> ArgumentNullException.ThrowIfNull(plan);"] =
                 (nameof(ApplierTests),
                  nameof(ApplierTests.ApplyingAPlanThatIsNotThereIsRefused),
