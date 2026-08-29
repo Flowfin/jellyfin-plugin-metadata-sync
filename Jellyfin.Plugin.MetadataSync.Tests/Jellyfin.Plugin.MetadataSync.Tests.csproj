@@ -183,6 +183,15 @@
     <None Include="..\docs\storage.md" Link="storage.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- The conflict log page carries the fixture rows for what a row shows of a
+       value, and the one line in it that states the display bound is a
+       rendering of the number declared in the source. ConflictEntryTests reads
+       both, so the page is copied here for the same reason the field register
+       is. -->
+  <ItemGroup>
+    <None Include="..\docs\conflict-log.md" Link="conflict-log.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- The lifecycle document closes by saying what of its three acts is true of
        the tree today, and LifecycleStatementTests holds those claims against
        the plugin's own sources and against the documents copied here. It was
