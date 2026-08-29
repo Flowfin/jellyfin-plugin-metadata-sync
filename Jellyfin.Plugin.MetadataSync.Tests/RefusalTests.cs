@@ -378,19 +378,54 @@ public class RefusalTests
                  "the directory the stamp is read from is there",
                  () => new StoreFormat(null!)),
 
-            ["Store/StoreFormat.cs -> throw new StoreFormatRefusedException(_path, \"no store format this build can read\", Current);"] =
+            ["Store/StoreFormat.cs -> throw new StoreFormatRefusedException(_path, \"no store format this build can read\", _current);"] =
                 (nameof(StoreFormatTests),
                  nameof(StoreFormatTests.AStampThatCannotBeReadIsRefused),
                  nameof(StoreFormatTests.ADirectoryWithNoStampIsTheEarliestFormat),
                  "the stamp says a format rather than something unreadable",
                  () => FormatOverAStampSaying("this is not a stamp").Declared()),
 
-            ["Store/StoreFormat.cs -> throw new StoreFormatRefusedException(_path, Says(stamp.Format), Current);"] =
+            ["Store/StoreFormat.cs -> throw new StoreFormatRefusedException(_path, Says(stamp.Format), _current);"] =
                 (nameof(StoreFormatTests),
                  nameof(StoreFormatTests.AFormatFromTheFutureIsRefused),
                  nameof(StoreFormatTests.ADirectoryThisPluginHasWrittenToSaysWhichFormatItIsIn),
                  "the format the stamp declares is one this build writes",
                  () => FormatOverAStampSaying("{\"format\":" + (StoreFormat.Current + 1) + "}").Declared()),
+
+            ["Store/StoreFormat.cs -> ArgumentNullException.ThrowIfNull(chain);"] =
+                (nameof(StoreMigrationTests),
+                 nameof(StoreMigrationTests.AMigrationWithNoChainIsRefused),
+                 nameof(StoreMigrationTests.TheStoreThisBuildReadsHasNothingToStepForward),
+                 "the chain of steps is there",
+                 () => new StoreFormat("directory", 1, null!)),
+
+            ["Store/StoreFormat.cs -> ArgumentOutOfRangeException.ThrowIfLessThan(current, Earliest);"] =
+                (nameof(StoreMigrationTests),
+                 nameof(StoreMigrationTests.AFormatBelowTheEarliestOneIsNotAFormatToRead),
+                 nameof(StoreMigrationTests.TheStoreThisBuildReadsHasNothingToStepForward),
+                 "the format being read is one that has existed",
+                 () => new StoreFormat("directory", StoreFormat.Earliest - 1, Array.Empty<FormatStep>())),
+
+            ["Store/StoreFormat.cs -> throw new StoreFormatRefusedException(_path, Unstepped(declared, format, reaching.Count), _current);"] =
+                (nameof(StoreMigrationTests),
+                 nameof(StoreMigrationTests.AFormatNoStepStartsFromIsRefusedBeforeAnythingIsCopied),
+                 nameof(StoreMigrationTests.ADirectoryStepsForwardOneFormatAtATimeAndTheStampFollows),
+                 "a step starts from every format the directory has to pass through",
+                 () => MigrationOverAChainMissingItsSecondStep().Migrate()),
+
+            ["Store/FormatStep.cs -> ArgumentNullException.ThrowIfNull(apply);"] =
+                (nameof(StoreMigrationTests),
+                 nameof(StoreMigrationTests.AStepWithNoChangeToMakeIsRefused),
+                 nameof(StoreMigrationTests.AStepMovesADirectoryByExactlyOneFormat),
+                 "the change the step makes is there",
+                 () => new FormatStep(1, null!)),
+
+            ["Store/FormatStep.cs -> ArgumentOutOfRangeException.ThrowIfLessThan(from, StoreFormat.Earliest);"] =
+                (nameof(StoreMigrationTests),
+                 nameof(StoreMigrationTests.AStepStartingBeforeAnyFormatThatHasExistedIsRefused),
+                 nameof(StoreMigrationTests.AStepMovesADirectoryByExactlyOneFormat),
+                 "the step starts from a format that has existed",
+                 () => new FormatStep(StoreFormat.Earliest - 1, _ => { })),
 
             ["Store/WrittenValues.cs -> ArgumentException.ThrowIfNullOrWhiteSpace(directory);"] =
                 (nameof(WrittenValuesTests),
@@ -759,6 +794,30 @@ public class RefusalTests
         var format = new StoreFormat(directory);
 
         File.WriteAllText(format.Location, stamp);
+        return format;
+    }
+
+    /// <summary>
+    /// A store two formats behind a build whose chain carries only the first of
+    /// the two steps, which is the arrangement that reaches the refusal for a
+    /// format nothing steps from.
+    /// </summary>
+    /// <returns>The store.</returns>
+    private static StoreFormat MigrationOverAChainMissingItsSecondStep()
+    {
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            "metadata-sync-refusals-" + Guid.NewGuid().ToString("n", CultureInfo.InvariantCulture));
+
+        Directory.CreateDirectory(directory);
+
+        var chain = new[] { new FormatStep(StoreFormat.Earliest, _ => { }) };
+        var format = new StoreFormat(directory, StoreFormat.Earliest + 2, chain);
+
+        File.WriteAllText(
+            format.Location,
+            string.Format(CultureInfo.InvariantCulture, "{{\"format\":{0}}}", StoreFormat.Earliest));
+
         return format;
     }
 
