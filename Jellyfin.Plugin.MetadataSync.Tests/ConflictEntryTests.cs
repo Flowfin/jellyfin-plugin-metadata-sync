@@ -327,6 +327,41 @@ public class ConflictEntryTests
     }
 
     /// <summary>
+    /// The direction on a row is the one the plan was made under, rather than
+    /// the one direction this plugin declares.
+    /// </summary>
+    /// <remarks>
+    /// Every other case here is blind to the difference and always will be while
+    /// the model has one member: a row reading the plan and a row writing
+    /// `TwoWay` produce the same bytes, so a column quietly written as a
+    /// constant would pass all of them. The plan is handed a value this plugin
+    /// declares no name for, which no constant could produce, and the row is
+    /// asked for it back.
+    /// <para>
+    /// The value is undeclared on purpose and it is not a configuration this
+    /// plugin would accept. What refuses one of those is the validator, in
+    /// `ADirectionThisPluginDoesNotDeclareIsRefused`, and it is a different
+    /// question from whether a row carries what it was given. This is the fourth
+    /// condition of #34.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void TheDirectionOnARowIsThePlansRatherThanTheOneDeclaredMember()
+    {
+        const SyncDirection NotDeclaredHere = (SyncDirection)7;
+
+        var plan = new Plan { Direction = NotDeclaredHere };
+        plan.Items.Add(ItemPlanOf(
+            Guid.NewGuid(),
+            Decided("Overview", "Ours", "Theirs", ConflictOutcome.Refuse, rule: null)));
+
+        var entry = Assert.Single(ConflictEntries.From(plan, DateTimeOffset.UnixEpoch));
+
+        Assert.Equal(NotDeclaredHere, entry.Direction);
+        Assert.False(Enum.IsDefined(entry.Direction));
+    }
+
+    /// <summary>
     /// A pass stamps one moment across every row it produced, so the rows of one
     /// pass sort together instead of being spread across however long it ran.
     /// </summary>
