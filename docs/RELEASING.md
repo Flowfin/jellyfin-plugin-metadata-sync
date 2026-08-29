@@ -159,11 +159,18 @@ carried none. What neither stamp is yet is a released version: nothing has been
 released, so the numbers say which shape a file is in rather than which release
 wrote it, and this section binds the first release rather than describing the
 current tree. The two coincide until that release and the reading has to be
-re-made then. Nothing refuses a
-violation of it either, here or anywhere else: what would refuse one is the step
-chain itself, which does not exist. #59 is where that mechanism is built, and
-`docs/storage.md` is where the two artefacts and the split between them are
-argued.
+re-made then.
+
+The step chain exists on the store's side now, and this paragraph said it did
+not. What that changes is smaller than it sounds and worth reading exactly: the
+chain is empty, nothing runs it, and what it refuses is a build whose steps
+cannot reach its own current format rather than a number whose meaning somebody
+redefined. Nothing here or anywhere else refuses that redefinition, because no
+reading of a tree separates a shape that was corrected from one that was
+replaced, and the artefacts a wrong step would damage are on installations this
+repository cannot see. So this section stays a rule carried by whoever raises
+the number. #59 is where the mechanism is built and `docs/storage.md` is where
+the two artefacts and the split between them are argued.
 
 ## Repository settings this expects
 

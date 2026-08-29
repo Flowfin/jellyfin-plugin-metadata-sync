@@ -310,16 +310,39 @@ not create one, because a directory with no store in it is the state a plugin is
 installed in, and a read that stamped it would turn every question about the
 store into a write.
 
-**What this is not is a migration.** One format has existed, so there is no step
-from one to another and nothing has been migrated. What is built is the half
-that has to exist before the first shape change rather than after it: the
-artefact says which shape it is, and a build that meets a shape it does not know
-stops. This paragraph said the configuration's half of the same question was not
-built, and it is: the configuration carries its own stamp, read by the same
-validation that refuses every other unusable configuration, so a file written by
-a newer build disables every action instead of being acted on under rules it was
-not written under. The chain of steps is where #59 says it is and is not built,
-and it is the half neither stamp stands in for.
+**Nothing has been migrated.** One format has existed, so the chain of steps
+this directory would be carried forward by is empty and no store in existence
+has moved. The configuration is in the same state on its own number: it carries
+its own stamp, read by the same validation that refuses every other unusable
+configuration, so a file written by a newer build disables every action instead
+of being acted on under rules it was not written under.
+
+**What the chain is is built, and this paragraph said it was not.** #59 argues
+for the mechanism before there is anything to migrate, because the alternative
+is writing one against a released shape that is already wrong. A step declares
+the format it starts from and moves the directory by exactly one, so a chain
+assembled out of steps is contiguous by construction and cannot name a pair that
+skips a shape. Which step runs is decided by the number the directory declares
+rather than by a step's position in the chain. And a build whose chain cannot
+reach its own current format is refused by the suite rather than shipped, which
+is the failure that would otherwise arrive as a build refusing every store the
+one before it wrote.
+
+A migration runs over a copy beside the store and reaches the path readers open
+in one move at the end, for the reason the compaction above gives: a step that
+throws costs the copy and leaves the original exactly as the build that wrote it
+left it. A store that is half of one shape and half of the next is a store no
+reader can place, and no build after it could tell that from the shape it was
+written in.
+
+**Nothing calls it.** The chain is empty, so a call would be a no-op on every
+installation, and the moment it belongs at is the moment the first step exists.
+That is a disclosure and not a claim that the absence is harmless: what is
+proved today is the mechanism against a chain a fixture declares, and the route
+that runs it on an upgrade is the half of #59 this does not close. It is also
+not safe against a second process holding a file in either directory open,
+because the move is what fails then. No route here starts a migration while a
+pass is running, but that is an arrangement rather than a lock.
 
 ## What an operator can ask for, and what a removal is not
 

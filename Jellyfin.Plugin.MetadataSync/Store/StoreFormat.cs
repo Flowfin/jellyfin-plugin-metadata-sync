@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 
@@ -63,6 +65,21 @@ public sealed class StoreFormat : IPairingStore
     /// </summary>
     internal const string FileName = "store-format.json";
 
+    /// <summary>
+    /// The steps that take a store directory from one format to the next, in no
+    /// particular order: which of them runs is decided by the format the
+    /// directory declares rather than by a step's position in this list.
+    /// </summary>
+    /// <remarks>
+    /// It is empty because one format has existed. That is the state #59 asks
+    /// for this mechanism to be built in, and the emptiness is held rather than
+    /// left to be noticed: <c>StoreMigrationTests</c> compares the formats this
+    /// list steps from with every format below <see cref="Current"/>, so raising
+    /// <see cref="Current"/> without writing the step reddens the suite instead
+    /// of shipping a build that refuses every store the one before it wrote.
+    /// </remarks>
+    internal static readonly IReadOnlyList<FormatStep> Chain = Array.Empty<FormatStep>();
+
     private static readonly JsonSerializerOptions _json = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -70,6 +87,8 @@ public sealed class StoreFormat : IPairingStore
 
     private readonly string _directory;
     private readonly string _path;
+    private readonly int _current;
+    private readonly IReadOnlyList<FormatStep> _chain;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="StoreFormat"/> class over the
@@ -79,11 +98,35 @@ public sealed class StoreFormat : IPairingStore
     /// <exception cref="ArgumentNullException">There is no directory to read a stamp from.</exception>
     /// <exception cref="ArgumentException">The directory is named by nothing but space.</exception>
     public StoreFormat(string directory)
+        : this(directory, Current, Chain)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="StoreFormat"/> class reading
+    /// and writing a format other than the one this build carries.
+    /// </summary>
+    /// <param name="directory">The directory.</param>
+    /// <param name="current">The format to read and write.</param>
+    /// <param name="chain">The steps that reach it.</param>
+    /// <remarks>
+    /// A seam for a proof and not an API for anybody else to call, in the sense
+    /// `Properties/AssemblyInfo.cs` sets out. One format has existed, so a
+    /// migration run against <see cref="Current"/> has nothing to do and every
+    /// refusal inside <see cref="Migrate()"/> is unreachable from the public
+    /// constructor. What this seam costs is one internal member; what it buys is
+    /// a mechanism whose first execution is not on somebody's library.
+    /// </remarks>
+    internal StoreFormat(string directory, int current, IReadOnlyList<FormatStep> chain)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
+        ArgumentNullException.ThrowIfNull(chain);
+        ArgumentOutOfRangeException.ThrowIfLessThan(current, Earliest);
 
         _directory = directory;
         _path = Path.Combine(directory, FileName);
+        _current = current;
+        _chain = chain;
     }
 
     /// <summary>
@@ -129,12 +172,12 @@ public sealed class StoreFormat : IPairingStore
             // earliest is the assumption that fails in the destroying direction:
             // a newer file whose stamp was damaged would be opened, dropped to
             // what this build understands, and written back.
-            throw new StoreFormatRefusedException(_path, "no store format this build can read", Current);
+            throw new StoreFormatRefusedException(_path, "no store format this build can read", _current);
         }
 
-        if (stamp.Format > Current)
+        if (stamp.Format > _current)
         {
-            throw new StoreFormatRefusedException(_path, Says(stamp.Format), Current);
+            throw new StoreFormatRefusedException(_path, Says(stamp.Format), _current);
         }
 
         return stamp.Format;
@@ -160,10 +203,98 @@ public sealed class StoreFormat : IPairingStore
 
         Directory.CreateDirectory(_directory);
 
-        File.WriteAllText(
-            _path,
-            string.Format(CultureInfo.InvariantCulture, "{{\"format\":{0}}}\n", Current),
-            new UTF8Encoding(false));
+        Write(_path, _current);
+    }
+
+    /// <summary>
+    /// Steps this directory forward to the format this build reads, one format
+    /// at a time, and answers with how many steps ran.
+    /// </summary>
+    /// <returns>The number of steps applied, which is zero for a directory already in this format.</returns>
+    /// <exception cref="StoreFormatRefusedException">The stamp says a format this build cannot place, or no step in the chain starts from a format the directory has to pass through.</exception>
+    /// <remarks>
+    /// The format is read first, so a directory this build cannot place is
+    /// refused before anything is copied and the refusal writes nothing, which
+    /// is the property <see cref="Declared()"/> already holds and this member
+    /// does not weaken.
+    /// <para>
+    /// Every step runs over a copy beside the store, and the copy reaches the
+    /// path readers open in one move at the end. A step that throws costs the
+    /// copy and leaves the original directory exactly as the build that wrote it
+    /// left it, which is the guarantee that makes a half-run migration a state
+    /// this route cannot reach. The same reasoning is why
+    /// <see cref="WrittenValues"/> compacts into a replacement and moves it: the
+    /// move is the one step that has to be all or nothing.
+    /// </para>
+    /// <para>
+    /// Nothing calls this today, and that is disclosed rather than repaired: the
+    /// chain is empty, so a call would be a no-op on every installation, and the
+    /// moment it belongs at is the moment the first step exists. #59 is where
+    /// that is argued, and it is the half of it this member does not close.
+    /// </para>
+    /// <para>
+    /// It is not safe against a second process holding a file in either
+    /// directory open, because the move is what fails then. A migration runs
+    /// before anything reads the store, and no route here starts one while a
+    /// pass is running, but that is an arrangement rather than a lock and it is
+    /// named as one.
+    /// </para>
+    /// </remarks>
+    public int Migrate()
+    {
+        var declared = Declared();
+
+        if (declared == _current)
+        {
+            return 0;
+        }
+
+        var steps = new List<FormatStep>();
+
+        for (var format = declared; format < _current; format++)
+        {
+            var reaching = _chain.Where(step => step.From == format).ToList();
+
+            if (reaching.Count != 1)
+            {
+                throw new StoreFormatRefusedException(_path, Unstepped(declared, format, reaching.Count), _current);
+            }
+
+            steps.Add(reaching[0]);
+        }
+
+        var working = _directory + ".migrating";
+        var superseded = _directory + ".superseded";
+
+        Discard(working);
+        Discard(superseded);
+        Copy(_directory, working);
+
+        var stepped = false;
+
+        try
+        {
+            foreach (var step in steps)
+            {
+                step.Apply(working);
+            }
+
+            Write(Path.Combine(working, FileName), _current);
+            stepped = true;
+        }
+        finally
+        {
+            if (!stepped)
+            {
+                Discard(working);
+            }
+        }
+
+        Directory.Move(_directory, superseded);
+        Directory.Move(working, _directory);
+        Discard(superseded);
+
+        return steps.Count;
     }
 
     /// <inheritdoc />
@@ -187,6 +318,64 @@ public sealed class StoreFormat : IPairingStore
     /// that no longer says what it is.
     /// </remarks>
     public int Remove(Guid pairingId) => 0;
+
+    /// <summary>
+    /// Writes a stamp, replacing one that is there.
+    /// </summary>
+    /// <param name="path">The stamp file.</param>
+    /// <param name="format">The format it declares.</param>
+    private static void Write(string path, int format) =>
+        File.WriteAllText(
+            path,
+            string.Format(CultureInfo.InvariantCulture, "{{\"format\":{0}}}\n", format),
+            new UTF8Encoding(false));
+
+    /// <summary>
+    /// Copies a directory and everything under it.
+    /// </summary>
+    /// <param name="from">The directory to copy.</param>
+    /// <param name="to">Where the copy goes.</param>
+    private static void Copy(string from, string to)
+    {
+        Directory.CreateDirectory(to);
+
+        foreach (var directory in Directory.GetDirectories(from, "*", SearchOption.AllDirectories))
+        {
+            Directory.CreateDirectory(Path.Combine(to, Path.GetRelativePath(from, directory)));
+        }
+
+        foreach (var file in Directory.GetFiles(from, "*", SearchOption.AllDirectories))
+        {
+            File.Copy(file, Path.Combine(to, Path.GetRelativePath(from, file)), overwrite: true);
+        }
+    }
+
+    /// <summary>
+    /// Removes a directory this member made, where one is there.
+    /// </summary>
+    /// <param name="directory">The directory.</param>
+    private static void Discard(string directory)
+    {
+        if (Directory.Exists(directory))
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// A gap in the chain, as the refusal says it.
+    /// </summary>
+    /// <param name="declared">The format the directory is in.</param>
+    /// <param name="format">The format nothing steps from.</param>
+    /// <param name="found">How many steps start from it.</param>
+    /// <returns>The sentence.</returns>
+    private static string Unstepped(int declared, int format, int found) =>
+        string.Format(
+            CultureInfo.InvariantCulture,
+            "store format {0}, and {1} of the steps that would carry it forward start from format {2}",
+            declared,
+            found,
+            format);
 
     /// <summary>
     /// A format, as the refusal says it.
