@@ -158,6 +158,9 @@ are what an uninstall leaves behind:
 - `pass-progress.jsonl`, which items a sync had finished with when it was
   interrupted, so the next one continues instead of starting again. It is
   emptied whenever a sync runs to the end
+- `conflict-log.jsonl`, what this plugin decided about each field it looked at
+  and why, keyed by pairing and bounded at five thousand decisions per pairing,
+  oldest dropped first
 - `store-format.json`, one number saying which format the files beside it are
   written in
 

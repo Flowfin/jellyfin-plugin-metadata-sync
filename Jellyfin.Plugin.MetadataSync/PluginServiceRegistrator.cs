@@ -73,6 +73,15 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<IPairingStore>(
             services => services.GetRequiredService<PassProgress>());
 
+        // The account of what was decided. One instance and both faces
+        // forwarded to it, for the reasons above: two instances over one file
+        // would be two accounts of one pass, and the one an operator reads
+        // would not be the one a pass wrote to.
+        serviceCollection.AddSingleton(
+            _ => new ConflictLog(Plugin.Instance!.DataFolderPath));
+        serviceCollection.AddSingleton<IPairingStore>(
+            services => services.GetRequiredService<ConflictLog>());
+
         // What an operator asks what this plugin holds about one pairing, and
         // asks to have removed. It is given every store rather than a list
         // written here, so a store added later reaches the report by being

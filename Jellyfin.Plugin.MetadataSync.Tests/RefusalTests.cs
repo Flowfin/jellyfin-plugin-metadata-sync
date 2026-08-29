@@ -406,6 +406,20 @@ public class RefusalTests
                  "the field has a name",
                  () => StoreInATemporaryDirectory().Record(Guid.Empty, Guid.Empty, " ", "a value", null)),
 
+            ["Store/ConflictLog.cs -> ArgumentException.ThrowIfNullOrWhiteSpace(directory);"] =
+                (nameof(ConflictLogTests),
+                 nameof(ConflictLogTests.ALogWithNoDirectoryIsRefused),
+                 nameof(ConflictLogTests.APairingNothingWasDecidedForHasNoAccount),
+                 "the directory the log keeps itself in is there",
+                 () => new ConflictLog(null!)),
+
+            ["Store/ConflictLog.cs -> ArgumentNullException.ThrowIfNull(entry);"] =
+                (nameof(ConflictLogTests),
+                 nameof(ConflictLogTests.ADecisionThatIsNotThereIsRefused),
+                 nameof(ConflictLogTests.ADecisionIsReadBackByASecondInstance),
+                 "the decision to keep is there",
+                 () => LogInATemporaryDirectory().Record(Guid.Empty, null!)),
+
             ["Reconciliation/Applier.cs -> ArgumentNullException.ThrowIfNull(plan);"] =
                 (nameof(ApplierTests),
                  nameof(ApplierTests.ApplyingAPlanThatIsNotThereIsRefused),
@@ -729,12 +743,22 @@ public class RefusalTests
 
     private static WrittenValues StoreInATemporaryDirectory()
     {
+        return new WrittenValues(TemporaryDirectory());
+    }
+
+    private static ConflictLog LogInATemporaryDirectory()
+    {
+        return new ConflictLog(TemporaryDirectory());
+    }
+
+    private static string TemporaryDirectory()
+    {
         var directory = Path.Combine(
             Path.GetTempPath(),
             "metadata-sync-refusals-" + Guid.NewGuid().ToString("n", CultureInfo.InvariantCulture));
 
         Directory.CreateDirectory(directory);
-        return new WrittenValues(directory);
+        return directory;
     }
 
     /// <summary>
