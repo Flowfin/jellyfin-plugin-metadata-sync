@@ -252,6 +252,33 @@ public sealed class ConflictLog : IPairingStore
         }
     }
 
+    /// <summary>
+    /// Everything this plugin can still say about one pairing's decisions, and
+    /// what it can no longer say.
+    /// </summary>
+    /// <param name="pairingId">The pairing to ask about.</param>
+    /// <returns>The rows held, with the counts that say what is missing.</returns>
+    /// <remarks>
+    /// The rows and the counts are answered together rather than asked for one
+    /// at a time, because a caller that took the rows and forgot the counts
+    /// would hand an operator an account that reads as complete, and this is the
+    /// one shape that cannot be assembled that way by accident.
+    /// </remarks>
+    public ConflictAccount Account(Guid pairingId)
+    {
+        lock (_gate)
+        {
+            return new ConflictAccount
+            {
+                Pairing = pairingId,
+                Entries = Entries(pairingId),
+                Dropped = Dropped(pairingId),
+                Unreadable = Unreadable,
+                BoundedAt = Bound,
+            };
+        }
+    }
+
     /// <inheritdoc />
     public PairingHolding Holding(Guid pairingId)
     {
