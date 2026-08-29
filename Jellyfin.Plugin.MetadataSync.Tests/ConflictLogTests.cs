@@ -240,6 +240,40 @@ public class ConflictLogTests
     }
 
     /// <summary>
+    /// A line that is readable text and is not a row is counted rather than
+    /// kept, and each of the three ways of being that is counted.
+    /// </summary>
+    /// <remarks>
+    /// This is a different state from a line that did not reach the disk whole,
+    /// which stops being readable at all. These parse and then say nothing: a
+    /// line naming nothing, a decision about no field, and a decision carrying
+    /// no position in the log. The last is the one that matters most here,
+    /// because a row admitted with no position would be counted as held while
+    /// contributing nothing to how far the log had got, and the account would
+    /// then report fewer entries dropped than it had dropped.
+    /// </remarks>
+    [Fact]
+    public void ALineThatParsesAndIsNotARowIsCountedRatherThanKept()
+    {
+        using var directory = new TemporaryDirectory();
+        var path = Path.Combine(directory.Path, "conflict-log.jsonl");
+
+        new ConflictLog(directory.Path).Record(_pairing, Decision("Overview", "Ours", "Theirs", DateTimeOffset.UnixEpoch));
+
+        File.AppendAllText(
+            path,
+            "null\n"
+            + "{\"Pairing\":\"cccccccc-0000-0000-0000-000000000003\",\"Reached\":2,\"Field\":\"  \"}\n"
+            + "{\"Pairing\":\"cccccccc-0000-0000-0000-000000000003\",\"Reached\":0,\"Field\":\"Overview\"}\n");
+
+        var reopened = new ConflictLog(directory.Path);
+
+        Assert.Single(reopened.Entries(_pairing));
+        Assert.Equal(3, reopened.Unreadable);
+        Assert.Equal(0, reopened.Dropped(_pairing));
+    }
+
+    /// <summary>
     /// A removal takes one pairing's account and leaves the others where they
     /// are, including how far they had got. A removal that forgot the second
     /// would answer correctly until the next restart and then report every other
