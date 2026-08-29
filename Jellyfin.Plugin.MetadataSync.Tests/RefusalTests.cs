@@ -287,6 +287,20 @@ public class RefusalTests
                      ConflictResolverTests.NothingOnEitherSide(),
                      ConflictRules.Parse(ConflictResolverTests.RuleWithNoConditionHere))),
 
+            ["Conflicts/ConflictEntries.cs -> ArgumentNullException.ThrowIfNull(plan);"] =
+                (nameof(ConflictEntryTests),
+                 nameof(ConflictEntryTests.APassThatHandsOverNoPlanIsRefused),
+                 nameof(ConflictEntryTests.APlanWithNothingToTellProducesNoRows),
+                 "the plan to read the decisions out of is there",
+                 () => ConflictEntries.From(null!, DateTimeOffset.UnixEpoch)),
+
+            ["Conflicts/ConflictEntries.cs -> ArgumentNullException.ThrowIfNull(change);"] =
+                (nameof(ConflictEntryTests),
+                 nameof(ConflictEntryTests.ARowThatIsNotThereIsRefused),
+                 nameof(ConflictEntryTests.AFieldBothServersAgreeOnOwesNoRow),
+                 "the row being asked about is there",
+                 () => ConflictEntries.IsOwed(null!)),
+
             ["References/ReferenceResolver.cs -> ArgumentNullException.ThrowIfNull(incoming);"] =
                 (nameof(ReferenceResolutionTests),
                  nameof(ReferenceResolutionTests.ResolvingAReferenceThatIsNotThereIsRefused),
