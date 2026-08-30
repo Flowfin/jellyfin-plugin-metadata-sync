@@ -94,6 +94,88 @@ public class ConflictLogTests
     }
 
     /// <summary>
+    /// The row this account exists for. A decision no declared rule made is
+    /// read back carrying no rule, beside a row in the same file that names
+    /// one, so the two are still different rows after a restart.
+    /// </summary>
+    /// <remarks>
+    /// It is the row #45 is about, and it is the row every other leg here
+    /// misses. All of them record a decision a rule named, so the bytes of a
+    /// row with no rule have never made the journey: the writer omits a null
+    /// rather than writing one, so the property is absent from the line rather
+    /// than present and empty, and what a reader does with an absent property
+    /// is a different question from what it does with a null one.
+    /// <para>
+    /// The distinction is the whole of the floor. An operator reading an
+    /// account cannot act on a refusal without knowing whether a rule they
+    /// declared refused the field or whether the table ran out, and a store
+    /// that answered the second as an empty name, or as the first, would tell
+    /// them the opposite of what happened. `docs/conflict-log.md` says a row
+    /// carries the declared rule that decided it or nothing at all where the
+    /// table ran out, and this is the leg behind the second half of that
+    /// sentence.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void ADecisionNoRuleMadeIsReadBackCarryingNoRule()
+    {
+        using var directory = new TemporaryDirectory();
+
+        var log = new ConflictLog(directory.Path);
+
+        log.Record(_pairing, NoRuleFired("Overview", "Ours", "Theirs", DateTimeOffset.UnixEpoch));
+        log.Record(_pairing, Decision("Tagline", "Ours", "Theirs", DateTimeOffset.UnixEpoch));
+
+        var entries = new ConflictLog(directory.Path).Entries(_pairing);
+
+        Assert.Equal(2, entries.Count);
+
+        var residual = Assert.Single(entries, entry => string.Equals(entry.Field, "Overview", StringComparison.Ordinal));
+
+        Assert.Null(residual.Rule);
+        Assert.Equal(ConflictOutcome.Refuse, residual.Outcome);
+        Assert.Equal("Ours", residual.LocalValue.Text);
+        Assert.Equal("Theirs", residual.PeerValue.Text);
+
+        var decided = Assert.Single(entries, entry => string.Equals(entry.Field, "Tagline", StringComparison.Ordinal));
+
+        Assert.Equal("peer-field-locked", decided.Rule);
+    }
+
+    /// <summary>
+    /// The same absence arriving from the file rather than through this build's
+    /// writer. A line carrying no rule property at all reads back as a row no
+    /// rule decided, which is what makes writing the absence as an absence safe.
+    /// </summary>
+    /// <remarks>
+    /// The writer omits a null rather than writing one, so this is the shape
+    /// every such row on a disk already has, and it is also the shape a file
+    /// written by a build that chose differently would not have. Reading it
+    /// through the reader rather than asserting the bytes the writer produced
+    /// keeps this a leg about what the account can be handed rather than one
+    /// about a serialiser setting.
+    /// </remarks>
+    [Fact]
+    public void ALineCarryingNoRuleAtAllIsReadBackAsARowNoRuleDecided()
+    {
+        using var directory = new TemporaryDirectory();
+        var path = Path.Combine(directory.Path, "conflict-log.jsonl");
+
+        File.AppendAllText(
+            path,
+            "{\"Pairing\":\"cccccccc-0000-0000-0000-000000000003\",\"Reached\":1,"
+            + "\"Item\":\"aaaaaaaa-0000-0000-0000-000000000001\",\"Field\":\"Overview\","
+            + "\"Local\":\"Ours\",\"Peer\":\"Theirs\",\"Outcome\":\"Refuse\","
+            + "\"Direction\":\"TwoWay\",\"At\":\"2026-08-29T04:15:00+00:00\"}");
+
+        var entry = Assert.Single(new ConflictLog(directory.Path).Entries(_pairing));
+
+        Assert.Null(entry.Rule);
+        Assert.Equal(ConflictOutcome.Refuse, entry.Outcome);
+        Assert.Equal("Overview", entry.Field);
+    }
+
+    /// <summary>
     /// A field that held nothing is read back as a field that held nothing,
     /// rather than as one holding an empty text. The two are different answers
     /// to why a field did not change and an operator cannot recover the
@@ -443,6 +525,24 @@ public class ConflictLogTests
         LocalValue = ShownValue.Of(local),
         PeerValue = ShownValue.Of(peer),
         Rule = "peer-field-locked",
+        Outcome = ConflictOutcome.Refuse,
+        Direction = SyncDirection.TwoWay,
+        At = at,
+    };
+
+    /// <summary>
+    /// The decision the rule table ran out on, which is what
+    /// <see cref="ConflictResolver"/> answers with when nothing fired: a refusal
+    /// carrying no rule. It differs from <see cref="Decision"/> by that one
+    /// column and by nothing else.
+    /// </summary>
+    private static ConflictEntry NoRuleFired(string field, string? local, string? peer, DateTimeOffset at) => new()
+    {
+        Item = _item,
+        Field = field,
+        LocalValue = ShownValue.Of(local),
+        PeerValue = ShownValue.Of(peer),
+        Rule = null,
         Outcome = ConflictOutcome.Refuse,
         Direction = SyncDirection.TwoWay,
         At = at,
