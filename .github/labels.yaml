@@ -34,7 +34,11 @@
 
 - name: "blocked-on-decision"
   color: "fbca04"
-  description: "Waiting on a maintainer decision before it can be built"
+  description: "Waiting on a decision, not on a piece of work"
+
+- name: "blocked-on-dependency"
+  color: "d4c5f9"
+  description: "Waiting on another issue or on a state of the tree, not on a person"
 
 - name: "blocked-on-maintainer"
   color: "d4c5f9"
