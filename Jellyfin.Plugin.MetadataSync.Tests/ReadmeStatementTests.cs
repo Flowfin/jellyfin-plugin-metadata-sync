@@ -27,9 +27,14 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// in the document, a derived list from the assembly, and a comparison in both
 /// directions.
 ///
-/// What it reads. The file names inside the fence are compared with the names
-/// the stores themselves declare, so a store added with no line in the readme is
-/// red and a line naming a file no store keeps is red too.
+/// What it reads. The file names inside the first fence are compared with the
+/// names the stores themselves declare, so a store added with no line in the
+/// readme is red and a line naming a file no store keeps is red too. The areas
+/// inside the second are compared with the directories the plugin's sources are
+/// in, the same way, and that fence exists because the paragraph it sits under
+/// named five parts of this plugin and left out the rest - the stores, the two
+/// resolvers and the migration chain all arrived under a sentence that went on
+/// listing what somebody had remembered.
 ///
 /// What it cannot reach, stated rather than left to be assumed. It judges the
 /// names and never the sentence beside each one, so a file described wrongly
@@ -55,10 +60,27 @@ public class ReadmeStatementTests
     private const string ListCloses = "<!-- end of the files left behind -->";
 
     /// <summary>
+    /// The comment that opens the fence around the list of areas this plugin is
+    /// built out of.
+    /// </summary>
+    private const string AreasOpen = "<!-- the areas this plugin is built out of: one per line, the directory first, read by ReadmeStatementTests -->";
+
+    /// <summary>
+    /// The comment that closes that fence.
+    /// </summary>
+    private const string AreasClose = "<!-- end of the areas -->";
+
+    /// <summary>
     /// The readme, copied beside the test binary rather than found by walking up
     /// from it, so the suite reads the same bytes wherever it runs.
     /// </summary>
     private static readonly string _document = Path.Combine(AppContext.BaseDirectory, "README.md");
+
+    /// <summary>
+    /// The plugin's sources, copied beside the test binary by the test project
+    /// file, which is the same set every other reading of them here uses.
+    /// </summary>
+    private static readonly string _sources = Path.Combine(AppContext.BaseDirectory, "plugin-sources");
 
     /// <summary>
     /// The files the readme says are left behind are the files the stores keep,
@@ -90,6 +112,79 @@ public class ReadmeStatementTests
     }
 
     /// <summary>
+    /// The areas the readme names are the directories the plugin's sources are
+    /// in, as a set and in both directions.
+    /// </summary>
+    /// <remarks>
+    /// The paragraph this list sits under named five parts and left out the
+    /// rest, and it read that way while the stores, the two resolvers and the
+    /// migration chain arrived under it. It is the first thing in the file after
+    /// the sentence saying there is no release, so a reader deciding whether any
+    /// of this exists was told about a third of it.
+    /// <para>
+    /// A directory is the unit rather than a type or a file because that is what
+    /// the paragraph is about and because it is the coarsest thing that cannot
+    /// be added by accident: a new area is somebody deciding this plugin does a
+    /// new kind of work, which is exactly the moment this paragraph has to be
+    /// read again.
+    /// </para>
+    /// <para>
+    /// This is not a second copy of the folder accounting
+    /// <see cref="SecurityPolicyTests"/> makes, and the difference is worth
+    /// stating because a new folder reds both. That one asks whether every
+    /// folder holds a part <c>SECURITY.md</c> names or is declared not to be
+    /// one, which is a question about decisions somebody has to review. This
+    /// asks whether the readme's opening paragraph names the areas the plugin
+    /// has, which is a question about what a reader is told exists. Both are
+    /// derived from the same tree in both directions, so neither can drift
+    /// against it in silence, and that is what separates this from the two
+    /// writable-field sets #233 measured: those were each green against a
+    /// different authority.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void TheAreasTheReadmeNamesAreTheDirectoriesThePluginIsBuiltOutOf()
+    {
+        Assert.Equal(
+            Areas().OrderBy(name => name, StringComparer.Ordinal).ToList(),
+            Declared(AreasOpen, AreasClose).OrderBy(name => name, StringComparer.Ordinal).ToList());
+    }
+
+    /// <summary>
+    /// That fence is still there and neither side of its comparison is empty,
+    /// for the reason the fence above has such a leg: two empty answers agree,
+    /// and a run that found no sources at all would be the one way this reports
+    /// success without having looked.
+    /// </summary>
+    [Fact]
+    public void TheListOfAreasIsStillThere()
+    {
+        var lines = Lines();
+
+        Assert.Contains(AreasOpen, lines, StringComparer.Ordinal);
+        Assert.Contains(AreasClose, lines, StringComparer.Ordinal);
+        Assert.NotEmpty(Declared(AreasOpen, AreasClose));
+        Assert.NotEmpty(Areas());
+    }
+
+    /// <summary>
+    /// The directories the plugin's own sources are in. A source at the root of
+    /// the plugin is in no area and is left out: the entry point and the
+    /// registrator are how the server reaches this plugin rather than a kind of
+    /// work it does, and the paragraph is about the second.
+    /// </summary>
+    /// <returns>The directory names.</returns>
+    private static List<string> Areas() =>
+        Directory.Exists(_sources)
+            ? Directory.EnumerateFiles(_sources, "*.cs", SearchOption.AllDirectories)
+                .Select(path => Path.GetRelativePath(_sources, path).Replace(Path.DirectorySeparatorChar, '/'))
+                .Where(path => path.Contains('/', StringComparison.Ordinal))
+                .Select(path => path[..path.IndexOf('/', StringComparison.Ordinal)])
+                .Distinct(StringComparer.Ordinal)
+                .ToList()
+            : new List<string>();
+
+    /// <summary>
     /// The stores this plugin declares, found rather than listed, which is the
     /// same reading <see cref="StorageStatementTests"/> makes for its own list.
     /// </summary>
@@ -116,11 +211,21 @@ public class ReadmeStatementTests
     /// The file names the fenced list in the readme declares.
     /// </summary>
     /// <returns>The names, as the document spells them.</returns>
-    private static List<string> Declared()
+    private static List<string> Declared() => Declared(ListOpens, ListCloses);
+
+    /// <summary>
+    /// The names a fenced list in the readme declares. One reading rather than
+    /// one per fence, so a second list cannot drift into being read by a copy of
+    /// this that differs from it in a way nobody notices.
+    /// </summary>
+    /// <param name="opensWith">The comment that opens the fence.</param>
+    /// <param name="closesWith">The comment that closes it.</param>
+    /// <returns>The names, as the document spells them.</returns>
+    private static List<string> Declared(string opensWith, string closesWith)
     {
         var lines = Lines();
-        var opens = lines.IndexOf(ListOpens);
-        var closes = lines.IndexOf(ListCloses);
+        var opens = lines.IndexOf(opensWith);
+        var closes = lines.IndexOf(closesWith);
 
         if (opens < 0 || closes < opens)
         {

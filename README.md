@@ -23,11 +23,36 @@ There is no release. This repository has published none, which you can check:
 Nothing comes back. There is no tag either, so there is nothing to install from
 a catalogue and nothing to install by hand.
 
-What is built today is a set of parts a pass would be made of. The field
-register and the conflict rules, and the planner that puts those two together
-into a plan. The write path that carries a plan to this server's library. The
-provider identifier comparison and the reference comparison, each a decision
-nothing has been wired to yet. And the suite that holds all of them up.
+What is built today is a set of parts a pass would be made of, one area of the
+plugin each. **This paragraph named five of them and left out the rest**, which
+is how it read while the stores, the resolvers and the migration chain arrived
+under it, so the list is now the plugin's own areas rather than the ones
+somebody remembered:
+
+<!-- the areas this plugin is built out of: one per line, the directory first, read by ReadmeStatementTests -->
+
+- `Configuration`, the choices an operator makes and the validation that refuses
+  a set of them nothing can be done with
+- `Conflicts`, the declared rules that decide a disagreement, and the account of
+  what each decision was
+- `Fields`, the register saying which fields may move at all
+- `Matching`, which local item a payload is about, from provider identifiers and
+  from a series plus an ordinal
+- `Properties`, the assembly's own metadata rather than a part of a sync
+- `Reconciliation`, the planner that puts a register and a rule set together, the
+  bounded read, the write path that carries a plan to this server's library, and
+  the revert
+- `References`, when two spellings of a person, a studio or a genre are one thing
+- `Store`, what this plugin keeps on this disk and the chain that carries it from
+  one format to the next
+
+<!-- end of the areas -->
+
+`ReadmeStatementTests` holds that list against the directories the plugin's
+sources are in, in both directions, so an area arriving reds this paragraph
+instead of leaving it a part short. `SECURITY.md` accounts for the same folders
+to answer a different question, which is which of the files inside them carry a
+decision somebody has to review. And the suite holds all of it up.
 
 What is not built is the pass itself. Nothing schedules one, nothing starts one,
 and nothing reads the other server, so none of the parts above is reached by any
