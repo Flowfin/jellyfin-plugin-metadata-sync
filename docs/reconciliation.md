@@ -47,11 +47,17 @@ at start-up. Neither is a pass reaching a library, which is what the sentence
 above the paste is about, and neither was excluded on purpose.
 
 What does not exist is a pass that runs. A `Pass` type exists, and what it adds
-to the two halves is an ordering rather than a step: it drives them item by item
-and records how far it got, which is `## A pass that was stopped is continued`
-below. Nothing constructs it, nothing reads the peer, and nothing registers it or
-either half as a service, so all three can be held together in a test and nowhere
-else. Every sentence below about the server was read out of the server.
+to the halves it drives is an ordering rather than a step: it drives them item by
+item and records how far it got, which is `## A pass that was stopped is
+continued` below. Nothing constructs it, nothing reads the peer, and nothing
+registers it or either half as a service, so all of them can be held together in
+a test and nowhere else. Every sentence below about the server was read out of
+the server.
+
+The plan-only route exists as well, and it is a type of its own rather than a
+mood a pass is in. `DryRun` takes what the two servers hold and hands back the
+plan, and `## A plan can be had without anything that writes` below is what that
+buys and what it does not.
 
 The constructions are spellings rather than judgements, so they are held. Each
 line below is one `ReconciliationStatementTests` looks for in the plugin's own
@@ -502,6 +508,46 @@ make it zero, and a pass that reported otherwise would be reporting on a race it
 lost. The suite drives an item that moves between planning and applying and
 asserts the deferral, on one thread and between two statements, so what is proved
 is the comparison and the counting and never a race.
+
+## A plan can be had without anything that writes
+
+A first release plans and does not write, which is decision 8 in #1 answered on
+2026-08-09. So the route that produces a plan is the route that ships, and the
+one that applies is asked for afterwards.
+
+**It is a type of its own and not a method beside the one that writes.** A route
+that held an applier and declined to use it would read the same way in a diff and
+would be one edit from writing, so what is held is not an intention but a
+reachability: nothing an applier is made of is reachable from `DryRun` at all,
+which `DryRunTests` asks of the compiled assembly. That question can only be put
+to a type, because the walk is seeded at one and reads every method it declares -
+a plan-only method sitting beside a method that applies is inside one subject and
+the two cannot be told apart. The types it refuses are the applier, the interface
+it writes through, the implementation behind that interface, the record of what
+was written, and the server's library and item underneath them.
+
+**The plan an operator reads is the plan an apply carries out, by construction.**
+`Pass` asks `DryRun` for the plan rather than deriving one of its own, so the two
+are the same object and cannot disagree. A second derivation beside it would be
+the copy that goes on describing a pass this tree has stopped making, which is
+the failure `docs/reconciliation.md` has already paid for once at its own opening
+paste. It is held rather than argued: a plan is derived, a pass is run over the
+same request, and what the write path was handed is compared with what the plan
+named.
+
+**What a dry run leaves out is what an earlier pass finished with.** The skip an
+interrupted pass creates is derived in one place and both routes read it, so a
+plan taken after an interruption describes the resume rather than a first pass.
+The count of what was passed over travels beside the plan, because a plan is what
+is left to decide and a reader handed only that cannot tell a library with
+nothing to change from one a pass has already been most of the way through.
+
+**What it does not do.** It reads neither server, which happens before a request
+exists. It takes no clock, so a plan carries no age and nothing refuses one for
+being old - that is the fourth condition of #36 and it needs a number nobody has
+chosen. And nothing constructs it, so an operator cannot ask for a plan: the
+surface that would hand one over is M7, and the form it would travel in is the
+second condition of the same issue.
 
 ## A pass that was stopped is continued
 
