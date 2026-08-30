@@ -175,6 +175,19 @@ public class InvariantLintTests
             DeclaredBy: "#33",
             RefusedBy: nameof(ResolutionLifetimeTests),
             CannotCatch: "the same bounds that test states for itself, and one this row makes worse by sitting in a table of token scans: a resolution is a type rather than a spelling, so a pattern here would refuse the resolvers that return one. It carries no pattern for that reason and the walk is the whole mechanism."),
+
+        new Rule(
+            Id: "no-server-line-named-in-a-plugin-source",
+            GuidePhrase: "no server line named in a plugin source",
+            Invariant: "The plugin's sources are one source for both supported server lines. Nothing in them is compiled conditionally, so a call that differs between the lines is a seam with an implementation per line rather than a branch in the middle of a rule. The pattern is wider than that sentence on purpose: it refuses every preprocessor conditional rather than the ones naming a line, because separating a line symbol from any other one needs a symbol list this repository would then have to keep current against two servers it does not build.",
+            DeclaredBy: "#9",
+            Kind: Refusal.AnyOccurrence,
+            TokenPatterns: new[] { "#if", "#elif", "NET9_0", "NET10_0" },
+            Regression: "#if NET10_0_OR_GREATER",
+            RegressionIsTheMistakeThat: "reaches for the plural provider-identifier query the 12.0 line carries and the 10.11 line does not, which is the difference #9 opens with. It compiles green on both targets, so the plugin resolves items one way on one line and another way on the other with nothing in the tree or the manifest saying so, and the first thing that reads differently is somebody's library.",
+            NearMiss: "throw new NotSupportedException(\"This assembly was built for net10.0 and this server is not on that line.\");",
+            NearMissIsTheNeighbourThat: "spells a runtime the way the manifest and the table in docs/supported-servers.md spell it, which is data about a line rather than a compilation that differs per line. It differs from the refused token by the separator and the case alone, so a pattern matching the runtime as an operator writes it would refuse a legitimate message.",
+            CannotCatch: "four things. A per-target compile item in the project file, which is not a `.cs` source and is read by nothing here, so a whole file swapped per line passes. A difference expressed at run time rather than at compile time, through a runtime description or a type looked up by name, which spells none of these tokens. The suite's own sources, which are outside the subject: `ItemDeletionTests` carries two conditional blocks for a member the 12.0 line does not declare, and nothing here judges them. And the half of #9 this is not: whether a seam that exists has one implementation per line is a question about types, and this row says only that no rule branches on a line without one."),
     };
 
     /// <summary>

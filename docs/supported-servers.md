@@ -113,6 +113,27 @@ conditional reference wired to the wrong framework: the newer line compiled
 against the older server passes every other leg here, because each cell still
 agrees with the file it was copied from.
 
+One source is compiled for both lines, and that is now refused rather than
+described. `InvariantLintTests` carries `no-server-line-named-in-a-plugin-source`,
+which refuses `#if`, `#elif`, `NET9_0` and `NET10_0` in every plugin source, so a
+rule branching on a server line reddens instead of compiling green on both
+targets. That is the failure worth naming here: an unconditional line-specific
+type breaks one of the two builds and cannot arrive quietly, and a conditional
+one builds twice and leaves this plugin resolving items one way on one line and
+another way on the other with nothing saying so.
+
+The rule's own record says what it cannot see, and three of the four matter to a
+reader of this page. A compile item conditioned per target in the project file
+swaps a whole file and is not a `.cs` source, so it passes. A difference taken at
+run time rather than at compile time spells none of those tokens. And the suite
+is outside the subject: `ItemDeletionTests` carries two conditional blocks,
+because one of the item removal names it holds is not declared on the 12.0 line,
+and nothing judges those. What the rule does not do at all is the other half of
+the first condition of #9, which is that a call differing between the lines sits
+behind one interface with an implementation per line. No such call exists here
+yet, so there is no seam and no allowance for one; the day there is, the seam is
+the rule's first allowance and the interface is what makes it legitimate.
+
 Nothing here checks the two paragraphs above. They are a reading of a Jellyfin
 checkout at the two tags, quoted with the commands that produced them, and the
 suite has no server to re-derive them from. A change to the server's own plugin
