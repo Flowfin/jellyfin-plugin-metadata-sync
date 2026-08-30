@@ -328,6 +328,27 @@ reach its own current format is refused by the suite rather than shipped, which
 is the failure that would otherwise arrive as a build refusing every store the
 one before it wrote.
 
+Two sources build it, and the list is not maintained by hand:
+
+<!-- the plugin sources that build the migration chain: one per line, the file first, read by StorageStatementTests -->
+
+- `Jellyfin.Plugin.MetadataSync/Store/FormatStep.cs`, one step: the format it
+  starts from and the move it makes
+- `Jellyfin.Plugin.MetadataSync/Store/StoreFormat.cs`, the chain and the walk
+  along it
+
+<!-- end of the sources that build the chain -->
+
+`StorageStatementTests` holds that list against the plugin's own sources in both
+directions, so a third source joining the chain with no line here is red, and a
+line naming a source that has stopped building one is red too. What that buys is
+narrow and is what this paragraph needed: the sentence above cannot go back to
+describing an unbuilt chain while two files build one. It was worth building
+because the sentence had already gone the other way twice - the closing section
+of this document and `docs/lifecycle.md` both went on saying the chain was not
+built after it was, each of them a second copy of this paragraph, and neither was
+read by anything.
+
 A migration runs over a copy beside the store and reaches the path readers open
 in one move at the end, for the reason the compaction above gives: a step that
 throws costs the copy and leaves the original exactly as the build that wrote it
@@ -428,8 +449,9 @@ what each write replaced, which is the provenance the same record holds rather
 than a second copy of it. The conflict log and the unmatched register are the
 other two, and #48 and #29 are where they are built. #59 is how any of it
 survives a version change; the stamp above is the half of that which the store
-now carries, the configuration carries a stamp of its own for the same reason,
-and the chain of steps is not built.
+now carries, and the configuration carries a stamp of its own for the same
+reason. What carries a directory from one format to the next is argued once,
+under the stamp above, rather than restated here.
 
 So a reader should take the conflict log row and the unmatched register row as a
 decision already made about where something goes, and the row above them as a

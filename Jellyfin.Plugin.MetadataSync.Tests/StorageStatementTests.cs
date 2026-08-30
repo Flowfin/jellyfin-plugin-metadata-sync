@@ -35,7 +35,9 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// that nothing wrote at all: #16 built the store, so the section names what
 /// writes instead of pasting an empty result, and both directions are held. A
 /// second file that writes with no line in the document is red, and a line
-/// naming a file that has stopped writing is red too.
+/// naming a file that has stopped writing is red too. The list of sources that
+/// build the migration chain is compared the same way, and it is the positive
+/// half of a claim two pages carried the negative of after the chain existed.
 ///
 /// Existence of a named file is not checked here and does not need to be: an
 /// <c>EmbeddedResource</c> naming a file that is not in the tree fails the
@@ -71,6 +73,17 @@ public class StorageStatementTests
     private const string WritersClose = "<!-- end of the sources that write -->";
 
     /// <summary>
+    /// The comment that opens the fence around the list of sources that build
+    /// the migration chain.
+    /// </summary>
+    private const string ChainOpens = "<!-- the plugin sources that build the migration chain: one per line, the file first, read by StorageStatementTests -->";
+
+    /// <summary>
+    /// The comment that closes that fence.
+    /// </summary>
+    private const string ChainCloses = "<!-- end of the sources that build the chain -->";
+
+    /// <summary>
     /// The document, copied to the output for the reason the field register is:
     /// walking up from the test binary answers a different question on a machine
     /// where the tests run from somewhere else.
@@ -94,6 +107,15 @@ public class StorageStatementTests
         "File.Create",
         "File.AppendAll",
     };
+
+    /// <summary>
+    /// The type a source has to name to be building the migration chain, spelled
+    /// as the document's list is about. One name rather than several, because a
+    /// step is the only thing a chain is assembled out of: a source that moves a
+    /// store forward without naming it is not a step, and the chain cannot take
+    /// it.
+    /// </summary>
+    private const string Step = "FormatStep";
 
     /// <summary>
     /// The tables the document names are the tables the assembly carries, as a
@@ -139,6 +161,52 @@ public class StorageStatementTests
         Assert.Contains(WritersOpen, lines, StringComparer.Ordinal);
         Assert.Contains(WritersClose, lines, StringComparer.Ordinal);
         Assert.NotEmpty(Declared(WritersOpen, WritersClose));
+    }
+
+    /// <summary>
+    /// The sources the section names as building the migration chain are the
+    /// sources that build it, as a set and in both directions.
+    /// </summary>
+    /// <remarks>
+    /// This is the positive half of a claim two pages carried the negative of
+    /// after it had stopped being true. The chain landed under #59, and the
+    /// closing section of this document and <c>docs/lifecycle.md</c> both went
+    /// on saying it was not built, each a second copy of the paragraph this
+    /// list now sits under. Both copies are deleted and point here instead, and
+    /// what this leg adds is that the paragraph they point at cannot itself go
+    /// stale in silence: a third source joining the chain reddens it, and so
+    /// does the last one leaving.
+    /// <para>
+    /// What it cannot reach. It judges which files name a step and never
+    /// whether the chain those files assemble is correct, which is what
+    /// <see cref="StoreMigrationTests"/> is for, and it reads a spelling rather
+    /// than a call, so a source reaching the chain through a name this reading
+    /// does not carry is outside it. That is the same bound the two lists above
+    /// state for their own readings.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void TheSourcesTheSectionNamesAreTheSourcesThatBuildTheChain()
+    {
+        Assert.Equal(
+            BuildingTheChain().OrderBy(path => path, StringComparer.Ordinal).ToList(),
+            Declared(ChainOpens, ChainCloses).OrderBy(path => path, StringComparer.Ordinal).ToList());
+    }
+
+    /// <summary>
+    /// The fence around that list is still there and the list inside it is not
+    /// empty, for the reason the other two fences have such a leg: a renamed
+    /// comment would leave the comparison above failing where nobody could place
+    /// it, and an empty list would agree with a tree that had lost the chain.
+    /// </summary>
+    [Fact]
+    public void TheListOfSourcesThatBuildTheChainIsStillThere()
+    {
+        var lines = Lines(_document);
+
+        Assert.Contains(ChainOpens, lines, StringComparer.Ordinal);
+        Assert.Contains(ChainCloses, lines, StringComparer.Ordinal);
+        Assert.NotEmpty(Declared(ChainOpens, ChainCloses));
     }
 
     /// <summary>
@@ -256,6 +324,19 @@ public class StorageStatementTests
 
                 return _writes.Any(call => text.Contains(call, StringComparison.Ordinal));
             })
+            .Select(Relative)
+            .ToList();
+    }
+
+    /// <summary>
+    /// The plugin sources that name a migration step, which is what building the
+    /// chain is spelled as.
+    /// </summary>
+    /// <returns>The paths, relative to the repository root.</returns>
+    private static List<string> BuildingTheChain()
+    {
+        return SourceFiles()
+            .Where(path => File.ReadAllText(path).Contains(Step, StringComparison.Ordinal))
             .Select(Relative)
             .ToList();
     }
