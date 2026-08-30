@@ -106,8 +106,41 @@ sentence belongs, and two rows naming one mistake.
 
 ## What this table does not do
 
-It does not decide identity. It compares identifiers, and what a `Match` is
-worth against a library where two local items carry the same identifier is #31.
+**It does not decide identity, and this sentence handed a reader an issue number
+for the half that is built.** What stood here said that what a `Match` is worth
+against a library where two local items carry the same identifier is #31. The
+type that decides it has been in the tree since 2026-08-17, five days after this
+page was last edited, and `docs/matching.md` has carried its rules and its
+fixture table since:
+
+    git log --diff-filter=A --format='%H %ad' --date=short -- Jellyfin.Plugin.MetadataSync/Matching/CandidateResolver.cs
+    git grep -n 'CandidateResolver' -- docs/matching.md
+
+`CandidateResolver` is where it is answered. It adds no comparison of its own, so
+every candidate it is offered is decided by the table above, and what it settles
+is what happens when this table says yes more than once: nothing is written and
+both items are named. The rules and the cases are in `docs/matching.md` rather
+than restated here, because two renderings of one decision is where a reader's
+answer starts depending on which file they opened.
+
+What #31 still holds is the rest of that issue rather than this question: the
+register row an unresolved item leaves, and an operator's standing choice of
+which of two items this plugin writes to. Neither is in the tree, and neither is
+about comparing identifiers.
+
+The pointer is repaired and no leg is added for the pointing, which is the same
+call `docs/storage.md` made for a count. What is read is the name. The leg beside
+this document's table asserts that this page carries the name the type actually
+has, taken off the type rather than written into the leg, so a rename reddens
+this page rather than leaving a literal and a paragraph agreeing with each other
+about a type that is gone. It judges the name and never the sentence around it.
+
+That is not the only thing a rename would redden, and saying so is the honest
+bound. `SECURITY.md` and `docs/threat-model.md` each name the file, and the
+resolution walk names the type, so a full rename reds six legs in this suite and
+one of them is this page's. What this leg adds is that this page is among the
+six; without it the other five would be repaired and this sentence would be left
+pointing at a name nobody uses.
 
 It does not repair an identifier. The only normalisation any row declares is
 dropping leading zeros from a value that is entirely digits, and the two rows
