@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.MetadataSync.Store;
@@ -17,6 +16,15 @@ namespace Jellyfin.Plugin.MetadataSync.Reconciliation;
 /// finished with after the applier has returned from it, and reads those records
 /// back at the start of the next pass over the same pairing, so the work an
 /// interrupted pass did is not done twice.
+/// <para>
+/// IT DOES NOT DERIVE THE PLAN ITSELF. <see cref="DryRun"/> holds that half,
+/// and this type asks it for the plan rather than repeating the derivation, so
+/// what an operator read before asking for an apply and what the apply carries
+/// out are the same object. A first release plans and does not write, which
+/// makes the plan-only route the one that ships and this one the route that is
+/// asked for afterwards; a second derivation beside it would be the copy that
+/// goes on describing a pass this type has stopped making.
+/// </para>
 /// <para>
 /// IT RESUMES AND IT NEVER REPLAYS, and the two are worth separating because a
 /// stored plan is the obvious way to build the second one by accident. What
@@ -103,42 +111,14 @@ public sealed class Pass
 
     private async Task<PassResult> Run(PlanRequest request, CancellationToken cancellationToken)
     {
-        // Read once, at the start, rather than per item. What an earlier pass
-        // finished with cannot grow while this pass runs, since this pass is the
-        // only thing writing it, and a read per item would make the answer
-        // depend on rows this pass had just added.
-        var alreadyDone = new HashSet<Guid>(_progress.CompletedItems(request.PairingId));
-
-        var remaining = new PlanRequest
-        {
-            PairingId = request.PairingId,
-            Direction = request.Direction,
-        };
-
-        foreach (var field in request.ExcludedFields)
-        {
-            remaining.ExcludedFields.Add(field);
-        }
-
-        var skipped = 0;
-
-        foreach (var item in request.Items)
-        {
-            if (alreadyDone.Contains(item.LocalItemId))
-            {
-                skipped++;
-                continue;
-            }
-
-            remaining.Items.Add(item);
-        }
-
-        // Planned here rather than by the caller, and planned from what is left
-        // rather than from everything. A plan built over the whole library and
-        // then filtered would have asked the conflict rules about items this
-        // pass is not going to touch, and the plan an operator is shown would
-        // name changes this pass will not make.
-        var plan = Planner.Plan(remaining);
+        // Derived here rather than by the caller, and asked of the same route an
+        // operator reads a plan through rather than derived a second time. What
+        // a dry run showed and what this pass carries out are one object, so
+        // they cannot disagree; two derivations that agree today are the
+        // arrangement where the one nobody runs goes stale in silence.
+        var intended = DryRun.Of(request, _progress);
+        var plan = intended.Plan;
+        var skipped = intended.ItemsAlreadyDone;
 
         var itemsWritten = 0;
         var fieldsWritten = 0;

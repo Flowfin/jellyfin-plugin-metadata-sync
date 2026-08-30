@@ -507,6 +507,20 @@ public class RefusalTests
                  "there is a record to prove what this plugin wrote",
                  () => Revert.Plan(new RevertRequest(), null!)),
 
+            ["Reconciliation/DryRun.cs -> ArgumentNullException.ThrowIfNull(request);"] =
+                (nameof(DryRunTests),
+                 nameof(DryRunTests.ADryRunFromARequestThatIsNotThereIsRefused),
+                 nameof(DryRunTests.ADryRunOverAnEmptyRequestIsAnEmptyPlan),
+                 "there is something to plan from",
+                 () => DryRun.Of(null!, new RecordingPassProgress())),
+
+            ["Reconciliation/DryRun.cs -> ArgumentNullException.ThrowIfNull(progress);"] =
+                (nameof(DryRunTests),
+                 nameof(DryRunTests.ADryRunWithNowhereToReadProgressIsRefused),
+                 nameof(DryRunTests.ADryRunOverAnEmptyRequestIsAnEmptyPlan),
+                 "there is somewhere to read how far an earlier pass got",
+                 () => DryRun.Of(new PlanRequest(), null!)),
+
             ["Reconciliation/Pass.cs -> ArgumentNullException.ThrowIfNull(applier);"] =
                 (nameof(PassResumptionTests),
                  nameof(PassResumptionTests.APassWithNoApplierIsRefused),
