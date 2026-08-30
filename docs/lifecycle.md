@@ -164,8 +164,11 @@ where that is argued and what the bound costs is stated; it is not restated here
 #59 is still how a store survives a version change. The refusal of a store
 written by a newer build is landed: the directory carries a stamp saying which
 format it is in, and a build meeting a format it does not read opens nothing in
-that directory. `docs/storage.md` is where that is argued. What is not built is
-the chain of steps between two formats, because one format has existed.
+that directory. `docs/storage.md` is where that is argued, and the chain of steps
+that carries a directory from one format to the next is argued there too. **This
+sentence said the chain was not built.** It was built while the sentence stood,
+and the page is not the place the answer lives, so it points there rather than
+carrying a second copy of it.
 
 So the uninstall row above is now a decision about a file that exists rather than
 about one that will. Deleting the store would make a reinstall start blind and
