@@ -51,13 +51,47 @@ of entries or of gaps disagrees with the entries above it, both fail the suite.
 The counts in that sentence are rendered from the entries and compared, so the
 sentence is derived rather than typed.
 
-Those two are the whole of the enforcement, and neither reaches what the policy
-is mostly about. The four refusals above are prose: nothing reads a test body
-and decides whether it opened a window, and no check here refuses one that does.
-What the package assertion covers is the most common route by which such a test
-arrives, which is a dependency added first. What the register assertion covers
-is the accounting and never the argument: an entry naming a substitute that does
-not prove the property reads to both checks exactly like one that does.
+**A run holds one of the four, and this paragraph said all four were prose.** It
+said the two checks above were the whole of the enforcement. The route under
+`## Where the suite runs` that starts a container with no network interface has
+been in this repository since `32c4f8f9425d7e49a9bd53c71d1d24e5223169bc`, dated
+2026-08-08:
+
+    git log --diff-filter=A --format='%H %ad' --date=short -- .github/workflows/headless.yml
+
+and the sentence saying the two checks were all of it was rewritten in
+`8f8edcba8064073c011baf9ce4846bad4cb31f57`, dated 2026-08-23, fifteen days after
+that, in this file, fifty lines above the section that describes the run. Two
+answers in one file is the arrangement where which one a reader gets depends on
+where they stopped reading, and this is the file somebody deciding whether to
+write a test that needs a socket opens first.
+
+The count is deleted rather than corrected, because the routes are not all the
+same kind of thing and the count was what hid it. A check reads a file and
+refuses what it finds there. A run refuses nothing: it is a place where a test
+that needed what the policy withholds fails.
+
+<!-- what holds any part of this policy up: one per line, the name first, read by TestingStatementTests -->
+- `HeadlessPolicyTests` - the package set the test project declares
+- `RefusedTestRegisterTests` - the register's own shape and its own arithmetic
+- `.github/workflows/headless.yml` - this suite run with no network interface
+<!-- end of what holds this policy up -->
+
+The list is read in one direction only, and that is a bound rather than an
+oversight. Every name in it has to be in this tree, so a route that is deleted or
+renamed reddens this page; which routes hold a policy up is a judgement about
+what a check reaches, no reading of this tree makes it, and a fourth route added
+tomorrow and left out of the list is refused by nothing.
+
+What none of them reaches is what the policy is mostly about. Nothing reads a
+test body and decides whether it opened a window, and no check here refuses one
+that does. What the package assertion covers is the most common route by which
+such a test arrives, which is a dependency added first. What the register
+assertion covers is the accounting and never the argument: an entry naming a
+substitute that does not prove the property reads to both checks exactly like one
+that does. And what the run establishes is bounded in the same direction: it is a
+run in which no test reached the network, never a refusal of a test that would,
+and the workflow prints that bound at the end of its own output.
 
 ## The register
 

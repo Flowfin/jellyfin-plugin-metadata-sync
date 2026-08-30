@@ -167,12 +167,25 @@
        walking up from the test binary would answer a different question on a
        machine where the tests run from somewhere else.
 
-       The policy beside it, docs/testing.md, is not copied. It defines the
-       entry format the reading depends on and nothing here reads it, and a
-       file copied because it is related to one that is read is a dependency
-       the build carries and no test has. -->
+       The policy beside it, docs/testing.md, was not copied by name, on the
+       reasoning that nothing here read it. Something reads it now.
+       TestingStatementTests holds the list of what holds that policy up against
+       this assembly and against the workflow below, so the page cannot go on
+       saying a route does not exist while the route sits in this tree. -->
   <ItemGroup>
     <None Include="..\docs\refused-tests.md" Link="refused-tests.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\docs\testing.md" Link="testing.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- The run that policy credits with making its network half a fact. The
+       document names the job and the flag the claim rests on, and
+       TestingStatementTests reads both out of this file rather than out of the
+       sentence, so a job renamed or a test run added without the flag reddens
+       the page instead of leaving it describing a route that stopped being what
+       it says. It is copied for the same reason the coverage workflow is: the
+       file is the only thing there is to judge from here. -->
+  <ItemGroup>
+    <None Include="..\.github\workflows\headless.yml" Link="headless.yml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- The storage document closes by saying which tables the assembly embeds
