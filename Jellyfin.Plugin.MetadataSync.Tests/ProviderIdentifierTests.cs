@@ -146,6 +146,32 @@ public class ProviderIdentifierTests
     }
 
     /// <summary>
+    /// The page names the type that decides what a match is worth where two
+    /// local items carry one identifier, and that type is one this plugin
+    /// declares.
+    ///
+    /// It said <c>#31</c> instead until tonight, five days after the type
+    /// landed, so the file where the comparison is argued handed a reader an
+    /// open issue for a question the tree beside it answers.
+    ///
+    /// What this reads is the name and nothing else. Whether the sentence around
+    /// it describes the type correctly is a judgement no reading of this tree
+    /// makes, and it is what the review is for; what it catches is a rename that
+    /// leaves the page pointing at nothing, which is the way this pointer would
+    /// go wrong without anybody editing the page.
+    ///
+    /// The name is taken from the type rather than written here. A literal in
+    /// this file would be a second declaration of it, and the leg would then go
+    /// on passing against a page and a literal that agreed with each other after
+    /// the type had been renamed out from under both.
+    /// </summary>
+    [Fact]
+    public void ThePageNamesTheTypeThatDecidesWhatAMatchIsWorth()
+    {
+        Assert.Contains("`" + nameof(CandidateResolver) + "`", File.ReadAllText(_document), StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Every rule is argued. A row with no reason is a rule nobody can disagree
     /// with later, which is how a matcher acquires a normalisation nobody meant.
     /// </summary>
