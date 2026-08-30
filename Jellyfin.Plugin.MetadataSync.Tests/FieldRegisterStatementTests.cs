@@ -7,8 +7,9 @@ using Xunit;
 namespace Jellyfin.Plugin.MetadataSync.Tests;
 
 /// <summary>
-/// Holds the sentence <c>docs/field-register.md</c> makes about a lock claimed
-/// on the peer against the resolver that decides on one.
+/// Holds the two sentences <c>docs/field-register.md</c> makes about a lock -
+/// one claimed on the peer, one held on this server - against the resolver that
+/// decides on each.
 ///
 /// The paragraph under <c>What this register does not do</c> said this register
 /// does not know the peer's lock state, that nothing here covers that
@@ -41,6 +42,15 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// is by the text of the resolver's source, so a rule reaching that claim
 /// through a helper the segment does not name is outside it, and it reads the
 /// sources this run copied rather than the mainline.
+///
+/// The second reading is the same shape on the neighbouring paragraph, which
+/// drifted the same way in the same direction. It said a lock refusal was
+/// written down nowhere because there was nowhere to write it, and #48 built
+/// the store that keeps such a row while the sentence stood. The rules the page
+/// fences as deciding on a lock held here are compared with the rules whose own
+/// text reads one, and the two readings do not overlap: the input a rule reads
+/// about this server ends in <c>LockedHere</c> and the one it reads about the
+/// peer does not.
 /// </summary>
 public class FieldRegisterStatementTests
 {
@@ -56,6 +66,17 @@ public class FieldRegisterStatementTests
     private const string RulesClose = "<!-- end of the rules that decide on a claim the peer reports -->";
 
     /// <summary>
+    /// The comment that opens the fence around the rules the page says decide
+    /// on a lock held on this server.
+    /// </summary>
+    private const string LocalRulesOpen = "<!-- the conflict rules that decide on a lock held on this server: one per line, the rule first, read by FieldRegisterStatementTests -->";
+
+    /// <summary>
+    /// The comment that closes it.
+    /// </summary>
+    private const string LocalRulesClose = "<!-- end of the rules that decide on a lock held here -->";
+
+    /// <summary>
     /// The marker a fenced line opens with, up to and including the backtick
     /// the rule starts at.
     /// </summary>
@@ -66,6 +87,14 @@ public class FieldRegisterStatementTests
     /// the resolver spells it.
     /// </summary>
     private const string PeerClaim = "FieldLockedOnPeer";
+
+    /// <summary>
+    /// The input a rule reads to decide on a lock held on this server, spelled
+    /// as the resolver spells it. One spelling covers both of them:
+    /// <c>ItemLockedHere</c> and <c>FieldLockedHere</c> end the same way, and
+    /// the claim the peer reports does not, so the two readings do not overlap.
+    /// </summary>
+    private const string LocalClaim = "LockedHere";
 
     /// <summary>
     /// The resolver, under the copied sources.
@@ -123,6 +152,44 @@ public class FieldRegisterStatementTests
     }
 
     /// <summary>
+    /// The rules the page fences are the rules the resolver decides from a lock
+    /// held on this server, as a set and in both directions.
+    /// </summary>
+    /// <remarks>
+    /// The paragraph this list sits under said a lock refusal was written down
+    /// nowhere because there was nowhere to write it. The store that keeps such
+    /// a row landed under #48 and the sentence did not move, in the one document
+    /// an operator reads to find out what a lock does. It is the neighbouring
+    /// paragraph to the one that drifted the same way about the peer's lock, and
+    /// it is held the same way: a third rule reading a lock held here with no
+    /// line on the page is red, and a line naming a rule that has stopped
+    /// reading one is red too.
+    /// </remarks>
+    [Fact]
+    public void TheRulesThePageNamesAreTheRulesThatDecideOnALockHeldHere()
+    {
+        Assert.Equal(
+            DecidingOnALockHeldHere().OrderBy(rule => rule, StringComparer.Ordinal).ToList(),
+            Declared(LocalRulesOpen, LocalRulesClose).OrderBy(rule => rule, StringComparer.Ordinal).ToList());
+    }
+
+    /// <summary>
+    /// That fence is still there and the list inside it is not empty, for the
+    /// reason the fence above it has such a leg: a renamed comment would leave
+    /// the comparison failing where nobody could place it, and two empty sets
+    /// would agree.
+    /// </summary>
+    [Fact]
+    public void TheFenceAroundTheLocalLockRulesIsStillThere()
+    {
+        var lines = Lines(_document);
+
+        Assert.Contains(LocalRulesOpen, lines, StringComparer.Ordinal);
+        Assert.Contains(LocalRulesClose, lines, StringComparer.Ordinal);
+        Assert.NotEmpty(Declared(LocalRulesOpen, LocalRulesClose));
+    }
+
+    /// <summary>
     /// The reading segments the resolver into its rules rather than answering
     /// out of a file it did not find. A rule that reads no claim from the peer
     /// has to come back from the same reading, so an empty answer on the other
@@ -142,11 +209,22 @@ public class FieldRegisterStatementTests
     /// so the reading is of the rule and never of the sentence beside it.
     /// </summary>
     /// <returns>The rule identifiers, as the document writes them.</returns>
-    private static List<string> Declared()
+    private static List<string> Declared() => Declared(RulesOpen, RulesClose);
+
+    /// <summary>
+    /// The rules a fenced list in the document declares, in the order it writes
+    /// them. One reading rather than one per fence, so a second list cannot
+    /// drift into being read by a copy of this that differs from it in a way
+    /// nobody notices.
+    /// </summary>
+    /// <param name="opensWith">The comment that opens the fence.</param>
+    /// <param name="closesWith">The comment that closes it.</param>
+    /// <returns>The rule identifiers, as the document writes them.</returns>
+    private static List<string> Declared(string opensWith, string closesWith)
     {
         var lines = Lines(_document);
-        var opens = lines.IndexOf(RulesOpen);
-        var closes = lines.IndexOf(RulesClose);
+        var opens = lines.IndexOf(opensWith);
+        var closes = lines.IndexOf(closesWith);
 
         if (opens < 0 || closes < opens)
         {
@@ -182,6 +260,16 @@ public class FieldRegisterStatementTests
     private static List<string> Deciding() =>
         Rules()
             .Where(rule => rule.Text.Contains(PeerClaim, StringComparison.Ordinal))
+            .Select(rule => rule.Id)
+            .ToList();
+
+    /// <summary>
+    /// The rules whose own text reads a lock held on this server.
+    /// </summary>
+    /// <returns>The rule identifiers.</returns>
+    private static List<string> DecidingOnALockHeldHere() =>
+        Rules()
+            .Where(rule => rule.Text.Contains(LocalClaim, StringComparison.Ordinal))
             .Select(rule => rule.Id)
             .ToList();
 

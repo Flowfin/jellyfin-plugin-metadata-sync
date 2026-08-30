@@ -297,10 +297,30 @@ No row above is that identifier. The identifiers this plugin knows about are in
 resolver reads it to decide which local item a payload is about, and whether an
 image identifier moves separately from that is not settled here.
 
-It does not record a lock refusal. A lock stops the write and nothing writes
-down that it did, because there is nowhere yet to write it; #48 is the conflict
-log that entry is owed to. Until then a refused write is visible to the caller
-that asked for it and to nobody else.
+It does not record a lock refusal, **and this paragraph said the refusal was
+written down nowhere because there was nowhere to write it.** There is. A lock
+stops the write, and what stops it is a decision like any other: the planner
+hands the rules the lock this server holds, one of the two rules below decides,
+and the row it comes back with is one an entry is owed for. Which decisions earn
+a row is argued in `docs/conflict-log.md` rather than restated here, and the
+store that keeps them is the third file `docs/storage.md` describes.
+
+<!-- the conflict rules that decide on a lock held on this server: one per line, the rule first, read by FieldRegisterStatementTests -->
+
+- `item-locked-here`, which keeps the local value where the operator has claimed
+  the whole item on this server
+- `field-locked-here`, which keeps the local value where the register names a
+  server lock for this field and it is set on the item here
+
+<!-- end of the rules that decide on a lock held here -->
+
+What is absent is the pass that would write one, and that stays negative.
+Nothing constructs the observation a plan is made from and nothing appends to
+the log, which `docs/conflicts.md` and `docs/reconciliation.md` both fence, so a
+refused write is visible today to the caller that asked for it and to nobody
+else. That is where #48 stands rather than the entry having nowhere to go: the
+row and the file are built, and the grouping and the export an operator reads
+them through are not.
 
 It does not obtain the peer's lock state, and this paragraph said it did not
 know one. Those are different sentences and the difference stood for nineteen
