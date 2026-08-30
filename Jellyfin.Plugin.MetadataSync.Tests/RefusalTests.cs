@@ -565,14 +565,21 @@ public class RefusalTests
                  nameof(ParticipatingLibraryTests.AReaderRefusesAMissingLibrary),
                  nameof(ParticipatingLibraryTests.ANonParticipatingLibraryIsNeverEnumerated),
                  "the library to read from is there",
-                 () => new ItemReader(null!, Array.Empty<Guid>())),
+                 () => new ItemReader(null!, Array.Empty<Guid>(), PluginConfiguration.ItemsPerReadDefault)),
 
             ["Reconciliation/ItemReader.cs -> ArgumentNullException.ThrowIfNull(participating);"] =
                 (nameof(ParticipatingLibraryTests),
                  nameof(ParticipatingLibraryTests.AReaderRefusesAMissingSet),
                  nameof(ParticipatingLibraryTests.NothingIsAskedOfTheLibraryWhenNoLibraryParticipates),
                  "the set of participating libraries is there, even where it is empty",
-                 () => new ItemReader(LibraryItems.Empty().Library, null!)),
+                 () => new ItemReader(LibraryItems.Empty().Library, null!, PluginConfiguration.ItemsPerReadDefault)),
+
+            ["Reconciliation/ItemReader.cs -> ArgumentOutOfRangeException.ThrowIfLessThan(itemsPerRead, 1);"] =
+                (nameof(BoundedReadTests),
+                 nameof(BoundedReadTests.AReaderRefusesAPageSmallerThanOneItem),
+                 nameof(BoundedReadTests.APageOfOneItemIsARead),
+                 "the page is one item rather than none",
+                 () => new ItemReader(LibraryItems.Empty().Library, Array.Empty<Guid>(), 0)),
 
             ["Reconciliation/LibraryPlanTarget.cs -> ArgumentNullException.ThrowIfNull(library);"] =
                 (nameof(LibraryPlanTargetTests),

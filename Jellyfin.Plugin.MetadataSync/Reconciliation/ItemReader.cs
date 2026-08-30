@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Jellyfin.Plugin.MetadataSync.Configuration;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 
@@ -38,9 +39,8 @@ namespace Jellyfin.Plugin.MetadataSync.Reconciliation;
 /// and enumerates everything.
 /// </para>
 /// <para>
-/// What is in memory at once is <see cref="PageSize"/> items and the
-/// identifiers of everything that takes part, which is the bound #37 asks of a
-/// read. The identifiers are asked for first and in one call, so the pass works
+/// What is in memory at once is one page of items and the identifiers of
+/// everything that takes part, which is the bound #37 asks of a read. The identifiers are asked for first and in one call, so the pass works
 /// from one answer to one question rather than from a walk that can be
 /// overtaken: paging by offset over a library something else is writing to
 /// skips an item when an earlier one is deleted underneath, and the skipped
@@ -65,43 +65,54 @@ namespace Jellyfin.Plugin.MetadataSync.Reconciliation;
 /// What it does not do. It does not ask whether an identifier is a library this
 /// server holds - <c>ConfigurationValidation</c> refuses a configuration naming
 /// one the server does not have, and a second answer here would be a second
-/// place for that to be decided. The page size is a constant here rather than a
-/// setting: #37 asks for it in configuration with a maximum a configuration
-/// cannot exceed, alongside three other bounds, and two of those four have no
-/// number anybody can defend yet. And it holds nothing between passes: the next
+/// place for that to be decided. It does not decide its own page size either:
+/// the number arrives as an argument, its default and its maximum are declared
+/// on <see cref="PluginConfiguration"/>, and the range an operator may express
+/// is refused there rather than here. And it holds nothing between passes: the next
 /// pass reads again, because the library moved while nothing was running, which
 /// is the property #38 needs from a read.
 /// </para>
 /// </remarks>
 public sealed class ItemReader
 {
-    /// <summary>
-    /// How many items are fetched from the server in one call.
-    /// </summary>
-    /// <remarks>
-    /// The suite reads this rather than restating it, so an assertion is about
-    /// this number and not about a copy that stops moving when this one does.
-    /// The value is chosen rather than measured: big enough that a large
-    /// library is not a hundred thousand round trips, small enough that one
-    /// page is not itself worth bounding. #37 is where a measured one would
-    /// replace it.
-    /// </remarks>
-    internal const int PageSize = 500;
-
     private readonly ILibraryManager _library;
     private readonly Guid[] _participating;
+    private readonly int _itemsPerRead;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ItemReader"/> class.
     /// </summary>
     /// <param name="library">The server's library.</param>
     /// <param name="participating">The libraries that take part in this pass.</param>
-    public ItemReader(ILibraryManager library, IEnumerable<Guid> participating)
+    /// <param name="itemsPerRead">
+    /// How many items to ask the server for at once, which is
+    /// <see cref="PluginConfiguration.ItemsPerRead"/> for a pass an operator
+    /// configured.
+    /// </param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// The page is smaller than one item, which is a read that cannot finish
+    /// rather than a read that answers with nothing.
+    /// </exception>
+    /// <remarks>
+    /// The number is taken and not read, so this type reaches no configuration
+    /// and one pass reads at one page size for the same reason it reads one set
+    /// of participating libraries.
+    /// <para>
+    /// What is refused here is the page that makes the loop below stand still,
+    /// and nothing else. The maximum belongs to the configuration, because it
+    /// bounds what an operator may express rather than what this type can do,
+    /// and a second copy of it here would be a second place for that range to be
+    /// decided.
+    /// </para>
+    /// </remarks>
+    public ItemReader(ILibraryManager library, IEnumerable<Guid> participating, int itemsPerRead)
     {
         ArgumentNullException.ThrowIfNull(library);
         ArgumentNullException.ThrowIfNull(participating);
+        ArgumentOutOfRangeException.ThrowIfLessThan(itemsPerRead, 1);
 
         _library = library;
+        _itemsPerRead = itemsPerRead;
 
         // Copied rather than held. What arrives is the collection on the
         // configuration type, which the server rewrites when an operator saves
@@ -115,8 +126,8 @@ public sealed class ItemReader
     /// </summary>
     /// <returns>
     /// The items, as the server hands them over. Nothing is asked of the server
-    /// until the answer is enumerated, and no more than <see cref="PageSize"/>
-    /// items are asked for at once.
+    /// until the answer is enumerated, and no more than one page of items is
+    /// asked for at once.
     /// </returns>
     public IEnumerable<BaseItem> Read()
     {
@@ -131,9 +142,9 @@ public sealed class ItemReader
 
         var identifiers = _library.GetItemIds(Under(Array.Empty<Guid>()));
 
-        for (var taken = 0; taken < identifiers.Count; taken += PageSize)
+        for (var taken = 0; taken < identifiers.Count; taken += _itemsPerRead)
         {
-            var page = new Guid[Math.Min(PageSize, identifiers.Count - taken)];
+            var page = new Guid[Math.Min(_itemsPerRead, identifiers.Count - taken)];
 
             for (var offset = 0; offset < page.Length; offset++)
             {

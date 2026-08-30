@@ -211,6 +211,76 @@ public class ConfigurationValidationTests
     }
 
     /// <summary>
+    /// A page of no items, which is the one wrong page that does not read as
+    /// wrong. Nothing about a zero says "never finishes", and a read handed one
+    /// asks the server for the same nothing forever rather than answering with
+    /// nothing.
+    /// </summary>
+    /// <param name="page">The page an operator, or a hand-edited file, asks for.</param>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void APageSmallerThanOneItemIsRefused(int page)
+    {
+        var configuration = Configured();
+        configuration.ItemsPerRead = page;
+
+        var problem = Assert.Single(ConfigurationValidation.Validate(configuration, WhatTheServerHolds));
+
+        Assert.Equal(nameof(PluginConfiguration.ItemsPerRead), problem.Property);
+        Assert.Contains("at least 1 item", problem.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A page above the maximum, which is the setting used to undo the bound it
+    /// is: one page big enough to hold the library is the read this number
+    /// exists to prevent.
+    /// </summary>
+    [Fact]
+    public void APageAboveTheMaximumIsRefused()
+    {
+        var configuration = Configured();
+        configuration.ItemsPerRead = PluginConfiguration.ItemsPerReadMaximum + 1;
+
+        var problem = Assert.Single(ConfigurationValidation.Validate(configuration, WhatTheServerHolds));
+
+        Assert.Equal(nameof(PluginConfiguration.ItemsPerRead), problem.Property);
+        Assert.Contains("at most", problem.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The neighbours, one item away at each end. Both are inside the range,
+    /// so a rule written with the comparison the wrong way round is caught here
+    /// rather than by an operator whose saved page was rejected.
+    /// </summary>
+    /// <param name="page">The page an operator asks for.</param>
+    [Theory]
+    [InlineData(1)]
+    [InlineData(PluginConfiguration.ItemsPerReadMaximum)]
+    [InlineData(PluginConfiguration.ItemsPerReadDefault)]
+    public void APageInsideTheRangeIsAccepted(int page)
+    {
+        var configuration = Configured();
+        configuration.ItemsPerRead = page;
+
+        Assert.Empty(ConfigurationValidation.Validate(configuration, WhatTheServerHolds));
+    }
+
+    /// <summary>
+    /// A configuration written before this property existed carries no element
+    /// for it, and the serialiser leaves such a property alone, so what it
+    /// reads back at is the default rather than a zero. The default being
+    /// inside the range is what makes that safe, and it is asserted rather
+    /// than assumed.
+    /// </summary>
+    [Fact]
+    public void AConfigurationThatSaysNothingAboutThePageIsAccepted()
+    {
+        Assert.Equal(PluginConfiguration.ItemsPerReadDefault, new PluginConfiguration().ItemsPerRead);
+        Assert.Empty(ConfigurationValidation.Validate(Configured(), WhatTheServerHolds));
+    }
+
+    /// <summary>
     /// A field name the register does not carry. The near miss is deliberate:
     /// the server calls it Overview and this is the name somebody reaches for.
     /// </summary>
@@ -358,17 +428,19 @@ public class ConfigurationValidationTests
         var configuration = new PluginConfiguration();
         configuration.Format = ConfigurationFormat.Current + 1;
         configuration.Direction = (SyncDirection)7;
+        configuration.ItemsPerRead = 0;
         configuration.ParticipatingLibraries.Add(ALibraryThatWasRemoved);
         configuration.ExcludedFields.Add("Description");
 
         var problems = ConfigurationValidation.Validate(configuration, WhatTheServerHolds);
 
-        Assert.Equal(5, problems.Count);
+        Assert.Equal(6, problems.Count);
         Assert.Equal(
             new[]
             {
                 nameof(PluginConfiguration.Format),
                 nameof(PluginConfiguration.Direction),
+                nameof(PluginConfiguration.ItemsPerRead),
                 nameof(PluginConfiguration.ParticipatingLibraries),
                 nameof(PluginConfiguration.ExcludedFields),
                 nameof(PluginConfiguration.PairingId),
@@ -397,6 +469,14 @@ public class ConfigurationValidationTests
         var wrongDirection = Configured();
         wrongDirection.Direction = (SyncDirection)7;
         arrangements.Add(wrongDirection);
+
+        var pageOfNothing = Configured();
+        pageOfNothing.ItemsPerRead = 0;
+        arrangements.Add(pageOfNothing);
+
+        var pageAboveTheMaximum = Configured();
+        pageAboveTheMaximum.ItemsPerRead = PluginConfiguration.ItemsPerReadMaximum + 1;
+        arrangements.Add(pageAboveTheMaximum);
 
         var absentLibrary = Configured();
         absentLibrary.ParticipatingLibraries.Add(ALibraryThatWasRemoved);

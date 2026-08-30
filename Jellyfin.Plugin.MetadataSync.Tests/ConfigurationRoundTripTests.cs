@@ -86,6 +86,7 @@ public class ConfigurationRoundTripTests
     [InlineData(nameof(PluginConfiguration.Direction))]
     [InlineData(nameof(PluginConfiguration.ParticipatingLibraries))]
     [InlineData(nameof(PluginConfiguration.ExcludedFields))]
+    [InlineData(nameof(PluginConfiguration.ItemsPerRead))]
     [InlineData(nameof(PluginConfiguration.Format))]
     public void TheComparisonNoticesAValueThatDidNotSurvive(string property)
     {
@@ -105,6 +106,9 @@ public class ConfigurationRoundTripTests
                 break;
             case nameof(PluginConfiguration.ExcludedFields):
                 damaged.ExcludedFields.Clear();
+                break;
+            case nameof(PluginConfiguration.ItemsPerRead):
+                damaged.ItemsPerRead = PluginConfiguration.ItemsPerReadDefault;
                 break;
             case nameof(PluginConfiguration.Format):
                 damaged.Format = ConfigurationFormat.Absent;
@@ -169,6 +173,11 @@ public class ConfigurationRoundTripTests
             // value the serialiser would have left anyway proves nothing about
             // whether this property survives the journey.
             Format = ConfigurationFormat.Current,
+
+            // The same, for the page an operator chose. A configuration left at
+            // the default reads back at the default whether or not the property
+            // travelled.
+            ItemsPerRead = PluginConfiguration.ItemsPerReadDefault + 1,
         };
 
         configuration.ParticipatingLibraries.Add(Guid.Parse("11111111-1111-1111-1111-111111111111"));

@@ -160,8 +160,10 @@ the configuration, which holds the set and not a moment.
 A first pass over a library of fifty thousand items, on a server that is also
 transcoding for two people, is where a read that asks once and is handed a list
 becomes the thing that makes a media server unusable. So the read hands items
-over a page at a time, and the page size is a constant on `ItemReader` that the
-suite reads rather than restates.
+over a page at a time, and the page size is handed to `ItemReader` rather than
+held by it: `PluginConfiguration.ItemsPerRead` is where an operator says how
+many, `ItemsPerReadDefault` is what they get if they say nothing, and the suite
+reads both rather than restating either.
 
 Which items there are is one question, asked once. Which items those are is
 asked a page at a time afterwards, and every one of those page queries names the
@@ -192,12 +194,38 @@ Nothing is locked across a page, so an item can still change between the page it
 arrived on and the moment a write is attempted. That window is `## The window
 between planning and applying` below, and it is not narrowed by anything here.
 
-Three of the four bounds #37 names are not here. How many resolutions may be in
-flight is a property of a contract this plugin does not reference, how many
-writes per unit of time wants a measurement against a real library rather than a
-number chosen in front of an operator, and how long a pass may run has no pass
-to bound. The one that is here is a constant rather than a setting, and #37 asks
-for it in configuration with a maximum a configuration cannot exceed.
+**The bound that is here is a setting now, and this paragraph said it was a
+constant.** Three of the four bounds #37 names are still not here. How many
+resolutions may be in flight is a property of a contract this plugin does not
+reference, how many writes per unit of time wants a measurement against a real
+library rather than a number chosen in front of an operator, and how long a pass
+may run has no pass to bound. A bound lands with the thing it bounds, so those
+three wait on the thing rather than on the number, and a setting offered for any
+of them would be one an operator can move with nothing behind it.
+
+The fourth bound is what #37 asks of it: a named constant with a default, in
+configuration, with a stated maximum the configuration cannot exceed.
+`ConfigurationValidation` refuses a page outside that range and names the
+property in the sentence, so a number an operator can save is a number a pass
+can read. The range is refused at both ends and clamped at neither, because a
+page silently moved to something the operator did not ask for is a pass that
+behaves unlike the page they are looking at.
+
+The lower end is the one worth reading. A page of no items advances a read by no
+items, so a read handed zero asks the server for the same nothing forever, and
+the symptom is a pass that never ends rather than one that reads nothing. It is
+refused twice, in two different senses: `ConfigurationValidation` refuses the
+file an operator saved, and `ItemReader` refuses the argument it is handed,
+because a caller inside this plugin is not an operator and does not go past the
+configuration. The maximum is refused in the first place only. It bounds what an
+operator may express rather than what the type can do, and a second copy of it
+on the reader would be a second place that range is decided.
+
+What the two numbers are is a choice and not a measurement, and that is
+unchanged by their having moved into configuration. #37 asks for a measured one,
+and the measurement that would produce it is the same one the write rate wants.
+What the setting buys before that measurement exists is that an operator whose
+server is the one the number is wrong for can change it without a build.
 
 ## What a plan row can carry, and what it cannot
 

@@ -55,7 +55,7 @@ public class ParticipatingLibraryTests
         items.Put(_shared, shared);
         items.Put(_private, kept);
 
-        var read = new ItemReader(library, new[] { _shared }).Read();
+        var read = new ItemReader(library, new[] { _shared }, PluginConfiguration.ItemsPerReadDefault).Read();
 
         Assert.Same(shared, Assert.Single(read));
         Assert.NotEmpty(items.AskedFor);
@@ -99,7 +99,9 @@ public class ParticipatingLibraryTests
 
         items.Put(_shared, Film(_sharedFilm, "what the shared library holds"));
 
-        var read = new ItemReader(library, new PluginConfiguration().ParticipatingLibraries).Read();
+        var configuration = new PluginConfiguration();
+
+        var read = new ItemReader(library, configuration.ParticipatingLibraries, configuration.ItemsPerRead).Read();
 
         Assert.Empty(read);
         Assert.Empty(items.Called);
@@ -120,7 +122,7 @@ public class ParticipatingLibraryTests
         items.Put(_private, Film(_privateFilm, "what the private library holds"));
 
         var chosen = new Collection<Guid> { _shared };
-        var reader = new ItemReader(library, chosen);
+        var reader = new ItemReader(library, chosen, PluginConfiguration.ItemsPerReadDefault);
 
         chosen.Add(_private);
 
@@ -154,7 +156,7 @@ public class ParticipatingLibraryTests
 
         items.Put(_shared, film);
 
-        var reader = new ItemReader(library, new[] { _shared });
+        var reader = new ItemReader(library, new[] { _shared }, PluginConfiguration.ItemsPerReadDefault);
 
         var before = await Pass(reader).ConfigureAwait(true);
 
@@ -176,7 +178,7 @@ public class ParticipatingLibraryTests
     [Fact]
     public void AReaderRefusesAMissingLibrary()
     {
-        Assert.Throws<ArgumentNullException>(() => new ItemReader(null!, Array.Empty<Guid>()));
+        Assert.Throws<ArgumentNullException>(() => new ItemReader(null!, Array.Empty<Guid>(), PluginConfiguration.ItemsPerReadDefault));
     }
 
     /// <summary>
@@ -189,7 +191,7 @@ public class ParticipatingLibraryTests
     {
         var (library, _) = LibraryItems.Empty();
 
-        Assert.Throws<ArgumentNullException>(() => new ItemReader(library, null!));
+        Assert.Throws<ArgumentNullException>(() => new ItemReader(library, null!, PluginConfiguration.ItemsPerReadDefault));
     }
 
     /// <summary>
