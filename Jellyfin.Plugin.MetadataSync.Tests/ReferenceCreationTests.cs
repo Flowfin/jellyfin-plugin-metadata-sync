@@ -53,9 +53,28 @@ public class ReferenceCreationTests
     private const string NamesClose = "<!-- end of the sources that name the resolver -->";
 
     /// <summary>
+    /// The comment that opens the fence around the sources that name a
+    /// reference outcome.
+    /// </summary>
+    private const string OutcomesOpen = "<!-- the plugin sources that name a reference outcome: one per line, the file first, read by ReferenceCreationTests -->";
+
+    /// <summary>
+    /// The comment that closes it.
+    /// </summary>
+    private const string OutcomesClose = "<!-- end of the sources that name an outcome -->";
+
+    /// <summary>
     /// The type the paragraph is about, spelled as the sources spell it.
     /// </summary>
     private const string Resolver = "ReferenceResolver";
+
+    /// <summary>
+    /// The answer type, spelled as the plugin spells it. It is the narrower
+    /// name of the two: a source naming <c>ReferenceResolution</c> names this as
+    /// well, so the reading catches the answer wherever it is carried rather
+    /// than only where the enumeration itself is mentioned.
+    /// </summary>
+    private const string Outcome = "ReferenceOutcome";
 
     /// <summary>
     /// The document, copied to the output for the reason every other document
@@ -116,6 +135,57 @@ public class ReferenceCreationTests
     }
 
     /// <summary>
+    /// The sources the paragraph names as naming a reference outcome are the
+    /// sources that name one, as a set and in both directions.
+    /// </summary>
+    /// <remarks>
+    /// The paragraph this list sits under said the log an unrecorded outcome
+    /// belongs in was not built. #48 built the store and the line it keeps while
+    /// that sentence stood, so the page understated the tree in the direction
+    /// that costs a second implementation. What is true instead is narrower and
+    /// is what this holds: the row that store keeps carries a conflict outcome,
+    /// and a reference outcome is named nowhere but where one is produced.
+    /// <para>
+    /// What it cannot reach. It reads a spelling in a source rather than a
+    /// route, so a source that carried an outcome under another name is outside
+    /// it, and it says nothing about whether the store's row could hold one. It
+    /// is the same bound the list above it states for its own reading.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void TheSourcesTheParagraphNamesAreTheSourcesThatNameAnOutcome()
+    {
+        Assert.Equal(
+            NamingTheOutcome().OrderBy(path => path, StringComparer.Ordinal).ToList(),
+            Declared(OutcomesOpen, OutcomesClose).OrderBy(path => path, StringComparer.Ordinal).ToList());
+    }
+
+    /// <summary>
+    /// That fence is still there and the list inside it is not empty, for the
+    /// reason the fence above has such a leg: a renamed comment would leave the
+    /// comparison failing where nobody could place it, and two empty sets agree.
+    /// </summary>
+    [Fact]
+    public void TheFenceAroundTheOutcomeSourcesIsStillThere()
+    {
+        var lines = Lines(_document);
+
+        Assert.Contains(OutcomesOpen, lines, StringComparer.Ordinal);
+        Assert.Contains(OutcomesClose, lines, StringComparer.Ordinal);
+        Assert.NotEmpty(Declared(OutcomesOpen, OutcomesClose));
+    }
+
+    /// <summary>
+    /// The plugin sources whose text names a reference outcome.
+    /// </summary>
+    /// <returns>The paths, relative to the repository root.</returns>
+    private static List<string> NamingTheOutcome() =>
+        SourceFiles()
+            .Where(path => File.ReadAllText(path).Contains(Outcome, StringComparison.Ordinal))
+            .Select(Relative)
+            .ToList();
+
+    /// <summary>
     /// The plugin sources whose text names the resolver.
     /// </summary>
     /// <returns>The paths, relative to the repository root.</returns>
@@ -129,11 +199,21 @@ public class ReferenceCreationTests
     /// The entries the fenced list in the document declares.
     /// </summary>
     /// <returns>The entries, as the document quotes them.</returns>
-    private static List<string> Declared()
+    private static List<string> Declared() => Declared(NamesOpen, NamesClose);
+
+    /// <summary>
+    /// The entries a fenced list in the document declares. One reading rather
+    /// than one per fence, so a second list cannot drift into being read by a
+    /// copy of this that differs from it in a way nobody notices.
+    /// </summary>
+    /// <param name="opensWith">The comment that opens the fence.</param>
+    /// <param name="closesWith">The comment that closes it.</param>
+    /// <returns>The entries, as the document quotes them.</returns>
+    private static List<string> Declared(string opensWith, string closesWith)
     {
         var lines = Lines(_document);
-        var opens = lines.IndexOf(NamesOpen);
-        var closes = lines.IndexOf(NamesClose);
+        var opens = lines.IndexOf(opensWith);
+        var closes = lines.IndexOf(closesWith);
 
         if (opens < 0 || closes < opens)
         {

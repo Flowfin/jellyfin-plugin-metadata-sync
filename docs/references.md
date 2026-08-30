@@ -171,9 +171,28 @@ which is #36, #38 and #40, and the field register's rows for genres, studios and
 people declare that they do not move until the mark is produced.
 
 It records nothing. An outcome is returned to whatever asked for it and written
-to no register, because the log a non-resolution belongs in is #48 and it is not
-built. Until then the third condition of #15 is unmet, and this document says so
-rather than letting a returned value read as a recorded one.
+to no register. **This paragraph said the log it belongs in was not built**, and
+what #48 has built since is a store keeping a line per decision, in
+`conflict-log.jsonl`, which `docs/storage.md` argues. What that store keeps is a
+decision about a field: the row carries a conflict outcome, and no shape in this
+plugin carries a reference outcome anywhere but where one is produced.
+
+<!-- the plugin sources that name a reference outcome: one per line, the file first, read by ReferenceCreationTests -->
+
+- `Jellyfin.Plugin.MetadataSync/References/ReferenceOutcome.cs`, where the four
+  answers are declared
+- `Jellyfin.Plugin.MetadataSync/References/ReferenceResolution.cs`, the answer a
+  caller is handed
+- `Jellyfin.Plugin.MetadataSync/References/ReferenceResolver.cs`, where one is
+  decided
+
+<!-- end of the sources that name an outcome -->
+
+That list is held against the plugin's own sources in both directions by
+`ReferenceCreationTests`, the same way the list above it is, so the day something
+outside this area records an outcome this paragraph reds instead of going on
+saying nothing does. The third condition of #15 is unmet either way, and the
+reason is a row that does not exist rather than a file that does not.
 
 It reads nothing but the two arguments. No library, no clock, no file, no
 transport, so every row above is decidable with nothing running.
