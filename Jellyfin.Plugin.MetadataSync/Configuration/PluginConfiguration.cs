@@ -16,8 +16,17 @@ namespace Jellyfin.Plugin.MetadataSync.Configuration;
 /// What is deliberately absent. Nothing secret, and nothing that is a peer's
 /// address: this file is serialised with the server's own permissions, read
 /// back by the page, and pasted into a support thread by an operator whose
-/// sync is not working. The schedule and the bounds a pass runs under are not
-/// here yet either; they are the pass's own settings and land with it.
+/// sync is not working. The schedule is not here yet either; it is the pass's
+/// own setting and lands with it.
+/// </para>
+/// <para>
+/// A bound lands with the thing it bounds rather than ahead of it, which is why
+/// one of the four bounds #37 names is here and three are not.
+/// <see cref="ItemsPerRead"/> bounds a read that exists. How many resolutions
+/// may be in flight is a property of a contract this plugin does not reference,
+/// how many writes per unit of time wants a measurement against a real library,
+/// and how long a pass may run has no pass to bound, so a number for any of the
+/// three would be a setting an operator can move with nothing behind it.
 /// </para>
 /// <para>
 /// The collections are read-only properties over a mutable collection rather
@@ -36,6 +45,44 @@ namespace Jellyfin.Plugin.MetadataSync.Configuration;
 /// </remarks>
 public class PluginConfiguration : BasePluginConfiguration
 {
+    /// <summary>
+    /// How many items <see cref="ItemsPerRead"/> carries when an operator has
+    /// not said otherwise.
+    /// </summary>
+    /// <remarks>
+    /// It is the value the read has carried since it landed, and it is chosen
+    /// rather than measured: big enough that a large library is not a hundred
+    /// thousand round trips, small enough that one page is not itself worth
+    /// bounding. #37 asks for a measured one, and the same measurement the write
+    /// rate wants is what would produce it.
+    /// <para>
+    /// A configuration file written before this property existed carries no
+    /// element for it, and the server's serialiser leaves a property no element
+    /// names alone, so such a file reads back at this number rather than at
+    /// zero. That is why the default is an initialiser here rather than a zero
+    /// read as absent the way <see cref="Format"/>'s is: zero is a page size
+    /// that never finishes a read, so it cannot also mean "not said".
+    /// </para>
+    /// </remarks>
+    public const int ItemsPerReadDefault = 500;
+
+    /// <summary>
+    /// The largest page an operator may ask for.
+    /// </summary>
+    /// <remarks>
+    /// The bound exists so that one page is not the library, and a setting that
+    /// could be raised without limit would be a way to ask for the library one
+    /// page at a time in a single page. Ten times the default is the room an
+    /// operator has on a server with memory to spare, and it is still two orders
+    /// of magnitude under the hundred thousand items the suite reads, so a read
+    /// at the maximum is bounded in the sense the bound is about.
+    /// <para>
+    /// The number is a choice and not a measurement, in the same sense the
+    /// default is one. What a measurement would move is both of them together.
+    /// </para>
+    /// </remarks>
+    public const int ItemsPerReadMaximum = ItemsPerReadDefault * 10;
+
     /// <summary>
     /// Gets or sets the pairing this configuration is for.
     /// </summary>
@@ -97,4 +144,23 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </para>
     /// </remarks>
     public int Format { get; set; }
+
+    /// <summary>
+    /// Gets or sets how many items a pass asks the server for at once.
+    /// </summary>
+    /// <remarks>
+    /// This is the bound on how much of a library is in memory while a pass
+    /// reads one, and it is a setting rather than a constant because the number
+    /// behind it is chosen rather than measured: an operator whose server is
+    /// small, or is doing something else, is the person who finds out that 500
+    /// is the wrong number for them, and a rebuild is not a repair they can
+    /// make.
+    /// <para>
+    /// The range is one item up to <see cref="ItemsPerReadMaximum"/>, and both
+    /// ends are refused rather than clamped. Zero is the end worth naming: a
+    /// page of no items advances a read by nothing, so a read taking it would
+    /// ask the server for nothing forever rather than answer with nothing.
+    /// </para>
+    /// </remarks>
+    public int ItemsPerRead { get; set; } = ItemsPerReadDefault;
 }

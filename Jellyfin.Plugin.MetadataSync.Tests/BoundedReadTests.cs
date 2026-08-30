@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Jellyfin.Plugin.MetadataSync.Configuration;
 using Jellyfin.Plugin.MetadataSync.Reconciliation;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
@@ -51,6 +52,14 @@ public class BoundedReadTests
     private const int ManyItems = 100_000;
 
     /// <summary>
+    /// The page these legs read at. It is the configuration's own default,
+    /// read rather than restated, so an assertion here is about the number the
+    /// plugin ships with and not about a copy that stops moving when that one
+    /// does.
+    /// </summary>
+    private const int PageSize = PluginConfiguration.ItemsPerReadDefault;
+
+    /// <summary>
     /// Which items there are is one question and asked once; which items those
     /// are is asked a page at a time afterwards. Asking the second question
     /// first is the shape that cannot be bounded, because the answer to it is
@@ -59,9 +68,9 @@ public class BoundedReadTests
     [Fact]
     public void TheItemsThereAreAreAskedForBeforeAnyOfThemIs()
     {
-        var (library, items) = LibraryOfManyItems.Holding(_shared, ItemReader.PageSize + 1);
+        var (library, items) = LibraryOfManyItems.Holding(_shared, PageSize + 1);
 
-        Consume(new ItemReader(library, new[] { _shared }).Read());
+        Consume(new ItemReader(library, new[] { _shared }, PageSize).Read());
 
         Assert.Equal(nameof(ILibraryManager.GetItemIds), items.Called[0]);
         Assert.Equal(1, items.Called.Count(called => string.Equals(called, nameof(ILibraryManager.GetItemIds), StringComparison.Ordinal)));
@@ -74,13 +83,13 @@ public class BoundedReadTests
     [Fact]
     public void NoQueryAsksForMoreThanOnePageOfItems()
     {
-        var (library, items) = LibraryOfManyItems.Holding(_shared, (ItemReader.PageSize * 2) + 1);
+        var (library, items) = LibraryOfManyItems.Holding(_shared, (PageSize * 2) + 1);
 
-        Consume(new ItemReader(library, new[] { _shared }).Read());
+        Consume(new ItemReader(library, new[] { _shared }, PageSize).Read());
 
         // The first entry is the identifier query, which names no item and is
         // the one call this bound is not about.
-        Assert.All(items.AskedForItems.Skip(1), asked => Assert.InRange(asked, 1, ItemReader.PageSize));
+        Assert.All(items.AskedForItems.Skip(1), asked => Assert.InRange(asked, 1, PageSize));
         Assert.Equal(3, items.AskedForItems.Count - 1);
     }
 
@@ -101,11 +110,11 @@ public class BoundedReadTests
 
         var consumed = 0;
 
-        foreach (var item in new ItemReader(library, new[] { _shared }).Read())
+        foreach (var item in new ItemReader(library, new[] { _shared }, PageSize).Read())
         {
             consumed++;
 
-            Assert.InRange(items.Handed - consumed, 0, ItemReader.PageSize);
+            Assert.InRange(items.Handed - consumed, 0, PageSize);
         }
 
         Assert.Equal(ManyItems, consumed);
@@ -120,10 +129,10 @@ public class BoundedReadTests
     [Fact]
     public void EveryItemIsHandedOverExactlyOnceAcrossThePages()
     {
-        var total = (ItemReader.PageSize * 2) + 1;
+        var total = (PageSize * 2) + 1;
         var (library, _) = LibraryOfManyItems.Holding(_shared, total);
 
-        var read = new ItemReader(library, new[] { _shared }).Read().Select(item => item.Id).ToList();
+        var read = new ItemReader(library, new[] { _shared }, PageSize).Read().Select(item => item.Id).ToList();
 
         Assert.Equal(Enumerable.Range(0, total).Select(LibraryOfManyItems.IdentifierAt), read);
     }
@@ -136,14 +145,14 @@ public class BoundedReadTests
     [Fact]
     public void NothingIsAskedOfTheServerUntilTheAnswerIsRead()
     {
-        var (library, items) = LibraryOfManyItems.Holding(_shared, ItemReader.PageSize + 1);
+        var (library, items) = LibraryOfManyItems.Holding(_shared, PageSize + 1);
 
-        var answer = new ItemReader(library, new[] { _shared }).Read();
+        var answer = new ItemReader(library, new[] { _shared }, PageSize).Read();
 
         Assert.Empty(items.Called);
 
-        Assert.Equal(ItemReader.PageSize, answer.Take(ItemReader.PageSize).Count());
-        Assert.Equal(ItemReader.PageSize, items.Handed);
+        Assert.Equal(PageSize, answer.Take(PageSize).Count());
+        Assert.Equal(PageSize, items.Handed);
     }
 
     /// <summary>
@@ -160,9 +169,9 @@ public class BoundedReadTests
     [Fact]
     public void EveryQueryNamesTheParticipatingLibrariesAndNoOther()
     {
-        var (library, items) = LibraryOfManyItems.Holding(_shared, ItemReader.PageSize + 1);
+        var (library, items) = LibraryOfManyItems.Holding(_shared, PageSize + 1);
 
-        Consume(new ItemReader(library, new[] { _shared }).Read());
+        Consume(new ItemReader(library, new[] { _shared }, PageSize).Read());
 
         Assert.NotEmpty(items.AskedFor);
         Assert.All(items.AskedFor, asked => Assert.Equal(new[] { _shared }, asked));
@@ -179,7 +188,7 @@ public class BoundedReadTests
     [Fact]
     public void AQueryNamingNoPageIsAnsweredWithEverythingTheLibraryHolds()
     {
-        var (library, items) = LibraryOfManyItems.Holding(_shared, (ItemReader.PageSize * 2) + 1);
+        var (library, items) = LibraryOfManyItems.Holding(_shared, (PageSize * 2) + 1);
 
         var everything = library.GetItemList(new InternalItemsQuery
         {
@@ -187,7 +196,7 @@ public class BoundedReadTests
             Recursive = true
         });
 
-        Assert.Equal((ItemReader.PageSize * 2) + 1, everything.Count);
+        Assert.Equal((PageSize * 2) + 1, everything.Count);
         Assert.Equal(everything.Count, items.Handed);
     }
 
@@ -208,6 +217,86 @@ public class BoundedReadTests
         });
 
         Assert.Equal(ManyItems, identifiers.Count);
+    }
+
+    /// <summary>
+    /// The page is the number the caller was given and not one this type holds.
+    /// A reader that kept a constant of its own would answer identically at the
+    /// default and differ nowhere else, so the assertion is made at a size the
+    /// default is not.
+    /// </summary>
+    [Fact]
+    public void ThePagesAreTheSizeTheReaderWasGivenRatherThanTheDefault()
+    {
+        const int Chosen = 7;
+
+        var (library, items) = LibraryOfManyItems.Holding(_shared, (Chosen * 3) + 1);
+
+        Consume(new ItemReader(library, new[] { _shared }, Chosen).Read());
+
+        Assert.All(items.AskedForItems.Skip(1), asked => Assert.InRange(asked, 1, Chosen));
+        Assert.Equal(4, items.AskedForItems.Count - 1);
+    }
+
+    /// <summary>
+    /// The range the configuration declares is the operator's and not this
+    /// type's, so a page above the maximum is read rather than refused here.
+    /// </summary>
+    /// <remarks>
+    /// The direction matters. A second copy of the maximum on this type would
+    /// be a second place the range is decided, and the two would answer
+    /// differently the day one of them moved. What refuses an operator's number
+    /// is <c>ConfigurationValidation</c>, which is where the whole
+    /// configuration is judged and where the sentence an operator reads is
+    /// written.
+    /// </remarks>
+    [Fact]
+    public void APageAboveWhatAConfigurationMayExpressIsStillARead()
+    {
+        var above = PluginConfiguration.ItemsPerReadMaximum + 1;
+        var (library, items) = LibraryOfManyItems.Holding(_shared, 3);
+
+        Consume(new ItemReader(library, new[] { _shared }, above).Read());
+
+        Assert.Equal(3, items.Handed);
+    }
+
+    /// <summary>
+    /// The refusal. A page of no items advances a read by no items, so a reader
+    /// handed zero would ask the server for the same nothing forever, and the
+    /// symptom is a pass that never ends rather than one that reads nothing.
+    /// </summary>
+    /// <remarks>
+    /// It refuses at construction rather than at the first read, so the mistake
+    /// surfaces where the number was chosen. A negative page is the same shape
+    /// and is refused by the same comparison.
+    /// </remarks>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(int.MinValue)]
+    public void AReaderRefusesAPageSmallerThanOneItem(int page)
+    {
+        var (library, _) = LibraryOfManyItems.Holding(_shared, 1);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => new ItemReader(library, new[] { _shared }, page));
+    }
+
+    /// <summary>
+    /// The neighbour, one item away from the refusal above. A page of one item
+    /// is the smallest read that gets anywhere, and it reads the whole library
+    /// one item per call rather than being refused.
+    /// </summary>
+    [Fact]
+    public void APageOfOneItemIsARead()
+    {
+        var (library, items) = LibraryOfManyItems.Holding(_shared, 3);
+
+        var read = new ItemReader(library, new[] { _shared }, 1).Read().Select(item => item.Id).ToList();
+
+        Assert.Equal(Enumerable.Range(0, 3).Select(LibraryOfManyItems.IdentifierAt), read);
+        Assert.All(items.AskedForItems.Skip(1), asked => Assert.Equal(1, asked));
+        Assert.Equal(3, items.AskedForItems.Count - 1);
     }
 
     /// <summary>

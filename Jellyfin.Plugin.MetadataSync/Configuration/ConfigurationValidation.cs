@@ -51,6 +51,7 @@ public static class ConfigurationValidation
 
         Format(configuration, problems);
         Direction(configuration, problems);
+        ItemsPerRead(configuration, problems);
         ParticipatingLibraries(configuration, librariesTheServerHolds, problems);
         ExcludedFields(configuration, problems);
         PairingId(configuration, problems);
@@ -112,6 +113,38 @@ public static class ConfigurationValidation
                     "Direction carries the value '{0}', which is not a direction this plugin declares.",
                     (int)configuration.Direction)));
         }
+    }
+
+    /// <summary>
+    /// The range is one item up to the maximum the configuration declares.
+    /// </summary>
+    /// <remarks>
+    /// Both ends are refused rather than clamped, because a page size silently
+    /// moved to something the operator did not ask for is a pass that behaves
+    /// unlike the page they are looking at.
+    /// <para>
+    /// The lower end is the one this rule is written for. A page of no items
+    /// advances a read by no items, so a read handed zero asks the server for
+    /// the same nothing forever instead of answering with nothing, and the
+    /// symptom is a pass that never ends rather than a pass that reads nothing.
+    /// A negative number is the same shape and is refused by the same
+    /// comparison.
+    /// </para>
+    /// </remarks>
+    private static void ItemsPerRead(PluginConfiguration configuration, List<ConfigurationProblem> problems)
+    {
+        if (configuration.ItemsPerRead >= 1 && configuration.ItemsPerRead <= PluginConfiguration.ItemsPerReadMaximum)
+        {
+            return;
+        }
+
+        problems.Add(new ConfigurationProblem(
+            nameof(PluginConfiguration.ItemsPerRead),
+            string.Format(
+                CultureInfo.InvariantCulture,
+                "ItemsPerRead says '{0}', which is outside the range this plugin reads a library in: at least 1 item and at most {1}.",
+                configuration.ItemsPerRead,
+                PluginConfiguration.ItemsPerReadMaximum)));
     }
 
     /// <summary>
