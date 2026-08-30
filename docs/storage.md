@@ -442,17 +442,21 @@ table added to the assembly with no line here is red and a line here naming a
 table the assembly does not carry is red too. This sentence used to say two, and
 the two that arrived after it was written are the third and fourth above.
 
-Of the three rows in the table that name the store, one is a file on a disk now
-and two are still decisions about where something will go. What this plugin
-wrote, per item and per field, is the first: #16 built it and #47 made it carry
-what each write replaced, which is the provenance the same record holds rather
-than a second copy of it. The conflict log and the unmatched register are the
-other two, and #48 and #29 are where they are built. #59 is how any of it
-survives a version change; the stamp above is the half of that which the store
-now carries, and the configuration carries a stamp of its own for the same
-reason. What carries a directory from one format to the next is argued once,
-under the stamp above, rather than restated here.
+**This paragraph counted one file and two decisions among the three rows that
+name the store, and it went on counting that after two of them became files.**
+The sections above this one describe each of those files, so the miscount stood
+in the document that already contradicted it, and a reader who stopped here
+learned that two things they could open were unbuilt.
 
-So a reader should take the conflict log row and the unmatched register row as a
-decision already made about where something goes, and the row above them as a
-description of a file that is there.
+What is true of the three rows is not counted here again, because a count in a
+paragraph is what went stale. Each file has a section above saying what it keeps
+and what its bound costs, and every file name in this document is held against
+the stores the plugin declares, in both directions, so a store arriving or
+losing its file reds this page rather than leaving a sentence a file short. What
+is still a decision about where something goes rather than a file is the
+unmatched register, which is #29, and it is the only one.
+
+#59 is how any of it survives a version change; the stamp above is the half of
+that which the store now carries, and the configuration carries a stamp of its
+own for the same reason. What carries a directory from one format to the next is
+argued once, under the stamp above, rather than restated here.
