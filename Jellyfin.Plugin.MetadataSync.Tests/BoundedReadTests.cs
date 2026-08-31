@@ -112,6 +112,12 @@ public class BoundedReadTests
 
         foreach (var item in new ItemReader(library, new[] { _shared }, PageSize).Read())
         {
+            // Read and dropped, the way Consume below does it. This leg is about
+            // how many items are on this side of the call at once and not about
+            // any one of them, so the item is never looked at - and a binding
+            // nothing reads is what a later edit reaches for when it wants one.
+            _ = item;
+
             consumed++;
 
             Assert.InRange(items.Handed - consumed, 0, PageSize);
