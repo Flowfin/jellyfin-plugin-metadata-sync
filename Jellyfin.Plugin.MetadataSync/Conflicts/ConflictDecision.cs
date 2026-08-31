@@ -7,9 +7,9 @@ namespace Jellyfin.Plugin.MetadataSync.Conflicts;
 /// <remarks>
 /// The rule travels with the outcome because an outcome on its own cannot be
 /// argued with. An operator reading a conflict log wants to know that their
-/// overview stayed because they locked the item, and a maintainer reading the
-/// same entry wants to know which row of the table to change if that was wrong.
-/// Both need the name.
+/// overview stayed because they locked the item, and whoever maintains the rule
+/// table wants to know which row to change if that was wrong. Both need the
+/// name.
 /// </remarks>
 public readonly record struct ConflictDecision
 {
