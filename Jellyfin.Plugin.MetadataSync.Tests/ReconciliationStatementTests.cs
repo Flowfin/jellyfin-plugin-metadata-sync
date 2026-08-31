@@ -43,6 +43,15 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// arrangement where the unheld one goes stale in silence while the other reds.
 /// The page points there instead.
 ///
+/// It holds a second list, under <c>## What holds this up</c>, and that one
+/// points the other way: the spellings the page says the plugin's sources DO
+/// carry. It arrived with the paragraph about a pass that stops at its time
+/// bound, which is a paragraph resting on two names in the tree rather than on
+/// two absences from it, and a claim of that shape goes stale on a rename that
+/// compiles. Both lists are read by one walk over the fence, because two copies
+/// of that walk would let one list be parsed by a rule the other had stopped
+/// following.
+///
 /// The absence list carries one bound that the paste beside it does not, and it
 /// is stated on the page as well. A comparison of two sets reds in both
 /// directions; a list of absences reds in one. Every spelling written down is
@@ -90,6 +99,33 @@ public class ReconciliationStatementTests
     /// The comment that closes it.
     /// </summary>
     private const string AbsentClose = "<!-- end of the spellings that appear nowhere -->";
+
+    /// <summary>
+    /// The comment that opens the fence around the spellings the page under
+    /// <c>## What holds this up</c> says the plugin's sources do carry. It is
+    /// the absence fence pointed the other way: that list reds when a spelling
+    /// arrives, this one reds when a spelling goes.
+    /// </summary>
+    private const string PresentOpen = "<!-- the spellings this page says the plugin's sources carry: one per line, the spelling first, read by ReconciliationStatementTests -->";
+
+    /// <summary>
+    /// The comment that closes it.
+    /// </summary>
+    private const string PresentClose = "<!-- end of the spellings the sources carry -->";
+
+    /// <summary>
+    /// A spelling the plugin's sources do not carry, read by the same function
+    /// the presences are read by. It is the member the presence list names with
+    /// one word changed, so a reading that answered for everything is caught
+    /// by a near miss rather than by an unrelated name.
+    ///
+    /// The word changed is the accessibility rather than the member's name, and
+    /// that is deliberate. A control spelled as the rename somebody would
+    /// actually make is in the tree on the day that rename lands, so this leg
+    /// would red for the same reason as the claim above it and stop being a
+    /// separate reading of anything.
+    /// </summary>
+    private const string PresenceControl = "private required bool Finished";
 
     /// <summary>
     /// The marker a fenced line opens with, up to and including the backtick the
@@ -211,17 +247,72 @@ public class ReconciliationStatementTests
     }
 
     /// <summary>
+    /// Every spelling the page says the plugin's sources carry is in them. The
+    /// failure names the spellings that have gone, because the repair is a
+    /// rewrite of the paragraph that rests on them rather than a deletion of
+    /// the line.
+    /// </summary>
+    [Fact]
+    public void EverySpellingThisPageSaysTheSourcesCarryIsInThem()
+    {
+        var gone = Present()
+            .Where(spelling => Carrying(spelling).Count == 0)
+            .ToList();
+
+        Assert.Empty(gone);
+    }
+
+    /// <summary>
+    /// The second fence is still there and the list inside it is not empty.
+    /// Without this leg a renamed comment, or a list somebody emptied, would
+    /// leave the assertion above walking nothing and reporting success.
+    /// </summary>
+    [Fact]
+    public void TheFenceThePresenceComparisonReadsIsStillThere()
+    {
+        var lines = Lines(_document);
+
+        Assert.Contains(PresentOpen, lines, StringComparer.Ordinal);
+        Assert.Contains(PresentClose, lines, StringComparer.Ordinal);
+        Assert.NotEmpty(Present());
+    }
+
+    /// <summary>
+    /// The reading that answers with something would answer with nothing if
+    /// there were nothing. A presence guard whose reading matched anything
+    /// passes for every spelling anybody writes into the list, including one
+    /// the tree has never carried, and that is the way this direction fails.
+    /// </summary>
+    [Fact]
+    public void ThePresenceReadingAnswersEmptyForASpellingThatIsNotThere()
+    {
+        Assert.Empty(Carrying(PresenceControl));
+    }
+
+    /// <summary>
     /// The spellings the paragraph fences off, in the order it writes them. A
     /// line that is not an entry, including the wrapped remainder of one, is
     /// passed over, so the reading is of the spelling and never of the sentence
     /// beside it.
     /// </summary>
     /// <returns>The spellings, as the document writes them.</returns>
-    private static List<string> Fenced()
+    private static List<string> Fenced() => Between(AbsentOpen, AbsentClose);
+
+    /// <summary>
+    /// The spellings inside one fence, in the order the document writes them. A
+    /// line that is not an entry, including the wrapped remainder of one, is
+    /// passed over, so the reading is of the spelling and never of the sentence
+    /// beside it. Both fences are read by this one walk, because two copies of
+    /// it would let one list be parsed by a rule the other stopped following.
+    /// </summary>
+    /// <param name="opening">The comment the fence opens with.</param>
+    /// <param name="closing">The comment it closes with.</param>
+    /// <returns>The spellings, as the document writes them.</returns>
+    private static List<string> Between(string opening, string closing)
     {
         var lines = Lines(_document);
-        var opens = lines.IndexOf(AbsentOpen);
-        var closes = lines.IndexOf(AbsentClose);
+        var opens = lines.IndexOf(opening);
+        var closes = lines.IndexOf(closing);
 
         if (opens < 0 || closes < opens)
         {
@@ -249,6 +340,14 @@ public class ReconciliationStatementTests
 
         return spellings;
     }
+
+    /// <summary>
+    /// The spellings the page says the sources carry, in the order it writes
+    /// them, read by the same walk the absences are read by so the two lists
+    /// cannot drift apart in how they are parsed.
+    /// </summary>
+    /// <returns>The spellings, as the document writes them.</returns>
+    private static List<string> Present() => Between(PresentOpen, PresentClose);
 
     /// <summary>
     /// The plugin sources whose text carries a spelling.

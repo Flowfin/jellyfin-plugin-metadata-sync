@@ -527,10 +527,20 @@ because both are ordinary events on a library somebody uses. A plan row that doe
 not describe a value is not one of these and stops the pass, because that is a
 defect in whatever produced the row and passing over it would hide it.
 
-The next pass picking a deferred item up is the half that does not exist. There
-is no pass: nothing schedules one, nothing reads two servers into a plan, and the
-count of deferred items is returned to whoever asked for the apply and recorded
-nowhere.
+The next pass picking a deferred item up is held, and the half that is missing
+is smaller than this paragraph used to say. A deferred item is not recorded as
+finished with - the record is written from the applier's answer rather than from
+the loop having reached the end of an item - so a pass over the same pairing
+considers it again. `PassResumptionTests` drives a write path that defers
+everything and asserts both halves of that in one case: the count the result
+carries, and a progress record with nothing in it. The count is a member of the
+pass result, `ItemsDeferred`, rather than only the answer the apply returned.
+
+What is absent is a pass that starts by itself. Nothing schedules one and
+nothing reads two servers into a plan, so the pickup is proved against a
+substituted write path in the suite and has never run on a library. That is a
+negative disclosure and it stays one: what is proved is the record the applier's
+answer leaves, never that an operator would see a deferred item come back.
 
 This document does not claim the window is closed. What is left after the
 re-read is the interval between the comparison and the write, this plugin cannot
@@ -700,9 +710,10 @@ reflection, spells nothing it can see.
 The window is narrowed by a check the suite proves bites. Removing the
 comparison reddens the fixture that moves an item under a plan; removing the
 deferral from the applier reddens the two that carry on past one; widening it to
-catch every failure reddens the one that says a defect stops the pass. What
-nothing holds is the next pass picking a deferred item up, because there is no
-next pass to hold.
+catch every failure reddens the one that says a defect stops the pass. The next
+pass picking a deferred item up is held where the deferral is argued, under
+`## The window between planning and applying` above, by the leg that asserts a
+deferred item leaves no record that it was finished with.
 
 Two allowances have been added to the invariant lint, and they are named here
 because a lint quietly narrowed is worse than one that reds. The rule that
@@ -747,11 +758,40 @@ holds, exactly as the query means, and a leg asserts that it does. Without it
 the rule above would pass against an arrangement that quietly narrowed for the
 reader, which is a test asserting its own fixture.
 
-One more thing nothing holds. A stopped pass stops within one item, and it
-reports nothing about how far it got: the applier throws where the operator
-asked it to stop. Turning that into a result carrying the items already written
-is the pass's own bound, #37, and it is unchanged by the resumption above. What
-#38 landed is the record on the disk, not a result a stopped pass hands back.
+One more thing this section said nothing held, and it is held. A pass that
+reaches its time bound stops at an item boundary and hands back a result rather
+than throwing: `PassResult` carries a required member saying the pass did not
+finish, and the counts beside it are what it got through. That is the value #37
+asks a stopped pass to return, and `## A pass stops when its time is up` above
+is where the legs behind it are named rather than here. What still hands nothing
+back is a pass an operator cancelled, which throws where it was stopped because
+the caller asked for that and there is nobody left to hand a result to. What #38
+landed is the record on the disk, and the record and the result answer two
+different questions: what the next pass may pass over, and what this one did.
+
+The members that paragraph rests on, and the one the deferral above rests on,
+are spellings rather than judgements, so they are held the way the absences under
+`## What exists, and what still does not` are and in the opposite direction. Each
+line below is one `ReconciliationStatementTests` looks for in the plugin's own
+sources, and the claim is that it finds every one of them, so a member renamed
+out from under a paragraph reds instead of leaving it describing a type that has
+moved.
+
+<!-- the spellings this page says the plugin's sources carry: one per line, the spelling first, read by ReconciliationStatementTests -->
+
+- `public required bool Finished`, the member a pass that stopped at its bound
+  answers with
+- `MinutesPerPass`, the bound it stops at
+- `ItemsDeferred`, the count a pass result carries for the items it was kept
+  away from
+
+<!-- end of the spellings the sources carry -->
+
+What this list cannot reach is the bound the absence list states about itself,
+pointing the other way. A line deleted from it stops being checked, so narrowing
+it is a change to what this page claims rather than a failure. And a spelling
+found anywhere in the plugin's sources satisfies it, so what is proved is that
+the name is in the tree and never that this paragraph describes what it does.
 
 The resumption is held by legs of its own. A pass that stops at each boundary
 its loop has is run to that boundary and then resumed, and the union of the two
