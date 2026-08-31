@@ -31,9 +31,11 @@ namespace Jellyfin.Plugin.MetadataSync.Conflicts;
 /// item, which is the one they can open.
 /// </para>
 /// <para>
-/// What this type is not is a log. Nothing here holds entries, bounds them or
-/// shows them: the register they belong in, its bound and the surface that
-/// groups them are the rest of #48 and are not built.
+/// What this type is not is a log. Nothing here holds entries, bounds them,
+/// reads them under the lines they fall into or shows them. The register and its
+/// bound are <see cref="Store.ConflictLog"/>, the lines are
+/// <see cref="ConflictGrouping"/>, and the surface that would show either of
+/// them is the rest of #48 and is not built.
 /// </para>
 /// </remarks>
 public sealed class ConflictEntry
