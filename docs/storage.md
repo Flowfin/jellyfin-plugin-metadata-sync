@@ -148,6 +148,20 @@ leaves behind, is dropped on the next read and counted rather than thrown. A
 store that refused to open after a power cut would have turned one lost write
 into every lost write.
 
+**What is exercised about outliving a restart is a second store over the same
+directory, and never a server being stopped and started.** From this store's
+side those are one event: the object ends and the directory stays.
+`WrittenValuesTests` builds a second store over the directory the first one
+wrote and asserts it answers what the first one was told, with the bound applied
+to what is read back as well as to what was written.
+
+What no test here does is stop a server and start it. `docs/refused-tests.md`
+refuses that by name, with `Instead: nothing`, so a reader should take that
+property as untested rather than as covered somewhere else. The gap between the
+two is the operating system's own writing back, and a machine that lost power
+between the write returning and the bytes reaching the disk is a case nothing
+here asks about.
+
 **A library that disappears leaves its rows exactly where they are.** #42 asks
 for that state to be chosen rather than inherited, and this is the choice: rows
 for an item that is in no library any more are kept, are still counted in the

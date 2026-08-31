@@ -200,16 +200,16 @@ public class WrittenValuesTests
     {
         using var directory = new TemporaryDirectory();
 
-        new WrittenValues(directory.Path).Record(_pairing, _item, Field, "written before the restart", "what it replaced");
+        new WrittenValues(directory.Path).Record(_pairing, _item, Field, "written by the first instance", "what it replaced");
 
-        var afterRestart = new WrittenValues(directory.Path);
+        var aSecondInstance = new WrittenValues(directory.Path);
 
-        Assert.Equal("written before the restart", afterRestart.LastWritten(_pairing, _item, Field));
+        Assert.Equal("written by the first instance", aSecondInstance.LastWritten(_pairing, _item, Field));
     }
 
     /// <summary>
-    /// The bound survives the restart too, and it survives it in the same
-    /// direction. A store that applied the bound only on the way in would read
+    /// The bound survives the instance ending too, and it survives it in the
+    /// same direction. A store that applied the bound only on the way in would read
     /// a longer file back and answer with more than it may hold.
     /// </summary>
     [Fact]
@@ -223,8 +223,8 @@ public class WrittenValuesTests
             store.Record(_pairing, _item, Field, n.ToString(CultureInfo.InvariantCulture), (n - 1).ToString(CultureInfo.InvariantCulture));
         }
 
-        var afterRestart = new WrittenValues(directory.Path);
-        var held = afterRestart.History(_pairing, _item, Field);
+        var aSecondInstance = new WrittenValues(directory.Path);
+        var held = aSecondInstance.History(_pairing, _item, Field);
 
         Assert.Equal(WrittenValues.Bound, held.Count);
         Assert.Equal("4", held[0].Value);
@@ -647,12 +647,12 @@ public class WrittenValuesTests
         using var directory = new TemporaryDirectory();
 
         new WrittenValues(directory.Path)
-            .Record(_pairing, _item, Field, "written before the restart", "replaced before the restart");
+            .Record(_pairing, _item, Field, "written by the first instance", "replaced by the first instance");
 
         var written = Assert.Single(new WrittenValues(directory.Path).History(_pairing, _item, Field));
 
-        Assert.Equal("written before the restart", written.Value);
-        Assert.Equal("replaced before the restart", written.Previous);
+        Assert.Equal("written by the first instance", written.Value);
+        Assert.Equal("replaced by the first instance", written.Previous);
     }
 
     /// <summary>
@@ -681,12 +681,12 @@ public class WrittenValuesTests
         new WrittenValues(directory.Path)
             .Record(_pairing, _item, Field, "written under the pairing that ended", "what it replaced");
 
-        var afterRestart = new WrittenValues(directory.Path);
+        var aSecondInstance = new WrittenValues(directory.Path);
 
-        Assert.Empty(afterRestart.History(thePairingThatFollowed, _item, Field));
-        Assert.Null(afterRestart.LastWritten(thePairingThatFollowed, _item, Field));
+        Assert.Empty(aSecondInstance.History(thePairingThatFollowed, _item, Field));
+        Assert.Null(aSecondInstance.LastWritten(thePairingThatFollowed, _item, Field));
 
-        var kept = Assert.Single(afterRestart.History(_pairing, _item, Field));
+        var kept = Assert.Single(aSecondInstance.History(_pairing, _item, Field));
 
         Assert.Equal("written under the pairing that ended", kept.Value);
         Assert.Equal("what it replaced", kept.Previous);
