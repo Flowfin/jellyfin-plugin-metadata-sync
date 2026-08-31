@@ -491,18 +491,35 @@ refresh, or an operator editing the same field in the web client can all land in
 it.
 
 What the server offers for seeing a refresh is four members, and none of them is
-a lock:
+a lock. Read at both supported lines rather than at one, because a member the
+newer line dropped would leave this section describing a surface half the
+operators this plugin is built for do not have:
 
-    git grep -n "GetRefreshQueue\|OnRefreshStart\|OnRefreshComplete\|GetRefreshProgress" v10.11.11 -- MediaBrowser.Controller/Providers/IProviderManager.cs
+    git grep -n "GetRefreshQueue\|OnRefreshStart\|OnRefreshComplete\|GetRefreshProgress" v10.11.11 v12.0-rc4 -- MediaBrowser.Controller/Providers/IProviderManager.cs
     v10.11.11:MediaBrowser.Controller/Providers/IProviderManager.cs:212:        HashSet<Guid> GetRefreshQueue();
     v10.11.11:MediaBrowser.Controller/Providers/IProviderManager.cs:214:        void OnRefreshStart(BaseItem item);
     v10.11.11:MediaBrowser.Controller/Providers/IProviderManager.cs:218:        void OnRefreshComplete(BaseItem item);
     v10.11.11:MediaBrowser.Controller/Providers/IProviderManager.cs:220:        double? GetRefreshProgress(Guid id);
+    v12.0-rc4:MediaBrowser.Controller/Providers/IProviderManager.cs:223:        HashSet<Guid> GetRefreshQueue();
+    v12.0-rc4:MediaBrowser.Controller/Providers/IProviderManager.cs:225:        void OnRefreshStart(BaseItem item);
+    v12.0-rc4:MediaBrowser.Controller/Providers/IProviderManager.cs:229:        void OnRefreshComplete(BaseItem item);
+    v12.0-rc4:MediaBrowser.Controller/Providers/IProviderManager.cs:231:        double? GetRefreshProgress(Guid id);
 
-Two of them are reads and two are notifications a component makes about itself.
-Nothing there takes an item exclusively for the length of a write, and nothing
-in `ILibraryManager` does either, so a pass cannot ask the server to hold an item
-still.
+The same four members on both lines, at different line numbers. Two of
+them are reads and two are notifications a component makes about itself. Nothing
+there takes an item exclusively for the length of a write.
+
+Nothing in `ILibraryManager` does either, and that sentence stood here with no
+command behind it until now, in a section whose whole subject is what the server
+will and will not do for a pass:
+
+    git grep -niE "lock|exclusive|reserv|acquire|semaphore" v10.11.11 v12.0-rc4 -- MediaBrowser.Controller/Library/ILibraryManager.cs ; echo "exit=$?"
+    exit=1
+
+So a pass cannot ask the server to hold an item still. That is a search over a
+vocabulary rather than a reading of every member: a facility that takes an item
+exclusively under none of those five words would not be found by it, and what
+would find one is reading the interface through.
 
 What narrows the window is re-reading the item immediately before applying and
 comparing its last-saved stamp against the one the plan was made from. That
