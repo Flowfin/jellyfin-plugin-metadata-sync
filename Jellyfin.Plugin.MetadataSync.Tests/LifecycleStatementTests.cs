@@ -210,7 +210,10 @@ public class LifecycleStatementTests
     /// <param name="path">The path as the document writes it.</param>
     /// <returns>Whether it is here.</returns>
     private static bool Here(string path) =>
-        File.Exists(Path.Combine(_documents, path.Replace("docs/", string.Empty, StringComparison.Ordinal)));
+        File.Exists(DeclaredPath.Resolve(
+            "docs/lifecycle.md",
+            _documents,
+            path.Replace("docs/", string.Empty, StringComparison.Ordinal)));
 
     /// <summary>
     /// The plugin sources that name a call that writes to a disk.
