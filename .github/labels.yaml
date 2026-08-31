@@ -40,10 +40,6 @@
   color: "d4c5f9"
   description: "Waiting on another issue or on a state of the tree, not on a person"
 
-- name: "blocked-on-maintainer"
-  color: "d4c5f9"
-  description: "Waiting on the maintainer, not on a piece of work"
-
 - name: "bug"
   color: "d73a4a"
   description: "Something isn't working"
