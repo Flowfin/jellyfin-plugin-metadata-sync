@@ -78,8 +78,8 @@ public class PublishedRegisterTests
     /// <summary>
     /// The sentence written for an operator is not the sentence written for
     /// whoever maintains the row. A row where the two are the same has one of
-    /// its two audiences wrong, and copying the maintainer's reason across is
-    /// the cheap way to satisfy a column that asked for a second one.
+    /// its two audiences wrong, and copying the register's own reason across
+    /// is the cheap way to satisfy a column that asked for a second one.
     /// </summary>
     [Fact]
     public void EveryRowAnswersTheOperatorInItsOwnSentence()
@@ -94,18 +94,18 @@ public class PublishedRegisterTests
             .Select(r => r.Field)
             .ToList();
 
-        // The maintainer's reasons cite issues and decisions by number, which is
-        // the shape that says a sentence was written for the wrong reader. It is
-        // a spelling and not an intent, so it catches the copy and not every way
-        // of writing a bad sentence.
-        var maintainerVoice = FieldRegister.Rows
+        // The register's own reasons cite issues and decisions by number, which
+        // is the shape that says a sentence was written for the wrong reader. It
+        // is a spelling and not an intent, so it catches the copy and not every
+        // way of writing a bad sentence.
+        var registerVoice = FieldRegister.Rows
             .Where(r => r.OperatorReason.Contains('#', StringComparison.Ordinal))
             .Select(r => r.Field)
             .ToList();
 
         Assert.Empty(missing);
         Assert.Empty(copied);
-        Assert.Empty(maintainerVoice);
+        Assert.Empty(registerVoice);
     }
 
     /// <summary>
