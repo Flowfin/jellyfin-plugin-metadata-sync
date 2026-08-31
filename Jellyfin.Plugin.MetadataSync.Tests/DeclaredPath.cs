@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 
 namespace Jellyfin.Plugin.MetadataSync.Tests;
 
@@ -66,13 +67,14 @@ internal static class DeclaredPath
                 $"{document} declares the rooted path '{declared}'. A path a document declares is resolved inside {baseDirectory}, and a rooted one would answer about a file elsewhere on this machine.");
         }
 
-        foreach (var segment in declared.Split('/', '\\'))
+        // The filter is explicit rather than a loop that breaks on a match.
+        // `cs/linq/missed-where` raised the loop this replaces, on the run of
+        // the change that landed it, and a note the scan raises against a file
+        // written the day before is fixed rather than dismissed.
+        if (declared.Split('/', '\\').Any(segment => string.Equals(segment, "..", StringComparison.Ordinal)))
         {
-            if (string.Equals(segment, "..", StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException(
-                    $"{document} declares the path '{declared}', which climbs out of {baseDirectory}. A path a document declares is resolved inside that directory and nowhere else.");
-            }
+            throw new InvalidOperationException(
+                $"{document} declares the path '{declared}', which climbs out of {baseDirectory}. A path a document declares is resolved inside that directory and nowhere else.");
         }
 
         return Path.Join(baseDirectory, declared.Replace('/', Path.DirectorySeparatorChar));
