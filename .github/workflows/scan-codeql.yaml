@@ -1,19 +1,23 @@
 # Code scanning over this plugin's own C#.
 #
 # This workflow used to call jellyfin/jellyfin-meta-plugins/scan-codeql.yaml.
-# That analysis ran, but every setting on it lives in a repository nobody
-# here can change: the query pack, the severity threshold, and above all the
-# path filter. Its findings therefore included the generated sources under
-# obj/ and bin/, files that are not in this tree and that nobody reading the
-# report can edit. Writing the workflow here puts the configuration beside
-# the code it reads.
+# That analysis ran, but every setting on it lives in a repository nobody here
+# can change: the query pack and the severity threshold. Writing the workflow
+# here puts the configuration beside the code it reads.
+#
+# THE PATH FILTER WAS THE THIRD REASON GIVEN AND IT IS NOT ONE. This header
+# said the shared workflow's findings included the generated sources under obj/
+# and bin/ because it could carry no filter, and that the filter for what the
+# analysis reads sits at the init step below. The filter is at the init step
+# and it does not do that. What that block does and does not reach is written
+# at it, with the reading that established it, and the generated sources are
+# analysed here too.
 #
 # The push trigger skips documentation-only changes, because a push to master
 # gates nothing and the baseline simply stays at the previous analysis. The
 # pull request trigger is never filtered, which the replaced file got wrong:
 # a filter there does not make the check red, it stops the check reporting at
 # all, so a documentation-only pull request went out with no verdict on it.
-# The filter for what the analysis READS sits at the init step below.
 name: Code scanning
 
 on:
@@ -63,8 +67,32 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          # The single server line this plugin targets. global.json rolls
-          # forward from 9.0.100, so the installed feature band satisfies it.
+          # WHAT THIS STEP INSTALLS IS NOT WHAT THE BUILD RUNS ON, and this
+          # comment said the version named here was the single server line this
+          # plugin targets. Two lines are targeted:
+          #
+          #   git show origin/master:Jellyfin.Plugin.MetadataSync/Jellyfin.Plugin.MetadataSync.csproj | grep -n TargetFrameworks
+          #   4:    <TargetFrameworks>net9.0;net10.0</TargetFrameworks>
+          #
+          # global.json asks for 9.0.100 with rollForward latestMajor, so the
+          # SDK the build selects is the newest one on the runner rather than
+          # the one named here. That is how the net10.0 target compiles at all,
+          # because a 9.0 SDK does not know it. Read off the push run of
+          # 2026-08-31, 33388890688, where this step reported the 9.0 SDK
+          # already present and the build produced both targets:
+          #
+          #   dotnet-install: .NET Core SDK with version '9.0.317' is already installed.
+          #   Jellyfin.Plugin.MetadataSync -> .../bin/Release/net9.0/Jellyfin.Plugin.MetadataSync.dll
+          #   Jellyfin.Plugin.MetadataSync -> .../bin/Release/net10.0/Jellyfin.Plugin.MetadataSync.dll
+          #
+          # So the analysis covers both targets, because the extractor sees what
+          # the build compiles and the build compiles both.
+          #
+          # The line stays as it is. It makes the 9.0 SDK a thing this job asks
+          # for rather than a thing it happens to find, and the newer SDK
+          # arrives with the image. WHAT NOBODY HAS READ is whether this job
+          # would still build on a runner image carrying no .NET 10 SDK, and
+          # nothing here claims it would.
           dotnet-version: "9.0.x"
 
       - name: Initialize CodeQL
@@ -75,10 +103,50 @@ jobs:
           # queries beside them, which is what the other plugins run, and
           # comparing plugins is only meaningful if they run the same set.
           queries: +security-and-quality
-          # Path filtering for the ANALYSIS. This block is the reason the
-          # workflow lives here: the shared workflow it replaces has no way
-          # to carry it. The generated sources under obj/ are not in the
-          # tree, and nobody can change them.
+          # THIS BLOCK DOES NOT EXCLUDE THE GENERATED SOURCES, and this
+          # comment said it was the reason the workflow lives in this tree.
+          # C# is analysed by building it, and for a built language
+          # paths-ignore does not reach what the extractor sees.
+          #
+          # Read rather than assumed. The alert that forced the question was
+          # raised inside **/obj/** while this block was in place, and the
+          # analysis it came from is this workflow rather than a second scanner:
+          #
+          #   gh api repos/Flowfin/jellyfin-plugin-metadata-sync/code-scanning/alerts/131 \
+          #     --jq '{state, created_at, analysis_key, path: .most_recent_instance.location.path}'
+          #   {
+          #     "state": "fixed",
+          #     "created_at": "2026-08-23T00:01:44Z",
+          #     "analysis_key": ".github/workflows/scan-codeql.yaml:analyze",
+          #     "path": "Jellyfin.Plugin.MetadataSync.Tests/obj/Release/net10.0/generated/System.Text.RegularExpressions.Generator/System.Text.RegularExpressions.Generator.RegexGenerator/RegexGenerator.g.cs"
+          #   }
+          #
+          # The filter is set, and it is set as an index filter. The same run
+          # prints what the init step handed the extractor:
+          #
+          #   LGTM_INDEX_FILTERS: exclude:**/obj/
+          #   exclude:**/bin/
+          #
+          # An index filter governs files found by walking the tree. Nothing
+          # found that file by walking: the compiler was handed it and the
+          # tracer took it from the compilation. The documentation says the same
+          # thing from the other end, read at
+          # https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning
+          # on 2026-08-31. It gives paths and paths-ignore to an interpreted
+          # language or to a compiled language analysed without building it, and
+          # says that "For analysis where code is built, if you want to limit
+          # code scanning to specific directories in your project, you must
+          # specify appropriate build steps in the workflow."
+          #
+          # NOTHING HERE EXCLUDES GENERATED OUTPUT. That is the state rather
+          # than a filter named as doing it: the build compiles the solution,
+          # the generators run as part of it, and their output is in the
+          # database. An alert in a path nobody can edit therefore arrives here
+          # and is triaged like any other, which is what happened to 131.
+          #
+          # The block stays. It costs nothing, it is the filter that would apply
+          # if this analysis ever ran without building, and deleting it would
+          # leave the next reader deriving this answer again from nothing.
           config: |
             paths-ignore:
               - "**/obj/**"
