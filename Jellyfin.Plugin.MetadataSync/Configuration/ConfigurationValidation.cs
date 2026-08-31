@@ -52,6 +52,7 @@ public static class ConfigurationValidation
         Format(configuration, problems);
         Direction(configuration, problems);
         ItemsPerRead(configuration, problems);
+        MinutesPerPass(configuration, problems);
         ParticipatingLibraries(configuration, librariesTheServerHolds, problems);
         ExcludedFields(configuration, problems);
         PairingId(configuration, problems);
@@ -145,6 +146,39 @@ public static class ConfigurationValidation
                 "ItemsPerRead says '{0}', which is outside the range this plugin reads a library in: at least 1 item and at most {1}.",
                 configuration.ItemsPerRead,
                 PluginConfiguration.ItemsPerReadMaximum)));
+    }
+
+    /// <summary>
+    /// The range is one minute up to the maximum the configuration declares.
+    /// </summary>
+    /// <remarks>
+    /// Both ends are refused rather than clamped, for the reason the page size's
+    /// are: a bound silently moved to something the operator did not ask for is
+    /// a pass that behaves unlike the page they are looking at.
+    /// <para>
+    /// The lower end is the one this rule is written for. A pass allowed no time
+    /// reaches its bound before its first item, so it stops having written
+    /// nothing and reports that it did not finish, on every run and for ever. The
+    /// symptom is a plugin that is configured, runs, refuses nothing and changes
+    /// no library, which is the failure that looks like a plugin doing nothing at
+    /// all. A negative number is the same shape and is refused by the same
+    /// comparison.
+    /// </para>
+    /// </remarks>
+    private static void MinutesPerPass(PluginConfiguration configuration, List<ConfigurationProblem> problems)
+    {
+        if (configuration.MinutesPerPass >= 1 && configuration.MinutesPerPass <= PluginConfiguration.MinutesPerPassMaximum)
+        {
+            return;
+        }
+
+        problems.Add(new ConfigurationProblem(
+            nameof(PluginConfiguration.MinutesPerPass),
+            string.Format(
+                CultureInfo.InvariantCulture,
+                "MinutesPerPass says '{0}', which is outside the range this plugin runs a pass in: at least 1 minute and at most {1}.",
+                configuration.MinutesPerPass,
+                PluginConfiguration.MinutesPerPassMaximum)));
     }
 
     /// <summary>

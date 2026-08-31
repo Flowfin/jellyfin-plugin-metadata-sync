@@ -40,9 +40,9 @@ public class ConfigurationShapeTests
 {
     /// <summary>
     /// The properties the configuration is allowed to carry, and why each one
-    /// is here. Five are a thing an operator decides that this plugin then acts
-    /// on, and the sixth is a stamp saying which shape the file is written in.
-    /// Every one of the six carries a validation rule that can refuse it.
+    /// is here. Six are a thing an operator decides that this plugin then acts
+    /// on, and the seventh is a stamp saying which shape the file is written in.
+    /// Every one of the seven carries a validation rule that can refuse it.
     /// <list type="bullet">
     /// <item><description>
     /// PairingId. Which pairing this configuration is for. An identifier the
@@ -70,6 +70,12 @@ public class ConfigurationShapeTests
     /// about.
     /// </description></item>
     /// <item><description>
+    /// MinutesPerPass. How long a pass may run before it stops itself. A number
+    /// describing this plugin's own behaviour on this server, for the same
+    /// reason the page size above it is: it says nothing about anybody and is
+    /// safe in the support thread this document is about.
+    /// </description></item>
+    /// <item><description>
     /// Format. Which shape this file is written in. It is the one member here
     /// that nobody chooses, and admitting it is a widening of what this set is
     /// for rather than one more of the same kind, so the reason is written
@@ -90,6 +96,7 @@ public class ConfigurationShapeTests
         nameof(PluginConfiguration.ParticipatingLibraries),
         nameof(PluginConfiguration.ExcludedFields),
         nameof(PluginConfiguration.ItemsPerRead),
+        nameof(PluginConfiguration.MinutesPerPass),
         nameof(PluginConfiguration.Format),
     };
 

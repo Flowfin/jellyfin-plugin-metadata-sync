@@ -21,12 +21,13 @@ namespace Jellyfin.Plugin.MetadataSync.Configuration;
 /// </para>
 /// <para>
 /// A bound lands with the thing it bounds rather than ahead of it, which is why
-/// one of the four bounds #37 names is here and three are not.
-/// <see cref="ItemsPerRead"/> bounds a read that exists. How many resolutions
-/// may be in flight is a property of a contract this plugin does not reference,
-/// how many writes per unit of time wants a measurement against a real library,
-/// and how long a pass may run has no pass to bound, so a number for any of the
-/// three would be a setting an operator can move with nothing behind it.
+/// two of the four bounds #37 names are here and two are not.
+/// <see cref="ItemsPerRead"/> bounds a read that exists and
+/// <see cref="MinutesPerPass"/> bounds a pass that exists. How many
+/// resolutions may be in flight is a property of a contract this plugin does
+/// not reference, and how many writes per unit of time wants a measurement
+/// against a real library, so a number for either would be a setting an
+/// operator can move with nothing behind it.
 /// </para>
 /// <para>
 /// The collections are read-only properties over a mutable collection rather
@@ -82,6 +83,42 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </para>
     /// </remarks>
     public const int ItemsPerReadMaximum = ItemsPerReadDefault * 10;
+
+    /// <summary>
+    /// How many minutes <see cref="MinutesPerPass"/> carries when an operator
+    /// has not said otherwise.
+    /// </summary>
+    /// <remarks>
+    /// An hour is chosen rather than measured, in the same sense
+    /// <see cref="ItemsPerReadDefault"/> is. It is long enough that a first pass
+    /// over a large library is not cut short on the run that has the most to do,
+    /// and short enough that a pass started in a maintenance window is over
+    /// before the window is. What a measurement against a real library would
+    /// move is this number and the maximum below it together.
+    /// <para>
+    /// The unit is minutes rather than a duration because this is a number an
+    /// operator types into a page. A pass that stops is not a pass that failed,
+    /// so the number an operator gets wrong costs a pass that has to be run
+    /// again rather than a library left half written.
+    /// </para>
+    /// </remarks>
+    public const int MinutesPerPassDefault = 60;
+
+    /// <summary>
+    /// The longest pass an operator may ask for.
+    /// </summary>
+    /// <remarks>
+    /// A day. The bound exists so that a pass ends, and a setting that could be
+    /// raised without limit would be a way to ask for an unbounded pass one
+    /// minute at a time. A pass still running when the next day's would start is
+    /// not bounded in the sense the bound is about, so the day is where the
+    /// range stops.
+    /// <para>
+    /// The number is a choice and not a measurement, exactly as
+    /// <see cref="ItemsPerReadMaximum"/> is.
+    /// </para>
+    /// </remarks>
+    public const int MinutesPerPassMaximum = MinutesPerPassDefault * 24;
 
     /// <summary>
     /// Gets or sets the pairing this configuration is for.
@@ -163,4 +200,29 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </para>
     /// </remarks>
     public int ItemsPerRead { get; set; } = ItemsPerReadDefault;
+
+    /// <summary>
+    /// Gets or sets how many minutes a pass may run before it stops itself.
+    /// </summary>
+    /// <remarks>
+    /// This is the bound on how long a pass holds a server's attention, and it
+    /// is a setting for the reason the page size is: the number behind it is
+    /// chosen rather than measured, and the operator whose server is the one it
+    /// is wrong for cannot make a rebuild.
+    /// <para>
+    /// A pass that reaches it stops at an item boundary and says it did not
+    /// finish. It does not throw, and it keeps what it recorded, so the pass
+    /// after it continues from where this one stopped rather than reading the
+    /// library again. That is the whole difference between this bound and an
+    /// operator cancelling a pass.
+    /// </para>
+    /// <para>
+    /// The range is one minute up to <see cref="MinutesPerPassMaximum"/>, and
+    /// both ends are refused rather than clamped, for the reason the page size's
+    /// ends are. Zero is the end worth naming: a pass allowed no time stops
+    /// before its first item on every run, so a library would never be written
+    /// and every pass would report a success over nothing.
+    /// </para>
+    /// </remarks>
+    public int MinutesPerPass { get; set; } = MinutesPerPassDefault;
 }

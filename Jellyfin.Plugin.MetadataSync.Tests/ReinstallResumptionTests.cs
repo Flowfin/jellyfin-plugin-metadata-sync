@@ -69,7 +69,8 @@ public class ReinstallResumptionTests
         await Assert.ThrowsAsync<OperationCanceledException>(
             () => new Pass(
                     new Applier(interrupted, new RecordingWrittenValues()),
-                    new StoreThatStops(new PassProgress(directory.Path), items[1]))
+                    new StoreThatStops(new PassProgress(directory.Path), items[1]),
+                    TimeProvider.System, PassClock.NotReached)
                 .RunAsync(RequestFor(items), CancellationToken.None));
 
         // The reinstalled plugin. It shares nothing with the run above but the
@@ -78,7 +79,8 @@ public class ReinstallResumptionTests
         var afterwards = new TargetThatStops(Guid.Empty);
         var resumed = await new Pass(
                 new Applier(afterwards, new RecordingWrittenValues()),
-                new PassProgress(directory.Path))
+                new PassProgress(directory.Path),
+                TimeProvider.System, PassClock.NotReached)
             .RunAsync(RequestFor(items), CancellationToken.None);
 
         Assert.Equal(
@@ -112,13 +114,15 @@ public class ReinstallResumptionTests
         await Assert.ThrowsAsync<OperationCanceledException>(
             () => new Pass(
                     new Applier(new TargetThatStops(Guid.Empty), new RecordingWrittenValues()),
-                    new StoreThatStops(new PassProgress(kept.Path), items[1]))
+                    new StoreThatStops(new PassProgress(kept.Path), items[1]),
+                    TimeProvider.System, PassClock.NotReached)
                 .RunAsync(RequestFor(items), CancellationToken.None));
 
         var afterwards = new TargetThatStops(Guid.Empty);
         var blind = await new Pass(
                 new Applier(afterwards, new RecordingWrittenValues()),
-                new PassProgress(blank.Path))
+                new PassProgress(blank.Path),
+                TimeProvider.System, PassClock.NotReached)
             .RunAsync(RequestFor(items), CancellationToken.None);
 
         Assert.Equal(items, afterwards.Written.Select(item => item.LocalItemId).ToList());
@@ -146,7 +150,8 @@ public class ReinstallResumptionTests
 
         await new Pass(
                 new Applier(new TargetThatStops(Guid.Empty), new RecordingWrittenValues()),
-                new PassProgress(directory.Path))
+                new PassProgress(directory.Path),
+                TimeProvider.System, PassClock.NotReached)
             .RunAsync(RequestFor(items), CancellationToken.None);
 
         Assert.Empty(new PassProgress(directory.Path).CompletedItems(_pairing));
@@ -154,7 +159,8 @@ public class ReinstallResumptionTests
         var afterwards = new TargetThatStops(Guid.Empty);
         var again = await new Pass(
                 new Applier(afterwards, new RecordingWrittenValues()),
-                new PassProgress(directory.Path))
+                new PassProgress(directory.Path),
+                TimeProvider.System, PassClock.NotReached)
             .RunAsync(RequestFor(items), CancellationToken.None);
 
         Assert.Equal(items, afterwards.Written.Select(item => item.LocalItemId).ToList());

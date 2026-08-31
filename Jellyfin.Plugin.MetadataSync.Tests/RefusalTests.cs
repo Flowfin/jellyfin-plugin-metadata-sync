@@ -526,21 +526,35 @@ public class RefusalTests
                  nameof(PassResumptionTests.APassWithNoApplierIsRefused),
                  nameof(PassResumptionTests.AnOrdinaryPassWritesEveryItemAndRecordsEachOne),
                  "the half of the pass that writes is there",
-                 () => new Pass(null!, new RecordingPassProgress())),
+                 () => new Pass(null!, new RecordingPassProgress(), TimeProvider.System, PassClock.NotReached)),
 
             ["Reconciliation/Pass.cs -> ArgumentNullException.ThrowIfNull(progress);"] =
                 (nameof(PassResumptionTests),
                  nameof(PassResumptionTests.APassWithNowhereToRecordProgressIsRefused),
                  nameof(PassResumptionTests.AnOrdinaryPassWritesEveryItemAndRecordsEachOne),
                  "there is somewhere to record how far the pass got",
-                 () => new Pass(new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()), null!)),
+                 () => new Pass(new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()), null!, TimeProvider.System, PassClock.NotReached)),
+
+            ["Reconciliation/Pass.cs -> ArgumentNullException.ThrowIfNull(time);"] =
+                (nameof(PassTimeBoundTests),
+                 nameof(PassTimeBoundTests.APassWithNoClockIsRefused),
+                 nameof(PassTimeBoundTests.AFinishedPassStillClearsItsResumePoint),
+                 "there is a clock to measure the pass against",
+                 () => new Pass(new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()), new RecordingPassProgress(), null!, PassClock.NotReached)),
+
+            ["Reconciliation/Pass.cs -> ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(limit, TimeSpan.Zero);"] =
+                (nameof(PassTimeBoundTests),
+                 nameof(PassTimeBoundTests.APassAllowedNoTimeIsRefused),
+                 nameof(PassTimeBoundTests.TheSmallestBoundTheRangeAdmitsIsAccepted),
+                 "the pass is allowed some time to run in",
+                 () => new Pass(new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()), new RecordingPassProgress(), TimeProvider.System, TimeSpan.Zero)),
 
             ["Reconciliation/Pass.cs -> ArgumentNullException.ThrowIfNull(request);"] =
                 (nameof(PassResumptionTests),
                  nameof(PassResumptionTests.RunningAPassWithNoRequestIsRefused),
                  nameof(PassResumptionTests.AnOrdinaryPassWritesEveryItemAndRecordsEachOne),
                  "there is something to run the pass over",
-                 () => _ = new Pass(new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()), new RecordingPassProgress())
+                 () => _ = new Pass(new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()), new RecordingPassProgress(), TimeProvider.System, PassClock.NotReached)
                      .RunAsync(null!, CancellationToken.None)),
 
             ["Reconciliation/Pass.cs -> cancellationToken.ThrowIfCancellationRequested();"] =
@@ -548,7 +562,7 @@ public class RefusalTests
                  nameof(PassResumptionTests.ACancelledPassStopsBeforeTheItem),
                  nameof(PassResumptionTests.AnOrdinaryPassWritesEveryItemAndRecordsEachOne),
                  "the operator has not asked the pass to stop",
-                 () => new Pass(new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()), new RecordingPassProgress())
+                 () => new Pass(new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()), new RecordingPassProgress(), TimeProvider.System, PassClock.NotReached)
                      .RunAsync(OneItemToPlan(), new CancellationToken(canceled: true))
                      .GetAwaiter()
                      .GetResult()),
