@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using Xunit;
 
 namespace Jellyfin.Plugin.MetadataSync.Tests;
@@ -24,11 +25,21 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// is covered reads that number, and a number nothing recomputes is one that
 /// stops being true without anybody noticing.
 ///
-/// What this reaches is the accounting and never the argument. Whether the
-/// substitute an entry names actually proves the property the refused test
-/// would have proved is a judgement, and an entry naming a substitute that
-/// proves nothing reads here exactly like one that proves everything. That is
-/// what the review is for, and it is stated rather than left to be assumed.
+/// The accounting was the whole of it, and a second half is here now. An
+/// entry that is not a gap earns its way out of the gap count by naming a
+/// test, and nothing resolved that name: the register carried
+/// <c>PluginIdentityTests.ThisMethodDoesNotExistAnywhere</c> in place of a
+/// substitute and every route stayed green, so a rename anywhere in this
+/// suite could turn a covered property into an uncovered one with the file
+/// still reading as covered. That is a negative disclosure becoming a
+/// positive one by omission, which is the direction this register exists
+/// against. The two legs below resolve every name it spells.
+///
+/// What this still does not reach is the argument. Whether the substitute an
+/// entry names actually proves the property the refused test would have
+/// proved is a judgement, and an entry naming a test that proves nothing
+/// reads here exactly like one that proves everything. That is what the
+/// review is for, and it is stated rather than left to be assumed.
 /// </summary>
 public class RefusedTestRegisterTests
 {
@@ -52,6 +63,13 @@ public class RefusedTestRegisterTests
     private const string Instead = "Instead: ";
 
     /// <summary>
+    /// What the lines of a section are joined with when the section is held as
+    /// one string. A space, because the join exists so a name is read whole
+    /// wherever the wrapping put it, and nothing below reads a line boundary.
+    /// </summary>
+    private const char Joiner = ' ';
+
+    /// <summary>
     /// The value of <see cref="Instead"/> that makes an entry a gap, spelled as
     /// the register's own opening spells it.
     /// </summary>
@@ -69,12 +87,23 @@ public class RefusedTestRegisterTests
     };
 
     /// <summary>
-    /// One entry: the section heading, and the two fields it declares.
+    /// One entry: the section heading, the two fields it declares, and the
+    /// whole of the text under it.
     /// </summary>
     /// <param name="Title">The test that is refused, as the heading says it.</param>
     /// <param name="Needs">Which of the four needs it has, or null where it declares none.</param>
     /// <param name="Instead">What proves the property instead, or null where it declares none.</param>
-    private sealed record Entry(string Title, string? Needs, string? Instead);
+    /// <param name="Body">Every line under the heading, so a name is found wherever the wrapping put it.</param>
+    private sealed record Entry(string Title, string? Needs, string? Instead, string Body);
+
+    /// <summary>
+    /// One name the register spells for a test in this suite, and the entry it
+    /// was spelled in.
+    /// </summary>
+    /// <param name="Title">The entry that names it.</param>
+    /// <param name="Type">The type the name's second-to-last segment gives.</param>
+    /// <param name="Method">The method the name's last segment gives.</param>
+    private sealed record Reference(string Title, string Type, string Method);
 
     /// <summary>
     /// Every section that declares one of the two fields declares both. A
@@ -126,6 +155,44 @@ public class RefusedTestRegisterTests
     }
 
     /// <summary>
+    /// Every test this register names is a test this suite runs. A name that
+    /// resolves to nothing is the register saying a property is covered by
+    /// something that is not there, which is the one way an entry can leave the
+    /// gap count without the gap closing.
+    /// </summary>
+    [Fact]
+    public void EverySubstituteThisRegisterNamesIsATestThisSuiteRuns()
+    {
+        var missing = References()
+            .Where(r => Resolve(r) is null)
+            .Select(r => r.Type + "." + r.Method + ", named under: " + r.Title)
+            .ToList();
+
+        Assert.Empty(missing);
+    }
+
+    /// <summary>
+    /// Every entry that is not a gap names at least one test the reading above
+    /// found. Without this leg the reading fails open: a substitute written
+    /// outside backticks, or with a lower-case first letter, drops out of the
+    /// population and leaves the resolution leg green over a smaller set than
+    /// the register holds.
+    /// </summary>
+    [Fact]
+    public void EveryEntryThatIsNotAGapNamesATestTheReadingFinds()
+    {
+        var references = References();
+
+        var unread = Entries()
+            .Where(e => !IsGap(e))
+            .Where(e => !references.Any(r => string.Equals(r.Title, e.Title, StringComparison.Ordinal)))
+            .Select(e => e.Title)
+            .ToList();
+
+        Assert.Empty(unread);
+    }
+
+    /// <summary>
     /// The sentence the register closes with, for a given count of entries and
     /// of gaps.
     /// </summary>
@@ -167,6 +234,92 @@ public class RefusedTestRegisterTests
         string.Equals(entry.Instead, Nothing, StringComparison.Ordinal);
 
     /// <summary>
+    /// The method a name resolves to, or null where this suite carries no such
+    /// test. A method that exists and carries no fact attribute resolves to
+    /// null as well: the register names what proves a property, and a member
+    /// nothing runs proves none. <c>TheoryAttribute</c> derives from
+    /// <c>FactAttribute</c>, so both are reached by the one test.
+    ///
+    /// The type is matched on its simple name, because that is how the register
+    /// spells one. Two types of that name in two namespaces would be resolved
+    /// to whichever the walk reached first; this suite declares one namespace,
+    /// and the bound is stated rather than left to be assumed.
+    /// </summary>
+    /// <param name="reference">The name the register spells.</param>
+    /// <returns>The method, or null.</returns>
+    private static MethodInfo? Resolve(Reference reference)
+    {
+        var type = typeof(RefusedTestRegisterTests).Assembly
+            .GetTypes()
+            .FirstOrDefault(t => string.Equals(t.Name, reference.Type, StringComparison.Ordinal));
+
+        var method = type?.GetMethod(
+            reference.Method,
+            BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
+
+        return method?.GetCustomAttributes().Any(a => a is FactAttribute) == true ? method : null;
+    }
+
+    /// <summary>
+    /// Every name the register spells for a test in this suite. A name is a
+    /// backticked token of dot-separated segments where every segment begins
+    /// with an upper-case letter, which is how this suite spells a type and a
+    /// method and is not how a file name is spelled, so <c>testing.md</c> beside
+    /// one is not read as a test.
+    ///
+    /// It reads the whole of a section rather than the <c>Instead</c> line, so a
+    /// name that a re-wrap moved onto the next line is still read.
+    /// </summary>
+    /// <returns>The names, each with the entry that spelled it.</returns>
+    private static List<Reference> References()
+    {
+        var references = new List<Reference>();
+
+        foreach (var section in Sections())
+        {
+            foreach (var token in Backticked(section.Body))
+            {
+                var segments = token.Split('.');
+                if (segments.Length < 2 || !segments.All(IsUpperCamel))
+                {
+                    continue;
+                }
+
+                references.Add(new Reference(section.Title, segments[^2], segments[^1]));
+            }
+        }
+
+        return references;
+    }
+
+    /// <summary>
+    /// The spans of text between backticks, which are the odd-numbered pieces
+    /// of a split on the backtick.
+    /// </summary>
+    /// <param name="text">The text to read.</param>
+    /// <returns>The backticked spans.</returns>
+    private static IEnumerable<string> Backticked(string text)
+    {
+        var pieces = text.Split('`');
+
+        for (var i = 1; i < pieces.Length; i += 2)
+        {
+            yield return pieces[i];
+        }
+    }
+
+    /// <summary>
+    /// Whether a segment is spelled the way this suite spells a type or a
+    /// method: an upper-case letter, then letters, digits and underscores.
+    /// </summary>
+    /// <param name="segment">The segment.</param>
+    /// <returns>Whether it is spelled that way.</returns>
+    private static bool IsUpperCamel(string segment) =>
+        segment.Length > 0
+        && char.IsAsciiLetterUpper(segment[0])
+        && segment.All(c => char.IsAsciiLetterOrDigit(c) || c == '_');
+
+    /// <summary>
     /// The sections that are entries, which are the ones declaring both fields.
     /// </summary>
     /// <returns>The entries.</returns>
@@ -175,9 +328,12 @@ public class RefusedTestRegisterTests
 
     /// <summary>
     /// Every section of the document, with whichever of the two fields it
-    /// declares. The closing section declares neither and is not an entry;
-    /// nothing here names it, so a register whose last section is renamed is
-    /// read the same way.
+    /// declares and the whole of the text under it. The closing section
+    /// declares neither and is not an entry; nothing here names it, so a
+    /// register whose last section is renamed is read the same way.
+    ///
+    /// Text above the first heading is in no section, which is where the file
+    /// states how it is read rather than stating anything about a test.
     /// </summary>
     /// <returns>The sections.</returns>
     private static List<Entry> Sections()
@@ -186,6 +342,7 @@ public class RefusedTestRegisterTests
         var title = string.Empty;
         string? needs = null;
         string? instead = null;
+        var body = new List<string>();
         var open = false;
 
         foreach (var line in Lines())
@@ -194,15 +351,23 @@ public class RefusedTestRegisterTests
             {
                 if (open)
                 {
-                    sections.Add(new Entry(title, needs, instead));
+                    sections.Add(new Entry(title, needs, instead, string.Join(Joiner, body)));
                 }
 
                 title = line[3..];
                 needs = null;
                 instead = null;
+                body = new List<string>();
                 open = true;
                 continue;
             }
+
+            if (!open)
+            {
+                continue;
+            }
+
+            body.Add(line);
 
             if (line.StartsWith(Needs, StringComparison.Ordinal))
             {
@@ -216,7 +381,7 @@ public class RefusedTestRegisterTests
 
         if (open)
         {
-            sections.Add(new Entry(title, needs, instead));
+            sections.Add(new Entry(title, needs, instead, string.Join(Joiner, body)));
         }
 
         return sections;
