@@ -268,29 +268,40 @@ public class PassTimeBoundTests
             Direction = SyncDirection.TwoWay,
         };
 
-        foreach (var id in items)
+        foreach (var item in items.Select(ObservationOf))
         {
-            var item = new ItemObservation
-            {
-                LocalItemId = id,
-                PeerItemId = id,
-                Kind = "Movie",
-                ItemLockedHere = false,
-            };
-
-            item.Fields.Add(new FieldObservation
-            {
-                Field = "Overview",
-                LocalValue = null,
-                PeerValue = "what the peer said",
-                LastWrittenByThisPlugin = null,
-                FieldLockedHere = false,
-                FieldLockedOnPeer = false,
-            });
-
             request.Items.Add(item);
         }
 
         return request;
+    }
+
+    /// <summary>
+    /// One item carrying one field the peer has and this server does not, which
+    /// is the shape every case here counts rather than reads.
+    /// </summary>
+    /// <param name="id">The identifier on both sides.</param>
+    /// <returns>The observation.</returns>
+    private static ItemObservation ObservationOf(Guid id)
+    {
+        var item = new ItemObservation
+        {
+            LocalItemId = id,
+            PeerItemId = id,
+            Kind = "Movie",
+            ItemLockedHere = false,
+        };
+
+        item.Fields.Add(new FieldObservation
+        {
+            Field = "Overview",
+            LocalValue = null,
+            PeerValue = "what the peer said",
+            LastWrittenByThisPlugin = null,
+            FieldLockedHere = false,
+            FieldLockedOnPeer = false,
+        });
+
+        return item;
     }
 }
