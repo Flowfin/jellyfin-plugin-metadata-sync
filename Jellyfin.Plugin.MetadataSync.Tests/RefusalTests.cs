@@ -301,6 +301,20 @@ public class RefusalTests
                  "the row being asked about is there",
                  () => ConflictEntries.IsOwed(null!)),
 
+            ["Conflicts/ConflictGrouping.cs -> ArgumentNullException.ThrowIfNull(entries);"] =
+                (nameof(ConflictGroupingTests),
+                 nameof(ConflictGroupingTests.NoDecisionsAtAllIsRefused),
+                 nameof(ConflictGroupingTests.AnAccountWithNothingToTellHasNoLines),
+                 "the decisions to read the lines out of are there",
+                 () => ConflictGrouping.Of(null!)),
+
+            ["Conflicts/ConflictGrouping.cs -> ArgumentNullException.ThrowIfNull(entry);"] =
+                (nameof(ConflictGroupingTests),
+                 nameof(ConflictGroupingTests.ADecisionThatIsNotThereIsRefused),
+                 nameof(ConflictGroupingTests.DecisionsOneRuleTookToOneEndAreOneLine),
+                 "the decision being filed under a line is there",
+                 () => ConflictGrouping.Of(new ConflictEntry[] { null! })),
+
             ["References/ReferenceResolver.cs -> ArgumentNullException.ThrowIfNull(incoming);"] =
                 (nameof(ReferenceResolutionTests),
                  nameof(ReferenceResolutionTests.ResolvingAReferenceThatIsNotThereIsRefused),
