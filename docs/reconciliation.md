@@ -747,11 +747,37 @@ holds, exactly as the query means, and a leg asserts that it does. Without it
 the rule above would pass against an arrangement that quietly narrowed for the
 reader, which is a test asserting its own fixture.
 
-One more thing nothing holds. A stopped pass stops within one item, and it
-reports nothing about how far it got: the applier throws where the operator
-asked it to stop. Turning that into a result carrying the items already written
-is the pass's own bound, #37, and it is unchanged by the resumption above. What
-#38 landed is the record on the disk, not a result a stopped pass hands back.
+One more thing this section said nothing held, and it is held. A pass that
+reaches its time bound stops at an item boundary and hands back a result rather
+than throwing: `PassResult` carries a required member saying the pass did not
+finish, and the counts beside it are what it got through. That is the value #37
+asks a stopped pass to return, and `## A pass stops when its time is up` above
+is where the legs behind it are named rather than here. What still hands nothing
+back is a pass an operator cancelled, which throws where it was stopped because
+the caller asked for that and there is nobody left to hand a result to. What #38
+landed is the record on the disk, and the record and the result answer two
+different questions: what the next pass may pass over, and what this one did.
+
+The members that paragraph rests on are spellings rather than judgements, so
+they are held the way the absences under `## What exists, and what still does
+not` are and in the opposite direction. Each line below is one
+`ReconciliationStatementTests` looks for in the plugin's own sources, and the
+claim is that it finds every one of them, so a member renamed out from under
+this paragraph reds instead of leaving it describing a type that has moved.
+
+<!-- the spellings this page says the plugin's sources carry: one per line, the spelling first, read by ReconciliationStatementTests -->
+
+- `public required bool Finished`, the member a pass that stopped at its bound
+  answers with
+- `MinutesPerPass`, the bound it stops at
+
+<!-- end of the spellings the sources carry -->
+
+What this list cannot reach is the bound the absence list states about itself,
+pointing the other way. A line deleted from it stops being checked, so narrowing
+it is a change to what this page claims rather than a failure. And a spelling
+found anywhere in the plugin's sources satisfies it, so what is proved is that
+the name is in the tree and never that this paragraph describes what it does.
 
 The resumption is held by legs of its own. A pass that stops at each boundary
 its loop has is run to that boundary and then resumed, and the union of the two
