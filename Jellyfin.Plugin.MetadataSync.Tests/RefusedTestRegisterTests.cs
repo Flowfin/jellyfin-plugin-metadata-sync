@@ -271,26 +271,13 @@ public class RefusedTestRegisterTests
     /// name that a re-wrap moved onto the next line is still read.
     /// </summary>
     /// <returns>The names, each with the entry that spelled it.</returns>
-    private static List<Reference> References()
-    {
-        var references = new List<Reference>();
-
-        foreach (var section in Sections())
-        {
-            foreach (var token in Backticked(section.Body))
-            {
-                var segments = token.Split('.');
-                if (segments.Length < 2 || !segments.All(IsUpperCamel))
-                {
-                    continue;
-                }
-
-                references.Add(new Reference(section.Title, segments[^2], segments[^1]));
-            }
-        }
-
-        return references;
-    }
+    private static List<Reference> References() =>
+        Sections()
+            .SelectMany(section => Backticked(section.Body)
+                .Select(token => token.Split('.'))
+                .Where(segments => segments.Length >= 2 && segments.All(IsUpperCamel))
+                .Select(segments => new Reference(section.Title, segments[^2], segments[^1])))
+            .ToList();
 
     /// <summary>
     /// The spans of text between backticks, which are the odd-numbered pieces
