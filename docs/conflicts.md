@@ -365,23 +365,26 @@ writing together, which is the pair the window between them belongs to.
 What no route constructs is a pass. Nothing reads the peer, nothing turns items
 into the observations a plan is made from, and nothing schedules or starts any
 of it, so that chain exists in a test and nowhere else, and no field on any real
-library has been through it. A decision is still recorded nowhere. So a green
-run here says this rule set decides the cases above as this document writes
-them, and it says nothing yet about a library.
+library has been through it. A decision is still recorded nowhere, in a store
+that is built and registered and that nothing writes to. So a green run here says
+this rule set decides the cases above as this document writes them, and it says
+nothing yet about a library.
 
-One of the absences above is a spelling rather than a judgement, and it is held
-here rather than left to be read. The line below is a spelling
+Two of the absences above are spellings rather than judgements, and they are
+held here rather than left to be read. Each line below is a spelling
 `ConflictStatementTests` looks for in the plugin's own sources, and the claim is
 that it finds none, so the day a pass turns an item into the observation a plan
-is made from, the suite reds this page instead of the page going on saying
-nothing does. The paragraph above went stale once already, in the other
-direction, and what found it was somebody working on a neighbouring change
-rather than anybody reading this file.
+is made from, or hands what it decided to the log, the suite reds this page
+instead of the page going on saying nothing does. The paragraph above went stale
+once already, in the other direction, and what found it was somebody working on
+a neighbouring change rather than anybody reading this file.
 
 <!-- the spellings this page says appear nowhere in the plugin's sources: one per line, the spelling first, read by ConflictStatementTests -->
 
 - `new ItemObservation`, the construction that would turn an item into the
   observation a plan is made from
+- `ConflictEntries.From`, the call that would turn a decided plan into the rows
+  the log keeps
 
 <!-- end of the spellings that appear nowhere -->
 
@@ -389,7 +392,7 @@ That is a negative disclosure and it stays one. What is asserted is the absence
 this paragraph states, never that the absence is harmless, and a spelling that
 has arrived is a red suite rather than a line quietly deleted from the list.
 
-The list is one line because the rest of the paragraph is held elsewhere or not
+The list is two lines because the rest of the paragraph is held elsewhere or not
 at all, and both belong in writing. That nothing schedules or starts any of it
 is already refused by `SecurityPolicyTests` against the absences `SECURITY.md`
 rests on, so repeating it here would be a second declaration of one fact, which
@@ -397,10 +400,17 @@ is the arrangement where a reader's answer depends on which file they opened and
 which this board has already measured the cost of. That nothing reads the peer
 is a property of what this repository may reference, which
 `SuiteCounterpartyTests` reads from the other end and which no spelling in these
-sources would show. That a decision is recorded nowhere is a claim about a store
-that does not exist, and a spelling cannot name one. The last two stay prose, and
-a reader who takes the fence above for cover over the whole paragraph is reading
-it wider than it goes.
+sources would show. That one stays prose, and a reader who takes the fence above
+for cover over the whole paragraph is reading it wider than it goes.
+
+THE SECOND LINE IS WHY THIS PARAGRAPH CHANGED, AND WHAT IT SAID BEFORE WAS THAT
+A DECISION BEING RECORDED NOWHERE IS A CLAIM ABOUT A STORE THAT DOES NOT EXIST,
+SO NO SPELLING COULD NAME IT. The store exists. #48 built it, the entry point
+registers it as one instance for the whole server, and `docs/storage.md` is where
+what it keeps and what its bound costs are argued. What is absent is not the
+place a decision goes but the route that takes one there, and that route has a
+name: nothing derives the rows from a plan, so nothing hands the log anything to
+keep. A claim about a route is a claim about a call, and a call is a spelling.
 
 The two halves a pass is made of landed in #35 and #39. What would run them is
 #36, #38 and #40, the record an entry belongs in is #48, and the refusal a
