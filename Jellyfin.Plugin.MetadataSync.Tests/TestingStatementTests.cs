@@ -195,6 +195,16 @@ public class TestingStatementTests
     /// Whether a named route is in this tree. A name carrying a path separator is
     /// a file the project copied beside this binary; anything else is a type this
     /// assembly declares.
+    ///
+    /// This reads a path out of a document like the three legs behind
+    /// <see cref="DeclaredPath"/>, and it deliberately does not go through that
+    /// helper. <c>Path.GetFileName</c> cannot return a rooted path, so the
+    /// discard those three were fixed for cannot happen here. What it would cost
+    /// is a change of subject rather than a tightening: this leg resolves the
+    /// file NAME beside the binary, because the project copies those documents
+    /// there flat. A route written as <c>docs/testing.md</c> resolves today and
+    /// would answer no through a helper that keeps the directory the document
+    /// wrote, so moving it is a different leg rather than a safer one.
     /// </summary>
     private static bool Exists(string route)
     {

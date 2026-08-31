@@ -327,7 +327,7 @@ public class SecurityPolicyTests
     /// <param name="path">A path relative to the plugin project.</param>
     /// <returns>The copied file.</returns>
     private static string SourcePath(string path) =>
-        Path.Combine(_sources, path.Replace('/', Path.DirectorySeparatorChar));
+        DeclaredPath.Resolve("SECURITY.md", _sources, path);
 
     /// <summary>
     /// A copied source read back as the document would name it, relative to the
