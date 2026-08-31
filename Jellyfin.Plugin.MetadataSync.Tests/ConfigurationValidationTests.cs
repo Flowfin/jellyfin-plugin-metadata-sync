@@ -281,6 +281,74 @@ public class ConfigurationValidationTests
     }
 
     /// <summary>
+    /// A pass allowed no minutes, which is the one wrong bound that does not
+    /// read as wrong. A pass reaches its bound before its first item, so it
+    /// stops having written nothing on every run, and the symptom is a plugin
+    /// that is configured, refuses nothing and changes no library.
+    /// </summary>
+    /// <param name="minutes">The bound an operator, or a hand-edited file, asks for.</param>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void APassShorterThanOneMinuteIsRefused(int minutes)
+    {
+        var configuration = Configured();
+        configuration.MinutesPerPass = minutes;
+
+        var problem = Assert.Single(ConfigurationValidation.Validate(configuration, WhatTheServerHolds));
+
+        Assert.Equal(nameof(PluginConfiguration.MinutesPerPass), problem.Property);
+        Assert.Contains("at least 1 minute", problem.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A bound above the maximum, which is the setting used to undo the bound
+    /// it is: a pass allowed longer than a day is a pass that is still running
+    /// when the next one would start.
+    /// </summary>
+    [Fact]
+    public void APassAboveTheMaximumIsRefused()
+    {
+        var configuration = Configured();
+        configuration.MinutesPerPass = PluginConfiguration.MinutesPerPassMaximum + 1;
+
+        var problem = Assert.Single(ConfigurationValidation.Validate(configuration, WhatTheServerHolds));
+
+        Assert.Equal(nameof(PluginConfiguration.MinutesPerPass), problem.Property);
+        Assert.Contains("at most", problem.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The neighbours, one minute away at each end. Both are inside the range,
+    /// so a rule written with the comparison the wrong way round is caught here
+    /// rather than by an operator whose saved bound was rejected.
+    /// </summary>
+    /// <param name="minutes">The bound an operator asks for.</param>
+    [Theory]
+    [InlineData(1)]
+    [InlineData(PluginConfiguration.MinutesPerPassMaximum)]
+    [InlineData(PluginConfiguration.MinutesPerPassDefault)]
+    public void APassInsideTheRangeIsAccepted(int minutes)
+    {
+        var configuration = Configured();
+        configuration.MinutesPerPass = minutes;
+
+        Assert.Empty(ConfigurationValidation.Validate(configuration, WhatTheServerHolds));
+    }
+
+    /// <summary>
+    /// A configuration written before this property existed reads back at the
+    /// default rather than at a zero, for the reason the page above does, and
+    /// the default being inside the range is what makes that safe.
+    /// </summary>
+    [Fact]
+    public void AConfigurationThatSaysNothingAboutTheBoundIsAccepted()
+    {
+        Assert.Equal(PluginConfiguration.MinutesPerPassDefault, new PluginConfiguration().MinutesPerPass);
+        Assert.Empty(ConfigurationValidation.Validate(Configured(), WhatTheServerHolds));
+    }
+
+    /// <summary>
     /// A field name the register does not carry. The near miss is deliberate:
     /// the server calls it Overview and this is the name somebody reaches for.
     /// </summary>
@@ -429,18 +497,20 @@ public class ConfigurationValidationTests
         configuration.Format = ConfigurationFormat.Current + 1;
         configuration.Direction = (SyncDirection)7;
         configuration.ItemsPerRead = 0;
+        configuration.MinutesPerPass = 0;
         configuration.ParticipatingLibraries.Add(ALibraryThatWasRemoved);
         configuration.ExcludedFields.Add("Description");
 
         var problems = ConfigurationValidation.Validate(configuration, WhatTheServerHolds);
 
-        Assert.Equal(6, problems.Count);
+        Assert.Equal(7, problems.Count);
         Assert.Equal(
             new[]
             {
                 nameof(PluginConfiguration.Format),
                 nameof(PluginConfiguration.Direction),
                 nameof(PluginConfiguration.ItemsPerRead),
+                nameof(PluginConfiguration.MinutesPerPass),
                 nameof(PluginConfiguration.ParticipatingLibraries),
                 nameof(PluginConfiguration.ExcludedFields),
                 nameof(PluginConfiguration.PairingId),
@@ -477,6 +547,14 @@ public class ConfigurationValidationTests
         var pageAboveTheMaximum = Configured();
         pageAboveTheMaximum.ItemsPerRead = PluginConfiguration.ItemsPerReadMaximum + 1;
         arrangements.Add(pageAboveTheMaximum);
+
+        var passOfNoTime = Configured();
+        passOfNoTime.MinutesPerPass = 0;
+        arrangements.Add(passOfNoTime);
+
+        var passAboveTheMaximum = Configured();
+        passAboveTheMaximum.MinutesPerPass = PluginConfiguration.MinutesPerPassMaximum + 1;
+        arrangements.Add(passAboveTheMaximum);
 
         var absentLibrary = Configured();
         absentLibrary.ParticipatingLibraries.Add(ALibraryThatWasRemoved);

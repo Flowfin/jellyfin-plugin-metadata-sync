@@ -80,11 +80,11 @@ public class PassResumptionTests
         var first = stage == StoppedAt.TheWrite ? new TargetThatStops(at) : new TargetThatStops(Guid.Empty);
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => new Pass(new Applier(first, new RecordingWrittenValues()), progress)
+            () => new Pass(new Applier(first, new RecordingWrittenValues()), progress, TimeProvider.System, PassClock.NotReached)
                 .RunAsync(RequestFor(items), CancellationToken.None));
 
         var second = new TargetThatStops(Guid.Empty);
-        var resumed = await new Pass(new Applier(second, new RecordingWrittenValues()), progress)
+        var resumed = await new Pass(new Applier(second, new RecordingWrittenValues()), progress, TimeProvider.System, PassClock.NotReached)
             .RunAsync(RequestFor(items), CancellationToken.None);
 
         var written = first.Written.Concat(second.Written).Select(item => item.LocalItemId).ToList();
@@ -115,11 +115,11 @@ public class PassResumptionTests
         var progress = new ProgressThatStops(items[2], afterRecording: true);
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => new Pass(new Applier(new TargetThatStops(Guid.Empty), new RecordingWrittenValues()), progress)
+            () => new Pass(new Applier(new TargetThatStops(Guid.Empty), new RecordingWrittenValues()), progress, TimeProvider.System, PassClock.NotReached)
                 .RunAsync(RequestFor(items), CancellationToken.None));
 
         var target = new TargetThatStops(Guid.Empty);
-        var resumed = await new Pass(new Applier(target, new RecordingWrittenValues()), progress)
+        var resumed = await new Pass(new Applier(target, new RecordingWrittenValues()), progress, TimeProvider.System, PassClock.NotReached)
             .RunAsync(RequestFor(items), CancellationToken.None);
 
         Assert.Equal(new[] { items[3] }, target.Written.Select(item => item.LocalItemId).ToArray());
@@ -141,11 +141,11 @@ public class PassResumptionTests
         var progress = new RecordingPassProgress();
 
         var first = new TargetThatStops(Guid.Empty);
-        await new Pass(new Applier(first, new RecordingWrittenValues()), progress)
+        await new Pass(new Applier(first, new RecordingWrittenValues()), progress, TimeProvider.System, PassClock.NotReached)
             .RunAsync(RequestFor(items), CancellationToken.None);
 
         var second = new TargetThatStops(Guid.Empty);
-        var again = await new Pass(new Applier(second, new RecordingWrittenValues()), progress)
+        var again = await new Pass(new Applier(second, new RecordingWrittenValues()), progress, TimeProvider.System, PassClock.NotReached)
             .RunAsync(RequestFor(items), CancellationToken.None);
 
         Assert.Equal(3, first.Written.Count);
@@ -168,7 +168,7 @@ public class PassResumptionTests
         var progress = new ProgressThatStops(items[1], afterRecording: true);
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => new Pass(new Applier(new TargetThatStops(Guid.Empty), new RecordingWrittenValues()), progress)
+            () => new Pass(new Applier(new TargetThatStops(Guid.Empty), new RecordingWrittenValues()), progress, TimeProvider.System, PassClock.NotReached)
                 .RunAsync(RequestFor(items), CancellationToken.None));
 
         Assert.Equal(new[] { items[0], items[1] }.Order().ToList(), progress.CompletedItems(_pairing).Order().ToList());
@@ -189,13 +189,13 @@ public class PassResumptionTests
         var progress = new ProgressThatStops(items[0], afterRecording: true);
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => new Pass(new Applier(new TargetThatStops(Guid.Empty), new RecordingWrittenValues()), progress)
+            () => new Pass(new Applier(new TargetThatStops(Guid.Empty), new RecordingWrittenValues()), progress, TimeProvider.System, PassClock.NotReached)
                 .RunAsync(RequestFor(items), CancellationToken.None));
 
         var target = new TargetThatStops(Guid.Empty);
         var written = new RecordingWrittenValues();
 
-        await new Pass(new Applier(target, written), progress)
+        await new Pass(new Applier(target, written), progress, TimeProvider.System, PassClock.NotReached)
             .RunAsync(RequestFor(items, peerValue: "what the peer says now"), CancellationToken.None);
 
         Assert.Equal(_whatThePeerSaysNow, written.Recorded.Select(record => record.Value).ToArray());
@@ -266,7 +266,7 @@ public class PassResumptionTests
         var items = Items(1);
         var progress = new RecordingPassProgress();
 
-        var result = await new Pass(new Applier(new TargetThatStops(Guid.Empty), new RecordingWrittenValues()), progress)
+        var result = await new Pass(new Applier(new TargetThatStops(Guid.Empty), new RecordingWrittenValues()), progress, TimeProvider.System, PassClock.NotReached)
             .RunAsync(RequestFor(items, peerValue: null), CancellationToken.None);
 
         Assert.Equal(1, result.ItemsPassedOver);
@@ -287,7 +287,7 @@ public class PassResumptionTests
         var items = Items(1);
         var progress = new RecordingPassProgress();
 
-        var result = await new Pass(new Applier(new DeferringPlanTarget(), new RecordingWrittenValues()), progress)
+        var result = await new Pass(new Applier(new DeferringPlanTarget(), new RecordingWrittenValues()), progress, TimeProvider.System, PassClock.NotReached)
             .RunAsync(RequestFor(items), CancellationToken.None);
 
         Assert.Equal(1, result.ItemsDeferred);
@@ -312,7 +312,7 @@ public class PassResumptionTests
         var request = RequestFor(items);
         request.ExcludedFields.Add("Overview");
 
-        var result = await new Pass(new Applier(target, new RecordingWrittenValues()), progress)
+        var result = await new Pass(new Applier(target, new RecordingWrittenValues()), progress, TimeProvider.System, PassClock.NotReached)
             .RunAsync(request, CancellationToken.None);
 
         Assert.Empty(target.Written);
@@ -325,7 +325,7 @@ public class PassResumptionTests
     [Fact]
     public void APassWithNoApplierIsRefused()
     {
-        Assert.Throws<ArgumentNullException>(() => new Pass(null!, new RecordingPassProgress()));
+        Assert.Throws<ArgumentNullException>(() => new Pass(null!, new RecordingPassProgress(), TimeProvider.System, PassClock.NotReached));
     }
 
     /// <summary>
@@ -337,7 +337,7 @@ public class PassResumptionTests
     public void APassWithNowhereToRecordProgressIsRefused()
     {
         Assert.Throws<ArgumentNullException>(
-            () => new Pass(new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()), null!));
+            () => new Pass(new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()), null!, TimeProvider.System, PassClock.NotReached));
     }
 
     /// <summary>
@@ -350,7 +350,7 @@ public class PassResumptionTests
         Assert.Throws<ArgumentNullException>(
             () =>
             {
-                _ = new Pass(new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()), new RecordingPassProgress())
+                _ = new Pass(new Applier(new RecordingPlanTarget(), new RecordingWrittenValues()), new RecordingPassProgress(), TimeProvider.System, PassClock.NotReached)
                     .RunAsync(null!, CancellationToken.None);
             });
     }
@@ -368,7 +368,7 @@ public class PassResumptionTests
         var target = new TargetThatStops(Guid.Empty);
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => new Pass(new Applier(target, new RecordingWrittenValues()), progress)
+            () => new Pass(new Applier(target, new RecordingWrittenValues()), progress, TimeProvider.System, PassClock.NotReached)
                 .RunAsync(RequestFor(items), new CancellationToken(canceled: true)));
 
         Assert.Empty(target.Written);
@@ -388,7 +388,7 @@ public class PassResumptionTests
         var progress = new RecordingPassProgress();
         var target = new TargetThatStops(Guid.Empty);
 
-        var result = await new Pass(new Applier(target, new RecordingWrittenValues()), progress)
+        var result = await new Pass(new Applier(target, new RecordingWrittenValues()), progress, TimeProvider.System, PassClock.NotReached)
             .RunAsync(RequestFor(items), CancellationToken.None);
 
         Assert.Equal(items, target.Written.Select(item => item.LocalItemId).ToList());
@@ -410,13 +410,13 @@ public class PassResumptionTests
         var progress = new ProgressThatStops(items[0], afterRecording: true);
 
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => new Pass(new Applier(new TargetThatStops(Guid.Empty), new RecordingWrittenValues()), progress)
+            () => new Pass(new Applier(new TargetThatStops(Guid.Empty), new RecordingWrittenValues()), progress, TimeProvider.System, PassClock.NotReached)
                 .RunAsync(RequestFor(items), CancellationToken.None));
 
         var target = new TargetThatStops(Guid.Empty);
         var other = new Guid("dddddddd-0000-0000-0000-000000000004");
 
-        var elsewhere = await new Pass(new Applier(target, new RecordingWrittenValues()), progress)
+        var elsewhere = await new Pass(new Applier(target, new RecordingWrittenValues()), progress, TimeProvider.System, PassClock.NotReached)
             .RunAsync(RequestFor(items, pairing: other), CancellationToken.None);
 
         Assert.Equal(0, elsewhere.ItemsAlreadyDone);

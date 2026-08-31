@@ -1,13 +1,15 @@
 namespace Jellyfin.Plugin.MetadataSync.Reconciliation;
 
 /// <summary>
-/// What a pass that ran to the end did.
+/// What a pass did, and whether it reached the end of the plan.
 /// </summary>
 /// <remarks>
-/// It exists only where a pass finished. A pass an operator stopped throws where
-/// it was stopped and answers nothing, and what it got through is on the disk
-/// rather than in a value nobody received; turning an interruption into a result
-/// carrying the items already written is the pass's own bound, which is #37.
+/// TWO OF THE THREE WAYS A PASS CAN END PRODUCE ONE OF THESE AND THE THIRD DOES
+/// NOT, and <see cref="Finished"/> is what separates the two that do. A pass that
+/// reached the end of its plan answers with one, and so does a pass that stopped
+/// at its time bound; a pass an operator cancelled throws where it was stopped
+/// and answers nothing, because the caller asked for that and there is nobody
+/// left to hand a result to.
 /// <para>
 /// The four counts of <see cref="ApplyResult"/> are the same four numbers summed
 /// over the items this pass applied, and <see cref="ItemsAlreadyDone"/> is the
@@ -51,4 +53,27 @@ public readonly record struct PassResult
     /// with, and this one therefore did not consider.
     /// </summary>
     public required int ItemsAlreadyDone { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether the pass reached the end of its plan.
+    /// </summary>
+    /// <remarks>
+    /// False means the pass stopped at its time bound with items left in the
+    /// plan. It is not a failure and nothing was lost: the record of what this
+    /// pass finished with is kept, and the pass after it continues from there
+    /// rather than reading the library again.
+    /// <para>
+    /// It is required like the five counts beside it, so a sixth member added the
+    /// same way is a compile error at every construction rather than a default
+    /// nobody set. A pass that always said one thing would satisfy a member with
+    /// a default and satisfy nothing else, which is why the suite asserts it in
+    /// both directions.
+    /// </para>
+    /// <para>
+    /// The counts beside it are what the pass got through before it stopped,
+    /// which is the value #37 says a stopped pass never handed anybody: what it
+    /// did was on the disk and in nothing a caller received.
+    /// </para>
+    /// </remarks>
+    public required bool Finished { get; init; }
 }

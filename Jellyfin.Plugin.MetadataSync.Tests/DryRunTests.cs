@@ -166,7 +166,7 @@ public class DryRunTests
         var intended = DryRun.Of(RequestFor(items), progress);
 
         var target = new TargetThatStops(Guid.Empty);
-        await new Pass(new Applier(target, new RecordingWrittenValues()), progress)
+        await new Pass(new Applier(target, new RecordingWrittenValues()), progress, TimeProvider.System, PassClock.NotReached)
             .RunAsync(RequestFor(items), CancellationToken.None);
 
         Assert.Equal(

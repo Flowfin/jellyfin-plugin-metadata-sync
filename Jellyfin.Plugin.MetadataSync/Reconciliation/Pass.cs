@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Jellyfin.Plugin.MetadataSync.Configuration;
 using Jellyfin.Plugin.MetadataSync.Store;
 
 namespace Jellyfin.Plugin.MetadataSync.Reconciliation;
@@ -55,38 +56,85 @@ namespace Jellyfin.Plugin.MetadataSync.Reconciliation;
 /// little still records a line per item.
 /// </para>
 /// <para>
+/// A PASS AN OPERATOR STOPPED AND A PASS THAT RAN OUT OF TIME LEAVE BY
+/// DIFFERENT DOORS, and the difference is the whole of #315. A cancellation
+/// throws where it was stopped, because the caller asked for that and there is
+/// nobody left to hand a result to. The time bound returns instead: the pass
+/// stops at an item boundary, keeps what it recorded, and answers with a result
+/// that says it did not finish. Both keep the resume point, and only a pass that
+/// reached the end of the plan clears it.
+/// </para>
+/// <para>
+/// THE CLOCK IS INJECTED AND IT IS ONE SERVER'S, WHICH IS THE THING TO READ
+/// BEFORE ADDING A SECOND USE OF IT. What is measured here is elapsed time on
+/// the machine this pass runs on, compared against a number out of the
+/// configuration and against nothing on the peer. The invariant #46 declares is
+/// about a stamp from one server held against the other's, and this cannot make
+/// that comparison: no peer stamp is on any type this file can reach. The lint
+/// row for that invariant carries an allowance naming this file, so a clock
+/// arriving here is a decision a reader meets rather than an absence.
+/// </para>
+/// <para>
 /// What it does not do. It does not read either server, which happens before a
 /// request exists. It does not decide anything, which is the planner's. It does
-/// not report how far a stopped pass got, which is #37: a stopped pass throws
-/// where it was stopped, and what it got through is on the disk rather than in a
-/// value nobody received.
+/// not bound how many writes it makes per unit of time, which wants a
+/// measurement against a real library and is the half of #37 still open.
 /// </para>
 /// </remarks>
 public sealed class Pass
 {
     private readonly Applier _applier;
     private readonly IPassProgress _progress;
+    private readonly TimeProvider _time;
+    private readonly TimeSpan _limit;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Pass"/> class.
     /// </summary>
     /// <param name="applier">The half of a pass that writes.</param>
     /// <param name="progress">The record of how far a pass got.</param>
-    /// <exception cref="ArgumentNullException">There is nothing to write through, or nowhere to record how far the pass got.</exception>
+    /// <param name="time">The clock the pass's own elapsed time is read from.</param>
+    /// <param name="limit">
+    /// How long this pass may run, which is
+    /// <see cref="PluginConfiguration.MinutesPerPass"/> for a pass an operator
+    /// configured.
+    /// </param>
+    /// <exception cref="ArgumentNullException">There is nothing to write through, nowhere to record how far the pass got, or no clock to measure the pass against.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The pass is allowed no time at all, which is a pass that stops before its first item rather than a pass that runs briefly.</exception>
     /// <remarks>
     /// The progress record is required rather than optional, for the reason the
     /// applier's store is. A pass that could be built without one would have a
     /// path on which an interruption loses everything the pass did, and the next
     /// pass would write the whole library again; a default argument would be the
     /// way that arrives.
+    /// <para>
+    /// The bound is the same shape and is here for a sharper version of the same
+    /// reason. There is deliberately no second constructor and no overload
+    /// without it: an unbounded overload beside a bounded one leaves every
+    /// existing caller on the unbounded path, which is a bound that exists and is
+    /// not in force. The maximum is not checked here. It bounds what an operator
+    /// may express rather than what this type can do, so it lives in
+    /// <c>ConfigurationValidation</c> and a second copy of it here would be a
+    /// second place that range is decided - the same split <c>ItemReader</c>
+    /// already makes for the page size.
+    /// </para>
+    /// <para>
+    /// The clock is taken rather than read, so a test arranges a pass that runs
+    /// out of time with nothing running and no waiting, and the plugin holds no
+    /// ambient clock anywhere.
+    /// </para>
     /// </remarks>
-    public Pass(Applier applier, IPassProgress progress)
+    public Pass(Applier applier, IPassProgress progress, TimeProvider time, TimeSpan limit)
     {
         ArgumentNullException.ThrowIfNull(applier);
         ArgumentNullException.ThrowIfNull(progress);
+        ArgumentNullException.ThrowIfNull(time);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(limit, TimeSpan.Zero);
 
         _applier = applier;
         _progress = progress;
+        _time = time;
+        _limit = limit;
     }
 
     /// <summary>
@@ -95,7 +143,7 @@ public sealed class Pass
     /// </summary>
     /// <param name="request">What the two servers hold, and what the operator asked for.</param>
     /// <param name="cancellationToken">Stops a pass an operator asked to stop.</param>
-    /// <returns>What the pass did, where it ran to the end.</returns>
+    /// <returns>What the pass did, and whether it reached the end of the plan.</returns>
     /// <exception cref="ArgumentNullException">There is no request to run from.</exception>
     /// <remarks>
     /// The refusal is in this method and the work is in the one below it, so a
@@ -124,10 +172,30 @@ public sealed class Pass
         var fieldsWritten = 0;
         var itemsPassedOver = 0;
         var itemsDeferred = 0;
+        var finished = true;
+
+        // Read once, before the first item, and never again. A start re-read
+        // inside the loop measures the last item instead of the pass, which is a
+        // bound that can never be reached.
+        var startedAt = _time.GetTimestamp();
 
         foreach (var item in plan.Items)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            // Before the item and never during it. An item is the boundary this
+            // pass can stop at, because the record that an item is finished with
+            // is written after the applier returns from it; stopping anywhere
+            // inside would be stopping at a point the resume has no name for.
+            //
+            // The bound is reached rather than exceeded: a pass that has used its
+            // whole allowance stops instead of starting one more item on the
+            // strength of having a fraction of a second left.
+            if (_time.GetElapsedTime(startedAt) >= _limit)
+            {
+                finished = false;
+                break;
+            }
 
             var one = new Plan
             {
@@ -159,11 +227,20 @@ public sealed class Pass
             }
         }
 
-        // The pass finished, so what it recorded is no longer anybody's resume
-        // point. Cleared here rather than at the next pass's start: a record
-        // left behind would make the next pass over this pairing skip every item
-        // this one wrote.
-        _progress.Cleared(request.PairingId);
+        // Cleared where the pass reached the end of the plan and nowhere else.
+        // Cleared here rather than at the next pass's start: a record left behind
+        // would make the next pass over this pairing skip every item this one
+        // wrote.
+        //
+        // THE CONDITION IS THE HALF THIS METHOD IS EASIEST TO BREAK ON. A pass
+        // stopped by the bound leaves through the same return as a pass that
+        // finished, and routing it through this line as well would clear the
+        // resume point of a pass that has not done the work - so the next pass
+        // would start the library again with nothing saying so.
+        if (finished)
+        {
+            _progress.Cleared(request.PairingId);
+        }
 
         return new PassResult
         {
@@ -172,6 +249,7 @@ public sealed class Pass
             ItemsPassedOver = itemsPassedOver,
             ItemsDeferred = itemsDeferred,
             ItemsAlreadyDone = skipped,
+            Finished = finished,
         };
     }
 }

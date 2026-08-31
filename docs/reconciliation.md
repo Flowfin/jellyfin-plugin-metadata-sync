@@ -194,14 +194,16 @@ Nothing is locked across a page, so an item can still change between the page it
 arrived on and the moment a write is attempted. That window is `## The window
 between planning and applying` below, and it is not narrowed by anything here.
 
-**The bound that is here is a setting now, and this paragraph said it was a
-constant.** Three of the four bounds #37 names are still not here. How many
+**Two of the four bounds #37 names are here now, and this paragraph said three
+were missing.** How long a pass may run was one of the three, on the reasoning
+that it had no pass to bound; a pass exists and the bound is the section on a
+pass stopping when its time is up, below. What is still missing is two. How many
 resolutions may be in flight is a property of a contract this plugin does not
-reference, how many writes per unit of time wants a measurement against a real
-library rather than a number chosen in front of an operator, and how long a pass
-may run has no pass to bound. A bound lands with the thing it bounds, so those
-three wait on the thing rather than on the number, and a setting offered for any
-of them would be one an operator can move with nothing behind it.
+reference, and how many writes per unit of time wants a measurement against a
+real library rather than a number chosen in front of an operator. A bound lands
+with the thing it bounds, so those two wait on the thing rather than on the
+number, and a setting offered for either would be one an operator can move with
+nothing behind it.
 
 The fourth bound is what #37 asks of it: a named constant with a default, in
 configuration, with a stated maximum the configuration cannot exceed.
@@ -609,10 +611,72 @@ resumes. The other ordering costs a library left unsynced with nothing saying so
 and the choice between them is not close. `docs/storage.md` states the same
 residual where the record is argued.
 
-It reports nothing about how far a stopped pass got, and that is unchanged. A
-stopped pass throws where it was stopped; what it got through is on the disk
-rather than in a value nobody received. Turning an interruption into a result is
-still #37.
+**What a stopped pass reports depends on what stopped it.** An operator who
+cancels a pass gets an exception where it was stopped and no result at all: they
+asked for that, and there is nobody left to hand a value to. A pass that ran out
+of time gets a result. Both keep what they recorded, so the pass after either one
+continues rather than starting the library again. Turning a cancellation into a
+result is still #37.
+
+## A pass stops when its time is up
+
+A pass over a large library, on a server that is also doing something else, ends
+when it has done everything or when it has been running long enough. The second
+of those is a bound and it is the same shape as the page size above: a named
+constant with a default, in configuration, with a stated maximum the
+configuration cannot exceed.
+
+`PluginConfiguration.MinutesPerPass` is where an operator says how long,
+`MinutesPerPassDefault` is what they get if they say nothing, and
+`MinutesPerPassMaximum` is the most they may ask for. The numbers are not
+restated here, for the reason the page size's are not: the suite reads all three
+and a copy in this page would be a second answer that drifts against them.
+`ConfigurationValidation` refuses a bound outside the range and names the
+property in the sentence, so a number an operator can save is a number a pass can
+read.
+
+**Stopping is not failing, and the difference is the whole of the design.** A
+pass that reaches the bound stops at an item boundary and returns; it does not
+throw. The result says the pass did not finish, and the counts beside that say
+what it got through, which is the value #37 observes a stopped pass never handed
+anybody. The record of which items this pass finished with is kept rather than
+cleared, so the pass that runs next continues from there. Only a pass that
+reached the end of its plan clears it, and routing the stopped path through that
+same exit is the one-line mistake this section is written against: the next pass
+would start the library again with nothing saying so.
+
+**The boundary is an item, because an item is the only boundary a resume has a
+name for.** The record that an item is finished with is written after the applier
+has returned from it, so a pass stopped anywhere inside an item would be stopped
+at a point the resume cannot reason about. The bound is therefore read before
+each item and never during one, and it is read against a start taken once before
+the loop: a start re-read inside it would measure the last item instead of the
+pass, which is a bound nothing can reach.
+
+**The range is refused at both ends and clamped at neither**, for the reason the
+page size's ends are. The lower end is the one worth reading. A pass allowed no
+time reaches its bound before its first item, so it stops having written nothing,
+on every run and for ever, and the symptom is a plugin that is configured, runs,
+refuses nothing and changes no library. It is refused twice, in two senses:
+`ConfigurationValidation` refuses the file an operator saved, and `Pass` refuses
+the argument it is handed, because a caller inside this plugin is not an operator
+and does not come through the configuration. The maximum is refused in the first
+place only, since it bounds what an operator may express rather than what the
+type can do.
+
+**The clock is handed to the pass rather than read by it.** This plugin holds no
+ambient clock and the bound did not add one. `Pass` takes a time source, and the
+elapsed time it measures is one machine's, held against a number out of the
+configuration and against nothing at all on the peer. That is a different subject
+from the invariant which refuses a stamp from one server compared against the
+other's, and the invariant's own rule now carries the two spellings a clock
+arrives under, with an allowance naming this file and the reason, so the decision
+is one a reader meets rather than an absence. What it costs is under what holds
+this up, below.
+
+There is one constructor and no overload without the bound. An unbounded overload
+beside a bounded one would leave every existing caller on the unbounded path,
+which is a bound that exists and is not in force.
 
 ## What holds this up
 
@@ -640,13 +704,28 @@ catch every failure reddens the one that says a defect stops the pass. What
 nothing holds is the next pass picking a deferred item up, because there is no
 next pass to hold.
 
-One allowance was added to the invariant lint for this, and it is named here
+Two allowances have been added to the invariant lint, and they are named here
 because a lint quietly narrowed is worse than one that reds. The rule that
 refuses a timestamp compares a stamp from one server against a stamp from the
-other, and the file that writes reads this server's stamp and holds it against
-this server's own earlier reading. The rule's record now carries a file and the
+other. The file that writes reads this server's stamp and holds it against this
+server's own earlier reading. The file that runs a pass reads a clock to measure
+how long the pass has been going, which is one machine's elapsed time compared
+against a setting and against nothing on the peer; the rule's pattern gained the
+two spellings a clock arrives under in the same change, because until then the
+rule's own record said an injected clock spelled none of them, and a bound
+arriving under such a spelling would have been a clock in this plugin that
+nothing recorded. In both cases the rule's record carries the file and the
 reason, the rule still refuses that text from anywhere else, and the suite
 refuses an allowance naming a file that is not in the tree.
+
+The time bound is refused by a machine as well, and each half was proved by
+breaking it. Routing the stopped path through the exit that clears the resume
+point reddens the case that asserts a stopped pass keeps it and the case that
+asserts the pass after it covers only the remainder. Deleting that exit
+altogether reddens the neighbour that asserts a finished pass still clears it,
+along with three cases about resumption that have nothing to do with the bound.
+Re-reading the start inside the loop reddens four, including the one that counts
+how many times the clock was read. All three were run.
 
 An item being the unit is held by a pair rather than by one test. A plan whose
 third row is refused is asserted to leave the item holding what it held, and the

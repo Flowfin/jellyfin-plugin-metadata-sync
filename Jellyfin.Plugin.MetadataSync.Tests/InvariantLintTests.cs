@@ -138,17 +138,19 @@ public class InvariantLintTests
             Invariant: "No rule compares a timestamp from one server against a timestamp from the other, because nothing establishes that the two clocks are comparable.",
             DeclaredBy: "#46",
             Kind: Refusal.AnyOccurrence,
-            TokenPatterns: new[] { "DateLastSaved", "DateModified", "DateTime.UtcNow", "DateTime.Now", "DateTimeOffset.UtcNow", "DateTimeOffset.Now" },
+            TokenPatterns: new[] { "DateLastSaved", "DateModified", "DateTime.UtcNow", "DateTime.Now", "DateTimeOffset.UtcNow", "DateTimeOffset.Now", "TimeProvider", "Stopwatch" },
             AllowedIn: new[]
             {
                 ("LibraryPlanTarget.cs",
                  "Reads this server's last-saved stamp on an item it fetched, and compares it against the same server's earlier reading of the same item, which is #41. That is one clock held against itself. The rule is about a stamp from one server held against a stamp from the other, and this file cannot make that comparison: the peer's stamp is on no type it can reach. The stamp leaves the file as a string, so nothing downstream can order two of them."),
+                ("Pass.cs",
+                 "Takes a clock and reads elapsed time on it, to stop a pass that has run for as long as the configuration allows, which is #315. That is one machine's clock held against a number out of the configuration and against nothing at all on the peer, and this file could not make the comparison the invariant is about: no peer stamp is on any type it reaches, and the only value it derives from the clock is a duration it compares with a setting. The two tokens that reach it were added to the pattern in the same change, because the reach this rule declared for itself said an injected clock spelled none of them - so a bound arriving under that spelling would have been a clock in this plugin that nothing recorded. What the allowance costs is what the four on the file-system rule cost: a second, different reading of the clock added to this file for another reason is not refused by this rule, and what stands against that is the review."),
             },
             Regression: "if (local.DateLastSaved > peer.DateLastSaved)",
             RegressionIsTheMistakeThat: "is the obvious conflict rule, and it hands every field to whichever server's clock is ahead, permanently and silently.",
             NearMiss: "if (local.LastValueWrittenByThisPlugin is not null)",
             NearMissIsTheNeighbourThat: "answers the same question causally instead of temporally, which is the mechanism #16 provides in place of a clock.",
-            CannotCatch: "the comparison itself. It refuses the ingredients rather than the dish, so two timestamps obtained under other names and compared would pass, and an injected clock read through an interface spells none of these tokens."),
+            CannotCatch: "the comparison itself. It refuses the ingredients rather than the dish, so two timestamps obtained under other names and compared would pass. The second half of that sentence said an injected clock read through an interface spelled none of these tokens, and #315 narrowed it rather than closing it: the two clock types this runtime hands out are in the pattern now, so a bound cannot arrive under either without an allowance, and a clock behind an interface this plugin declares itself, or a delegate that returns a number, still spells nothing here."),
 
         new Rule(
             Id: "no-direction-comparison-outside-the-direction-type",

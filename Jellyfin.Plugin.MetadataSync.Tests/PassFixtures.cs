@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Jellyfin.Plugin.MetadataSync.Configuration;
 using Jellyfin.Plugin.MetadataSync.Reconciliation;
 using Jellyfin.Plugin.MetadataSync.Store;
 
@@ -37,6 +38,76 @@ internal enum StoppedAt
     /// this item.
     /// </summary>
     AfterTheRecord,
+}
+
+/// <summary>
+/// The bound a pass carries in a case that is not about the bound.
+/// </summary>
+/// <remarks>
+/// <see cref="Pass"/> takes the bound at construction and offers no overload
+/// without one, so every case has to name a number. A case about resumption
+/// wants the bound never to be the thing that ended the pass, and the honest way
+/// to say that is the longest pass an operator may ask for, held against a real
+/// clock: a suite run that took a day would fail on this before it failed on
+/// anything else, which is the reading this constant is worth.
+/// </remarks>
+internal static class PassClock
+{
+    /// <summary>
+    /// The longest bound the configuration admits, which no case in this suite
+    /// runs long enough to reach.
+    /// </summary>
+    internal static readonly TimeSpan NotReached =
+        TimeSpan.FromMinutes(PluginConfiguration.MinutesPerPassMaximum);
+}
+
+/// <summary>
+/// A clock that moves by a fixed step every time it is read.
+/// </summary>
+/// <remarks>
+/// A pass reads the clock once before the loop and once before each item, so a
+/// step per reading puts the bound at a known item rather than at a moment that
+/// depends on how fast the machine running the suite is. Nothing waits and
+/// nothing sleeps.
+/// <para>
+/// The frequency is one tick, so a timestamp here is a tick and the arithmetic
+/// <see cref="TimeProvider.GetElapsedTime(long)"/> does is exact. A frequency
+/// that did not divide evenly would make a case that stops at the third item
+/// stop at the second on some runs, which is the flake this avoids by choosing
+/// the unit rather than by widening the assertion.
+/// </para>
+/// </remarks>
+internal sealed class ClockThatAdvances : TimeProvider
+{
+    private readonly long _step;
+    private long _now;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ClockThatAdvances"/> class.
+    /// </summary>
+    /// <param name="step">How far the clock moves between two readings.</param>
+    internal ClockThatAdvances(TimeSpan step)
+    {
+        _step = step.Ticks;
+    }
+
+    /// <summary>
+    /// Gets how many times the clock was read.
+    /// </summary>
+    public int Readings { get; private set; }
+
+    /// <inheritdoc />
+    public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+
+    /// <inheritdoc />
+    public override long GetTimestamp()
+    {
+        Readings++;
+
+        var now = _now;
+        _now += _step;
+        return now;
+    }
 }
 
 /// <summary>

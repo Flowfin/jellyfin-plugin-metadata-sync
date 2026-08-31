@@ -87,6 +87,7 @@ public class ConfigurationRoundTripTests
     [InlineData(nameof(PluginConfiguration.ParticipatingLibraries))]
     [InlineData(nameof(PluginConfiguration.ExcludedFields))]
     [InlineData(nameof(PluginConfiguration.ItemsPerRead))]
+    [InlineData(nameof(PluginConfiguration.MinutesPerPass))]
     [InlineData(nameof(PluginConfiguration.Format))]
     public void TheComparisonNoticesAValueThatDidNotSurvive(string property)
     {
@@ -109,6 +110,9 @@ public class ConfigurationRoundTripTests
                 break;
             case nameof(PluginConfiguration.ItemsPerRead):
                 damaged.ItemsPerRead = PluginConfiguration.ItemsPerReadDefault;
+                break;
+            case nameof(PluginConfiguration.MinutesPerPass):
+                damaged.MinutesPerPass = PluginConfiguration.MinutesPerPassDefault;
                 break;
             case nameof(PluginConfiguration.Format):
                 damaged.Format = ConfigurationFormat.Absent;
@@ -178,6 +182,9 @@ public class ConfigurationRoundTripTests
             // the default reads back at the default whether or not the property
             // travelled.
             ItemsPerRead = PluginConfiguration.ItemsPerReadDefault + 1,
+
+            // And the same again for the bound on a pass, for the same reason.
+            MinutesPerPass = PluginConfiguration.MinutesPerPassDefault + 1,
         };
 
         configuration.ParticipatingLibraries.Add(Guid.Parse("11111111-1111-1111-1111-111111111111"));
