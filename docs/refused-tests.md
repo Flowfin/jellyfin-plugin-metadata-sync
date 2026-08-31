@@ -8,6 +8,18 @@ An entry whose `Instead` is `nothing` is a gap. It stays in this file until
 something covers it, because a gap that is written down can be argued with and
 a gap that is absent cannot.
 
+An entry that is not a gap names the test that covers the property instead, as
+the type and the method in backticks. Every name of that shape in this file is
+resolved against the tests this suite runs, so a substitute that has been
+renamed or deleted reddens here rather than leaving the entry reading as
+covered. A file name beside one is not read as a test, because its parts are
+not spelled the way this suite spells a type and a method.
+
+What that resolution does not do is judge the substitute. A test that runs and
+proves nothing about the property resolves exactly like one that proves all of
+it, which is the review's half and is stated here rather than left to be
+assumed.
+
 ## The configuration page loads and renders in a browser
 
 Needs: a display
