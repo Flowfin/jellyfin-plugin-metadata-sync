@@ -7,9 +7,10 @@ happen and is gone when the pass ends, the store says what was written and is
 silent about a field where nothing was, and the library shows the result
 without the reason.
 
-This page is about the row and about what keeps it. The grouping an operator
-reads the rows under and the export are the rest of #48 and are not built, and
-both of them want a surface this plugin has not got. Nothing shows a row today.
+This page is about the row, about what keeps it, about the lines the rows are
+read under and about the text an operator takes away. What is left of #48 is the
+surface, and this plugin has not got one: nothing shows a row today, and nothing
+hands anybody a file.
 
 ## What a row carries
 
@@ -108,6 +109,40 @@ rather than refused, because a log that will not open after a power cut is one a
 operator meets at the moment they most need it. That count is separate from the
 bound's, and a surface owes the same sentence about it.
 
+## The lines the rows are read under
+
+One rule missing across a library produces a row per item, all of them saying the
+same thing, and an operator scrolling that list learns what is wrong last. The
+rows are therefore read under lines rather than one at a time.
+
+**A line is one rule and one outcome, and both halves separate two lines.** The
+rule alone would put a field taken from the peer beside one that was refused,
+which are the two answers an operator is trying to tell apart. The outcome alone
+would collect every refusal in the account into one line, and the question is
+which rule refused rather than how many refusals there were.
+
+**A decision no rule answered is its own line and is not a rule named with
+nothing.** The row carries no rule where the table ran out, which is the state
+#45 is about and the one an operator most wants collected. Filing it under the
+empty name would put it beside a rule somebody named with one, and the two say
+opposite things about whether this plan has an answer for that disagreement.
+
+**A line appears where its first decision appeared.** The account is oldest
+first and the lines keep that order, because what an operator is looking for is
+the rule that started happening, and where it started is what says so. Sorting by
+size would put the rule that is working at the top.
+
+**A line carries no count beside its members.** How many decisions a line holds
+is how many rows are under it, so there is no second number for the list to
+disagree with. That is the condition #48 states as the grouping being derived
+rather than stored twice, and it is held as a refusal of the shape: nothing this
+plugin holds carries a line, and a number added beside the members reds the suite
+at the moment somebody writes it.
+
+**Nothing here bounds anything.** What the account lost is the store's bound and
+travels with the account rather than with the lines, because a line counting only
+what it can see would report the clean number #66 refuses.
+
 ## What an operator can take away
 
 The difference between a log and a support burden is whether the operator can
@@ -180,6 +215,13 @@ stays green and stops being about anything.
 What no check reads is whether the sentence in the last column is true of the
 row it sits on. A row could name a mistake it would not catch and every route
 here would pass it.
+
+What the lines are held to is in `ConflictGroupingTests`: every decision reaches
+exactly one line, the lines are taken apart and put back together rather than
+counted, a decision no rule answered stays apart from one filed under the empty
+name, and the sweep that refuses a line held on a type is run against a type that
+holds one, so an empty answer is a tree holding none rather than a sweep that
+read nothing.
 
 What the store is held to is in `ConflictLogTests` rather than restated here: a
 row is read back by a second instance with every column it carried, the bound
