@@ -32,7 +32,8 @@ public class ConflictGroupingTests
     private static readonly string[] _threeFields = { "Overview", "Tagline", "Genres" };
     private static readonly string?[] _twoRules = { "peer-field-locked", "item-locked-here" };
     private static readonly string?[] _aRuleThenNone = { "item-locked-here", null };
-    private static readonly string[] _twoFields = { "Overview", "Studios" };
+    private static readonly string[] _oneField = { "Overview" };
+    private static readonly string[] _twoFields = { "Tagline", "Genres" };
 
     /// <summary>
     /// One missing rule across a library is one line rather than one line per
@@ -153,7 +154,8 @@ public class ConflictGroupingTests
     /// <remarks>
     /// The order is what says when a line started happening, which is the
     /// question an operator brings to a log. Sorting by size would put the rule
-    /// that is working at the top.
+    /// that is working at the top, so the lines below are deliberately of
+    /// different sizes with the smaller one first.
     /// </remarks>
     [Fact]
     public void TheGroupsFollowTheOrderTheAccountHoldsThemIn()
@@ -163,11 +165,13 @@ public class ConflictGroupingTests
             Decided("Overview", "item-locked-here", ConflictOutcome.KeepLocal),
             Decided("Tagline", null, ConflictOutcome.Refuse),
             Decided("Genres", null, ConflictOutcome.Refuse),
-            Decided("Studios", "item-locked-here", ConflictOutcome.KeepLocal),
         });
 
+        // The smaller line came first, so an order taken from the sizes rather
+        // than from the account puts these the other way round.
         Assert.Equal(_aRuleThenNone, groups.Select(g => g.Rule));
-        Assert.Equal(_twoFields, groups[0].Entries.Select(e => e.Field));
+        Assert.Equal(_oneField, groups[0].Entries.Select(e => e.Field));
+        Assert.Equal(_twoFields, groups[1].Entries.Select(e => e.Field));
     }
 
     /// <summary>
