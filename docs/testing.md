@@ -87,11 +87,13 @@ What none of them reaches is what the policy is mostly about. Nothing reads a
 test body and decides whether it opened a window, and no check here refuses one
 that does. What the package assertion covers is the most common route by which
 such a test arrives, which is a dependency added first. What the register
-assertion covers is the accounting and never the argument: an entry naming a
-substitute that does not prove the property reads to both checks exactly like one
-that does. And what the run establishes is bounded in the same direction: it is a
-run in which no test reached the network, never a refusal of a test that would,
-and the workflow prints that bound at the end of its own output.
+assertion covers is the accounting and the names, and never the argument: every
+name it spells is resolved against the tests this suite runs, and an entry
+naming a substitute that runs and proves nothing about the property reads to
+both checks exactly like one that proves all of it. And what the run
+establishes is bounded in the same direction: it is a run in which no test
+reached the network, never a refusal of a test that would, and the workflow
+prints that bound at the end of its own output.
 
 ## The register
 
@@ -127,8 +129,9 @@ Format, one entry per refused test:
     Needs: <one of: a display, elevation or a machine trust store, a running
     server, the network>
 
-    Instead: <the test that covers the same property, by name>, or the word
-    `nothing`, which makes this entry a gap rather than a substitution.
+    Instead: <the test that covers the same property, named as the type and
+    the method in backticks>, or the word `nothing`, which makes this entry a
+    gap rather than a substitution.
 
     <why the substitution covers the property, or what the gap costs>
 
