@@ -23,6 +23,19 @@ There is no release. This repository has published none, which you can check:
 Nothing comes back. There is no tag either, so there is nothing to install from
 a catalogue and nothing to install by hand.
 
+The catalogue itself exists and is served, and this plugin is not in it:
+
+    curl -sS https://flowfin.dev/manifest.json | grep -c '"name": "Metadata Sync"'
+    0
+
+`https://flowfin.dev/manifest.json` is the address an operator adds to their
+server under Dashboard, Plugins, Repositories, and it is where this plugin will
+appear. Adding it today gets the plugins that are already listed there and not
+this one. This one arrives on the day it first publishes a release rather than
+on the day somebody edits the catalogue by hand, because that file is built from
+the releases of the repositories it declares as sources and this repository is
+already one of them.
+
 What is built today is a set of parts a pass would be made of, one area of the
 plugin each. **This paragraph named five of them and left out the rest**, which
 is how it read while the stores, the resolvers and the migration chain arrived
