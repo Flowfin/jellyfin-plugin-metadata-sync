@@ -217,6 +217,14 @@ public class SupportedServersTests
     /// names. At or below a lower line's is never allowed, and that is the half
     /// that protects an operator: it is what keeps the newer line's package
     /// from sorting under the older line's on a server that keeps both.
+    /// <para>
+    /// That second half is the whole of the ordering property rather than a
+    /// step towards it, and a leg asserting the ordering separately was written
+    /// and taken out again for that reason: it could not be made to fail on its
+    /// own. A newer line's version major is above every lower band, and a lower
+    /// line's is at or below its own, so the ordering follows and a leg stating
+    /// it would only ever redden beside this one.
+    /// </para>
     /// </remarks>
     [Fact]
     public void EveryManifestsVersionSitsInsideItsBand()
@@ -237,36 +245,6 @@ public class SupportedServersTests
                     version.Major > lower.Major,
                     band.Manifest + " declares version " + version + ", at or below the band of the " + lower.Line + " line, which is major " + lower.Major + ". A server keeping both entries would take the wrong package.");
             }
-        }
-    }
-
-    /// <summary>
-    /// The property all of that exists for, asserted directly rather than
-    /// inferred from the bands: a package for a newer server line carries a
-    /// higher version than one for an older line.
-    /// </summary>
-    /// <remarks>
-    /// A server filters the catalogue by target ABI as a floor and then takes
-    /// the highest version that survives, so an operator on the newest line
-    /// sees every package and is protected by this ordering and by nothing
-    /// else. The reading behind that sentence is in the document rather than
-    /// here; the suite has no server to re-derive it from.
-    /// </remarks>
-    [Fact]
-    public void APackageForANewerLineOutranksOneForAnOlderLine()
-    {
-        var ordered = Bands()
-            .Select(b => (Band: b, Version: Version.Parse(ManifestFile.Field(b.Manifest, "version"))))
-            .OrderBy(x => Version.Parse(x.Band.Line + ".0.0"))
-            .ToList();
-
-        for (var i = 1; i < ordered.Count; i++)
-        {
-            Assert.True(
-                ordered[i].Version > ordered[i - 1].Version,
-                "The " + ordered[i].Band.Line + " line's package is version " + ordered[i].Version
-                    + " and the older " + ordered[i - 1].Band.Line + " line's is " + ordered[i - 1].Version
-                    + ". A server on the newer line keeps both catalogue entries and installs the higher version.");
         }
     }
 
