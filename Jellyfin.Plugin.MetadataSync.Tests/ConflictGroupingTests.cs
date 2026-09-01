@@ -270,20 +270,14 @@ public class ConflictGroupingTests
 
         foreach (var type in assembly.GetTypes())
         {
-            foreach (var property in type.GetProperties(Everything))
+            foreach (var property in type.GetProperties(Everything).Where(p => IsMadeOfAGroup(p.PropertyType)))
             {
-                if (IsMadeOfAGroup(property.PropertyType))
-                {
-                    found.Add(type.Name + "." + property.Name);
-                }
+                found.Add(type.Name + "." + property.Name);
             }
 
-            foreach (var field in type.GetFields(Everything))
+            foreach (var field in type.GetFields(Everything).Where(f => IsMadeOfAGroup(f.FieldType)))
             {
-                if (IsMadeOfAGroup(field.FieldType))
-                {
-                    found.Add(type.Name + "." + field.Name);
-                }
+                found.Add(type.Name + "." + field.Name);
             }
         }
 
