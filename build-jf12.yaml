@@ -1,0 +1,45 @@
+---
+# The manifest for the 12.0 server line. `build.yaml` is the one for the 10.11
+# line, and the packaging tool reads whichever of the two is at `build.yaml`
+# when it runs, because it takes a sources path and never a manifest path. The
+# job that builds this package copies this file over that one on the runner and
+# the committed `build.yaml` is untouched.
+#
+# The name of this file is deliberately not one the tool would find on its own.
+# It walks `jprm.yaml`, `.jprm.yaml`, `.ci/jprm.yaml`, `.github/jprm.yaml`,
+# `.gitlab/jprm.yaml` and `meta.yaml` before `build.yaml`, so a second manifest
+# under any of those names would silently replace the first rather than add a
+# second, and `ManifestTests` refuses all six.
+#
+# Everything an operator reads as identity is the same as `build.yaml`'s, field
+# for field, because this is one plugin published under one identity in one
+# catalogue rather than two plugins. `ManifestTests` holds the two files
+# against each other in both directions. What may differ is the version, the
+# runtime and the server line, and nothing else.
+name: "Metadata Sync"
+guid: "5c37c448-9d94-4fdd-a621-4238b859165b"
+imageUrl: "https://raw.githubusercontent.com/Flowfin/jellyfin-plugin-metadata-sync/master/img/logo.png"
+# The 12.0 line's band. The major names the server line: 1 is the 10.11 line and
+# 2 is this one, which is why this number is above `build.yaml`'s while nothing
+# on either line has been released. `docs/supported-servers.md` carries the band
+# table and the reason a band is needed at all, which is that a 12.0 server keeps
+# both entries through the ABI filter and then takes the highest version.
+version: "2.0.0.0"
+targetAbi: "12.0.0.0"
+framework: "net10.0"
+overview: "Move chosen metadata fields between two paired Jellyfin servers."
+description: >
+  Metadata Sync copies chosen metadata fields between two Jellyfin servers that
+  an operator has paired by hand. Nothing moves until that pairing exists, and
+  only the fields the field register declares ever move.
+
+  It never copies media files, artwork or any other library bytes. File
+  replication is a permanent non-goal rather than a feature that is still
+  coming: this plugin reads and writes metadata through the server's own
+  library calls and carries no file transfer of any kind.
+category: "Metadata"
+owner: "Flowfin"
+artifacts:
+- "Jellyfin.Plugin.MetadataSync.dll"
+changelog: >
+  Not yet released.

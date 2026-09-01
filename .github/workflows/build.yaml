@@ -34,7 +34,83 @@ jobs:
       dotnet-version: |
         9.0.x
         10.0.x
-      # One package, for the line the manifest declares. The second package with
-      # its own manifest entry is the half of #9 that is still open, and naming a
-      # second target here would produce an artefact no manifest accounts for.
+      # The 10.11 line, which is the line the committed `build.yaml` declares.
+      # The target and the manifest are two halves of one answer and this call
+      # can only set one of them, so a target named here that the manifest does
+      # not agree with produces an artefact declaring a server line it was not
+      # compiled for. The 12.0 package is the `jf12` job below, which stages that
+      # line's manifest rather than passing a second target here.
       dotnet-target: "net9.0"
+
+  # The second package, for the 12.0 line. It is written out here rather than
+  # being a second call of the workflow above, and the reason is not style.
+  #
+  # That workflow takes a .NET version and a .NET target and nothing else. The
+  # field that says which server line a package is for is `targetAbi`, which
+  # lives in the manifest, and the packaging tool finds a manifest by walking a
+  # list of names under the sources path it is given rather than by being told
+  # one. So two calls of it read one manifest twice and produce two packages
+  # declaring the same server line. Its upload also names one artefact in the
+  # workflow rather than in an input, and the upload action refuses a second
+  # artefact of the same name in one run, so the second call would fail there
+  # even if the manifest problem did not exist.
+  #
+  # What this job does instead is the smallest thing that produces a second
+  # package: the same four steps, with this line's manifest copied over
+  # `build.yaml` on the runner before the packaging tool reads it. The committed
+  # `build.yaml` is not edited by anything here.
+  #
+  # The job id is its own, so this adds the context `jf12 / <job name>` and
+  # leaves `call / build` where it is. A matrix over the two targets would
+  # instead turn `call / build` into one context per target, and that name is in
+  # the required set, which no pull request can edit - every change would then
+  # wait on a required context that never starts.
+  jf12:
+    name: Build the 12.0 package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Reading the tree is the only scope any step here uses. The upload writes
+    # to the run's artefact store, which is not a repository scope.
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          # Both SDKs, for the reason the call above passes both: a restore
+          # evaluates every target framework the projects declare, whichever one
+          # is being packaged.
+          dotnet-version: |
+            9.0.x
+            10.0.x
+
+      - name: Use the 12.0 line's manifest
+        # The packaging tool reads `build.yaml` under the sources path and has no
+        # input that names a different file, so the manifest is staged rather
+        # than passed. This rewrites the runner's checkout only.
+        #
+        # `Directory.Build.props` reads the version out of the same file, so this
+        # copy is also what stamps the assembly with this line's band. A package
+        # built without it would carry the other line's version.
+        run: cp build-jf12.yaml build.yaml
+
+      - name: Build Jellyfin Plugin
+        uses: oddstr13/jellyfin-plugin-repository-manager@9497a0a499416cc572ed2e07a391d9f943a37b4d # v1.1.1
+        id: jprm
+        with:
+          dotnet-target: "net10.0"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          # A name of its own. The call above uploads `build-artifact`, and the
+          # upload action refuses two artefacts of one name in a single run.
+          name: build-artifact-jf12
+          retention-days: 30
+          if-no-files-found: error
+          path: ${{ steps.jprm.outputs.artifact }}
