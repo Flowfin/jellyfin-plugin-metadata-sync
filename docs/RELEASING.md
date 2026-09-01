@@ -110,9 +110,31 @@ checked against it:
 gh attestation verify <archive>.zip --repo <owner>/<repository>
 ```
 
-Nothing here writes a plugin catalog. A GitHub release is the whole output. If this
-repository previously published through the Jellyfin meta plugins workflow, that path
-is gone and no catalog is fed until a manifest generator is added.
+Nothing here writes a plugin catalog. A GitHub release is the whole output, and
+the path through the Jellyfin meta plugins workflow is gone. Both halves of that
+are unchanged.
+
+THIS PARAGRAPH SAID NO CATALOG IS FED UNTIL A MANIFEST GENERATOR IS ADDED, AND
+ONE EXISTS. It is not in this tree and does not need to be. `Flowfin/hub` builds
+the served catalogue out of the releases of the repositories it declares as
+sources, and this repository is one of them, declared and enabled before it had
+tagged anything so that the catalogue grows on the day it first publishes:
+
+```
+gh api repos/Flowfin/hub/contents/sources/metadata-sync.json --jq '.content'   | base64 -d | grep -E '"repository"|"enabled"'
+    "repository": "jellyfin-plugin-metadata-sync",
+    "enabled": true,
+```
+
+So a release made by the steps above is what feeds the catalogue, and nothing
+further is owed here for it. The sentence that was here would have had a reader
+of this page conclude that a release changes nothing outside this repository,
+which is the opposite of what happens.
+
+What this tree still has no route to is the catalogue's own state. Whether the
+served file caught up with a release is read where the catalogue is built rather
+than here, and a green publish run in this repository is not evidence that it
+did.
 
 ## What fails the run
 
