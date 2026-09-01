@@ -234,12 +234,15 @@ public class ManifestTests
     private const string CrlfManifest = "name: \"Metadata Sync\"\r\nversion: \"1.2.3.4\"\r\nframework: \"net9.0\"\r\n";
 
     /// <summary>
-    /// The same pair for a folded block, with a field after it so a reader that
-    /// does not stop at the outer level takes a version number into the prose.
+    /// The same pair for a folded block, with two fields after it. A reader
+    /// that does not stop at the outer level takes a version number into the
+    /// prose; a reader that skips the outer line instead of stopping walks
+    /// straight into the next block and takes its text, which reads as prose
+    /// and is the quieter of the two mistakes.
     /// </summary>
-    private const string LfBlockManifest = "name: \"Metadata Sync\"\ndescription: >\n  one two\n\n  three\nversion: \"9.9.9.9\"\n";
+    private const string LfBlockManifest = "name: \"Metadata Sync\"\ndescription: >\n  one two\n\n  three\nversion: \"9.9.9.9\"\nchangelog: >\n  the next block\n";
 
-    private const string CrlfBlockManifest = "name: \"Metadata Sync\"\r\ndescription: >\r\n  one two\r\n\r\n  three\r\nversion: \"9.9.9.9\"\r\n";
+    private const string CrlfBlockManifest = "name: \"Metadata Sync\"\r\ndescription: >\r\n  one two\r\n\r\n  three\r\nversion: \"9.9.9.9\"\r\nchangelog: >\r\n  the next block\r\n";
 
     /// <summary>
     /// What the two fixtures above both say, which is the blank line dropped
@@ -285,13 +288,22 @@ public class ManifestTests
     /// fail on a version number. The field after the block is at the outer
     /// level, which is where the read stops.
     /// </summary>
+    /// <remarks>
+    /// Both failures are asserted, because they are two different mistakes and
+    /// only one of them looks wrong. A reader that never stops takes a quoted
+    /// version number into the prose, which any reading of the failure shows. A
+    /// reader that skips the outer line rather than stopping takes the NEXT
+    /// block's text instead, which is prose beside prose and reads as though it
+    /// belonged there.
+    /// </remarks>
     [Fact]
     public void ABlockStopsAtTheNextFieldRatherThanRunningOn()
     {
-        Assert.DoesNotContain(
-            "9.9.9.9",
-            ManifestFile.BlockIn(LfBlockManifest, "description").Value!,
-            StringComparer.Ordinal);
+        var block = ManifestFile.BlockIn(LfBlockManifest, "description").Value!;
+
+        Assert.Equal(TheBlocksTwoLines, block);
+        Assert.DoesNotContain(block, line => line.Contains("9.9.9.9", StringComparison.Ordinal));
+        Assert.DoesNotContain(block, line => line.Contains("the next block", StringComparison.Ordinal));
     }
 
     /// <summary>
