@@ -12,18 +12,49 @@ was compiled for.
 | Server line | Runtime | Package built here | Target ABI | Package compiled against |
 | --- | --- | --- | --- | --- |
 | 10.11 | net9.0 | yes | 10.11.0.0 | Jellyfin.Controller 10.11.11 |
-| 12.0 | net10.0 | no | none | nothing |
+| 12.0 | net10.0 | yes | 12.0.0.0 | Jellyfin.Controller 12.0.0-rc4 |
 
-One row says yes. This repository packages a single artefact, for the first of
-the two lines, and the second line has nothing to install. That is the state of
-the build rather than a narrowing of what is supported, and issue #9 is where
-the second package is held.
+Both rows say yes. A package is built for each line, from a manifest of its own,
+and the two are one plugin rather than two: same `guid`, same name, same owner,
+same catalogue entry.
 
-## Both lines are compiled here, and only one is packaged
+## The version band is what tells the two packages apart
 
-The column above is about a package an operator can install. It is not about
-whether the source compiles for a line, and those two are now different
-answers.
+A package's `targetAbi` does not choose it. The server uses that field once, as
+a floor, and then picks by version - which means an operator on the 12.0 line
+would be offered both packages and get whichever the catalogue happened to list
+first, if the two carried one version. The reading behind that sentence is the
+last section of this page.
+
+So the version carries the server line, in its major:
+
+| Server line | Version band | Manifest |
+| --- | --- | --- |
+| 10.11 | 1 | build.yaml |
+| 12.0 | 2 | build-jf12.yaml |
+
+The band is a major version number, and a release of this plugin is one release
+number per line inside its own band: `1.4.0.0` on the 10.11 line is the same work
+as `2.4.0.0` on the 12.0 line. A breaking change moves the minor rather than the
+major, because the major is spent on the line.
+
+Nothing has been released on either line, and the two manifests sit at different
+distances from their bands for that reason. `build.yaml` carries `0.1.0.0`, below
+its band, because the first release on the 10.11 line is the 1.0.0.0 that issue
+#1 records; `build-jf12.yaml` carries `2.0.0.0`, at the foot of its own. What is
+held either way is the property an operator depends on: the 12.0 package's
+version is above the 10.11 package's, so a 12.0 server that keeps both entries
+takes the one built for it.
+
+`ManifestTests` holds the two manifests against this table, against each other
+and against that ordering, so a band edited in one place and not the other
+reddens rather than shipping.
+
+## Both lines are compiled here, and both are packaged
+
+The `Package built here` column is about an artefact the build produces. It is
+not about whether the source compiles for a line, and the two are separate
+answers even now that they agree.
 
 The plugin project and the suite target one framework per line, and each target
 references that line's server packages:
@@ -40,9 +71,18 @@ candidate and the reference to it is a prerelease. The alternative was reading
 the newer server's source and believing the reading, which is how the guard
 below came to name a member the 12.0 line does not have.
 
-What it does not give an operator is anything to install. The manifest declares
-one `framework` and one `targetAbi`, so one package is produced, and the second
-package with its own manifest entry is the half of #9 that is still open.
+The packaging is a second answer on top of that one. The packaging tool reads a
+manifest out of `build.yaml` under the sources path it is given and takes no
+manifest path, so the two packages are one build workflow with two jobs: the
+first packages the committed `build.yaml`, and the second copies
+`build-jf12.yaml` over it on the runner before the tool reads it. The committed
+file is not edited by either.
+
+What neither job produces is a release. Nothing is published from this
+repository yet, on either line, and `docs/RELEASING.md` describes the one route
+that would publish and the one manifest it reads. A second release leg is not
+written, so what exists per line today is a build artefact rather than something
+an operator can install.
 
 The first thing compiling the second line found was in this repository rather
 than in the server. `ItemDeletionTests` refuses the naming of the library's
@@ -96,14 +136,52 @@ on the other passes both gates and runs against a surface it was never compiled
 against, and the failure that produces arrives later, at whichever call first
 meets a member that moved.
 
+## Which of two packages a server installs, which is why the bands exist
+
+The two gates above are about a package that has already been chosen. This is
+the step before them, and it is where two packages under one identity are
+decided between. Three readings, identical on both supported lines.
+
+The catalogue's entries are filtered by ABI, and the filter is the same floor
+comparison as the manifest gate rather than a match:
+
+    git grep -n 'Version.Parse(x.TargetAbi) <= appVer' v10.11.11 v12.0-rc4 -- Emby.Server.Implementations/Updates/InstallationManager.cs
+    v10.11.11:Emby.Server.Implementations/Updates/InstallationManager.cs:266:                .Where(x => string.IsNullOrEmpty(x.TargetAbi) || Version.Parse(x.TargetAbi) <= appVer);
+    v12.0-rc4:Emby.Server.Implementations/Updates/InstallationManager.cs:269:                .Where(x => string.IsNullOrEmpty(x.TargetAbi) || Version.Parse(x.TargetAbi) <= appVer);
+
+What survives is ordered by version number and by nothing else:
+
+    git grep -n 'OrderByDescending(x => x.VersionNumber)' v10.11.11 v12.0-rc4 -- Emby.Server.Implementations/Updates/InstallationManager.cs
+    v10.11.11:Emby.Server.Implementations/Updates/InstallationManager.cs:277:            foreach (var v in availableVersions.OrderByDescending(x => x.VersionNumber))
+    v12.0-rc4:Emby.Server.Implementations/Updates/InstallationManager.cs:280:            foreach (var v in availableVersions.OrderByDescending(x => x.VersionNumber))
+
+and the version is the whole of what the server holds a package by, both in the
+directory it unpacks into and in the plugin it calls already installed:
+
+    git grep -n 'targetDir += "_" + package.Version' v10.11.11 v12.0-rc4 -- Emby.Server.Implementations/Updates/InstallationManager.cs
+    v10.11.11:Emby.Server.Implementations/Updates/InstallationManager.cs:548:            targetDir += "_" + package.Version;
+    v12.0-rc4:Emby.Server.Implementations/Updates/InstallationManager.cs:570:                targetDir += "_" + package.Version;
+    git grep -n 'p.Id.Equals(package.Id) && p.Version.Equals(package.Version)' v10.11.11 v12.0-rc4 -- Emby.Server.Implementations/Updates/InstallationManager.cs
+    v10.11.11:Emby.Server.Implementations/Updates/InstallationManager.cs:575:            LocalPlugin? plugin = _pluginManager.Plugins.FirstOrDefault(p => p.Id.Equals(package.Id) && p.Version.Equals(package.Version))
+    v12.0-rc4:Emby.Server.Implementations/Updates/InstallationManager.cs:618:            LocalPlugin? plugin = _pluginManager.Plugins.FirstOrDefault(p => p.Id.Equals(package.Id) && p.Version.Equals(package.Version))
+
+So a 10.11 server never sees the 12.0 package, because the floor removes it. A
+12.0 server sees both, because a floor is only a floor, and it then takes the
+higher version. Two packages carrying one version would be one plugin to it, in
+one directory, chosen by catalogue order and silently overwriting each other -
+which is the failure the band table above exists to make impossible rather than
+a risk it reduces.
+
 ## What is checked here, and what is not
 
-`SupportedServersTests` holds the table above against the manifest and the
-plugin project, so the runtime, the ABI and the server package in the row
-claiming a built package cannot drift away from what the build actually
-produces. It also refuses a second row claiming one, because the manifest
-declares a single `targetAbi` and a document saying otherwise would be offering
-an operator a package that is not made.
+`SupportedServersTests` holds the table above against the manifests and the
+plugin project, so the runtime, the ABI and the server package in a row claiming
+a built package cannot drift away from what the build actually produces. Each
+built row is matched to the manifest that declares its ABI, so a row cannot pass
+by agreeing with the other line's file, and the number of rows claiming a package
+is held against the number of manifests: a row added ahead of a manifest offers
+an operator a package that is not made, and a manifest added ahead of a row hides
+a package that is.
 
 Every row's runtime is held against the frameworks the project builds, in both
 directions, so a line the build stops compiling cannot stay in this table and a
@@ -134,11 +212,18 @@ behind one interface with an implementation per line. No such call exists here
 yet, so there is no seam and no allowance for one; the day there is, the seam is
 the rule's first allowance and the interface is what makes it legitimate.
 
-Nothing here checks the two paragraphs above. They are a reading of a Jellyfin
-checkout at the two tags, quoted with the commands that produced them, and the
-suite has no server to re-derive them from. A change to the server's own plugin
-manager would leave this section stale and nothing in this repository would
-notice.
+Nothing here checks the two sections about the server: the one on the gates a
+package meets, and the one on which of two packages a server installs. Both are
+a reading of a Jellyfin checkout at the two tags, quoted with the commands that
+produced them, and the suite has no server to re-derive them from. A change to
+the server's own plugin manager or its installation manager would leave either
+section stale and nothing in this repository would notice.
+
+That reaches the band table, and it is the one place on this page where it costs
+something. The bands are held against the manifests by the suite, so they cannot
+drift from what is built; why they are needed at all rests on the version
+selection quoted above, and if that ever stopped being how a server chooses, the
+bands would go on being enforced for a reason that had gone.
 
 I did not install this plugin on a server on either line. There is no release
 to install:

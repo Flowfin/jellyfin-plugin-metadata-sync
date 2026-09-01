@@ -8,9 +8,13 @@ name: Publish Release
 # build.yaml's `version`, and the gate job below fails the run if it does not.
 #
 # What this workflow publishes is one package for the one server line build.yaml names
-# in `framework` and `targetAbi`. A repository that ships two server lines needs a
-# second manifest and a second route; this file does not provide one, and the checks
-# below refuse to guess.
+# in `framework` and `targetAbi`. Two server lines need a second manifest and a second
+# route. The manifest exists - `build-jf12.yaml`, which the build workflow stages over
+# build.yaml to package the 12.0 line - and the route does not: nothing here reads a
+# second manifest, and the checks below refuse to guess rather than publishing whichever
+# file they found. So a green run of this workflow has released the 10.11 package and
+# not the other one, and `docs/RELEASING.md` says so where a person cutting a release
+# will read it.
 on:
   push:
     tags:

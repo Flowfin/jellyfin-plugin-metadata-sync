@@ -37,10 +37,17 @@
     <ProjectReference Include="..\Jellyfin.Plugin.MetadataSync\Jellyfin.Plugin.MetadataSync.csproj" />
   </ItemGroup>
 
-  <!-- The manifest is the thing under test in ManifestTests, so it is copied to
-       the output rather than located by walking up from the test binary. -->
+  <!-- The manifests are the thing under test in ManifestTests, so they are
+       copied to the output rather than located by walking up from the test
+       binary.
+
+       A wildcard rather than the two names. There is one manifest per supported
+       server line, `build.yaml` for the 10.11 line and `build-jf12.yaml` for the
+       12.0 line, and the suite reads the set rather than a list it holds: a
+       third manifest added at the root is copied here and is judged, instead of
+       being invisible until somebody remembers this line. -->
   <ItemGroup>
-    <None Include="..\build.yaml" Link="build.yaml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\build*.yaml" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- The manifest claims a framework and a server ABI, and the thing those

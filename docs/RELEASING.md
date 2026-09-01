@@ -10,6 +10,38 @@ and it must be exactly the `version` in `build.yaml`, written the same way, with
 same number of parts. The `-stable` suffix lives only in the tag and in the release
 name.
 
+## This route publishes one of the two packages
+
+The build produces one package per supported server line, from a manifest each:
+`build.yaml` for the 10.11 line and `build-jf12.yaml` for the 12.0 line. This
+route reads `build.yaml` and nothing else, so what it releases is the 10.11
+package. The 12.0 package exists as a build artefact and has no release leg.
+
+That is a gap rather than a decision that the newer line is not published, and it
+is named here so a reader does not take a green release run as having shipped
+both. `docs/supported-servers.md` is where the two packages and their manifests
+are described.
+
+## What a version number means once the two lines are packaged
+
+`docs/supported-servers.md` gives each server line a version band, which is a
+major version number, and the reason is in that document: a server filters a
+catalogue by target ABI as a floor and then takes the highest version, so an
+operator on the newer line is offered both packages and the version is the only
+thing that separates them.
+
+So a major version number here says which server line a package is for, on top of
+what a release number ordinarily says. The section at the foot of this page
+insists that a shipped version number keeps its meaning, and this does not spend
+that: no number that has been released is redefined, because nothing has been
+released on either line. What it does is fix what the numbers mean from the first
+release onward, which is the only moment at which that is still free.
+
+The cost, stated rather than left to be met: a breaking change moves the minor
+rather than the major, because the major is spent on the line. `docs/changelog.md`
+is where a change's class is declared, and the class is what a reader acts on;
+the major is not.
+
 ## The release note is written from the issues
 
 Every change on this board starts as an issue that says what is wrong, what the
