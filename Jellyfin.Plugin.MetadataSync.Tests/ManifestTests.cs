@@ -103,11 +103,11 @@ public class ManifestTests
     [Fact]
     public void EveryManifestsFrameworkIsOneThePluginProjectTargets()
     {
-        foreach (var manifest in ManifestFile.Names())
-        {
-            var declared = ManifestFile.Field(manifest, "framework");
+        var declared = ManifestFile.Names().Select(m => ManifestFile.Field(m, "framework"));
 
-            Assert.Contains(declared, PluginProjectFile.TargetFrameworks(), StringComparer.Ordinal);
+        foreach (var framework in declared)
+        {
+            Assert.Contains(framework, PluginProjectFile.TargetFrameworks(), StringComparer.Ordinal);
         }
     }
 
