@@ -33,9 +33,10 @@ thing that separates them.
 So a major version number here says which server line a package is for, on top of
 what a release number ordinarily says. The section at the foot of this page
 insists that a shipped version number keeps its meaning, and this does not spend
-that: no number that has been released is redefined, because nothing has been
-released on either line. What it does is fix what the numbers mean from the first
-release onward, which is the only moment at which that is still free.
+that: the meaning was fixed before the first release, and the first release,
+`0.1.0.0-stable` on 2026-09-03, was cut under it. No number that has been
+released is redefined; `0.1.0.0` on the 10.11 line means what this section says
+it means, and nothing on the 12.0 line has been released.
 
 The cost, stated rather than left to be met: a breaking change moves the minor
 rather than the major, because the major is spent on the line. `docs/changelog.md`
@@ -209,11 +210,18 @@ the repair is the next number plus a step from the one that was wrong, the same
 answer this document gives for a release that went out with the wrong contents.
 
 Both artefacts carry a stamp now, and this sentence said the configuration
-carried none. What neither stamp is yet is a released version: nothing has been
-released, so the numbers say which shape a file is in rather than which release
-wrote it, and this section binds the first release rather than describing the
-current tree. The two coincide until that release and the reading has to be
-re-made then.
+carried none. THE FIRST RELEASE HAS SHIPPED BOTH STAMPS, AND THIS PARAGRAPH SAID
+NEITHER WAS YET A RELEASED VERSION. `0.1.0.0-stable` was cut on 2026-09-03 from
+`dcf53da`, and the two numbers it wrote are read from that tag rather than
+restated here, because a number copied into this page is a number that goes
+stale in one of the two places:
+
+    git show 0.1.0.0-stable:Jellyfin.Plugin.MetadataSync/Store/StoreFormat.cs | grep -n 'public const int Current'
+    git show 0.1.0.0-stable:Jellyfin.Plugin.MetadataSync/Configuration/ConfigurationFormat.cs | grep -n 'public const int Current'
+
+So from that day the two numbers say which release wrote a file as well as which
+shape it is in, and the rule above binds them: a shape either stamp names at
+that tag is superseded by a new number and never edited into the old one.
 
 The step chain exists on the store's side now, and this paragraph said it did
 not. What that changes is smaller than it sounds and worth reading exactly: the
