@@ -4,7 +4,9 @@ guid: "5c37c448-9d94-4fdd-a621-4238b859165b"
 imageUrl: "https://raw.githubusercontent.com/Flowfin/jellyfin-plugin-metadata-sync/master/img/logo.png"
 # The 10.11 line's band. The major names the server line: 1 is this line and 2 is
 # the 12.0 line, whose manifest is `build-jf12.yaml`. This number is below 1
-# because nothing has been released yet; the first release on this line is 1.0.0.0.
+# because the first release on this line was 0.1.0.0, cut on 2026-09-03 as
+# `0.1.0.0-stable`, by the decision on #122 that a first release starts at
+# 0.1.0.0 and 1.0.0.0 waits until a release has been observed in the field.
 # `docs/supported-servers.md` carries the band table and the reason a band is
 # needed, which is that a 12.0 server keeps both catalogue entries through the ABI
 # filter and then takes the highest version.
@@ -25,5 +27,10 @@ category: "Metadata"
 owner: "Flowfin"
 artifacts:
 - "Jellyfin.Plugin.MetadataSync.dll"
+# This field is copied into the sidecar the release publishes beside the archive,
+# and the catalogue shows it to an operator as the entry for that version. The
+# 0.1.0.0 release shipped the sentence "Not yet released." here, which the
+# catalogue now carries for a version that is released; #88 holds the reading.
 changelog: >
-  Not yet released.
+  The release note for each version is on its GitHub release page, at
+  https://github.com/Flowfin/jellyfin-plugin-metadata-sync/releases

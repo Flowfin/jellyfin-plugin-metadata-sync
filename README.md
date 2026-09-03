@@ -16,25 +16,33 @@ They are listed first for that reason.
 
 ## Where this is today
 
-There is no release. This repository has published none, which you can check:
+There is one release, and the paragraph after the command is the one to read
+before installing it:
 
     gh release list --repo Flowfin/jellyfin-plugin-metadata-sync
+    0.1.0.0-stable  Latest  0.1.0.0-stable  2026-09-03T10:26:03Z
 
-Nothing comes back. There is no tag either, so there is nothing to install from
-a catalogue and nothing to install by hand.
+The 0.1.0.0 archive loads on a Jellyfin 10.11.11 server and is refused by every
+10.11 server below that, although its manifest and the catalogue say 10.11.0.0:
+it was compiled against the 10.11.11 server packages and binds them at that
+version, and a server carrying an older one refuses the assembly before reading
+a type. `docs/supported-servers.md` carries the measurement on two servers. The
+tree compiles against the line's first release since #340, and the release that
+carries that to an operator is the next one, which #122 waits on.
 
-The catalogue itself exists and is served, and this plugin is not in it:
+The catalogue is served, and this plugin was not in it when this was read, on
+2026-09-03, before the first rebuild after the release:
 
     curl -sS https://flowfin.dev/manifest.json | grep -c '"name": "Metadata Sync"'
     0
 
 `https://flowfin.dev/manifest.json` is the address an operator adds to their
-server under Dashboard, Plugins, Repositories, and it is where this plugin will
-appear. Adding it today gets the plugins that are already listed there and not
-this one. This one arrives on the day it first publishes a release rather than
-on the day somebody edits the catalogue by hand, because that file is built from
-the releases of the repositories it declares as sources and this repository is
-already one of them.
+server under Dashboard, Plugins, Repositories, and it is where this plugin
+appears. That file is rebuilt once a day from the releases of the repositories
+it declares as sources, and this repository is one of them, so the entry arrives
+with the rebuild that follows a release rather than on the day somebody edits
+the catalogue by hand. When it lists 0.1.0.0, the paragraph above still holds:
+a server below 10.11.11 will install the package and refuse to load it.
 
 What is built today is a set of parts a pass would be made of, one area of the
 plugin each. **This paragraph named five of them and left out the rest**, which
