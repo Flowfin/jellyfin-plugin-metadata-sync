@@ -38,13 +38,16 @@ number per line inside its own band: `1.4.0.0` on the 10.11 line is the same wor
 as `2.4.0.0` on the 12.0 line. A breaking change moves the minor rather than the
 major, because the major is spent on the line.
 
-Nothing has been released on either line, and the two manifests sit at different
-distances from their bands for that reason. `build.yaml` carries `0.1.0.0`, below
-its band, because the first release on the 10.11 line is the 1.0.0.0 that issue
-#1 records; `build-jf12.yaml` carries `2.0.0.0`, at the foot of its own. What is
-held either way is the property an operator depends on: the 12.0 package's
-version is above the 10.11 package's, so a 12.0 server that keeps both entries
-takes the one built for it.
+The two manifests sit at different distances from their bands. `build.yaml`
+carries `0.1.0.0`, below its band, because the first release on the 10.11 line
+was 0.1.0.0, cut on 2026-09-03 as `0.1.0.0-stable` under the decision on #122
+that a first release starts there and 1.0.0.0 waits until a release has been
+observed in the field; the sentence that stood here named the 1.0.0.0 of issue
+#1 as the first release, and that decision superseded it. `build-jf12.yaml`
+carries `2.0.0.0`, at the foot of its own, and nothing has been released on the
+12.0 line. What is held either way is the property an operator depends on: the
+12.0 package's version is above the 10.11 package's, so a 12.0 server that keeps
+both entries takes the one built for it.
 
 `ManifestTests` holds the two manifests against this table, against each other
 and against that ordering, so a band edited in one place and not the other
@@ -78,11 +81,12 @@ first packages the committed `build.yaml`, and the second copies
 `build-jf12.yaml` over it on the runner before the tool reads it. The committed
 file is not edited by either.
 
-What neither job produces is a release. Nothing is published from this
-repository yet, on either line, and `docs/RELEASING.md` describes the one route
-that would publish and the one manifest it reads. A second release leg is not
-written, so what exists per line today is a build artefact rather than something
-an operator can install.
+What neither job produces is a release. The release route is a third thing,
+`docs/RELEASING.md` describes it, and it reads `build.yaml` and nothing else: the
+10.11 package has been released, as `0.1.0.0-stable` on 2026-09-03, and the 12.0
+package has not. A second release leg is not written, so what exists for the
+12.0 line today is a build artefact rather than something an operator can
+install.
 
 The first thing compiling the second line found was in this repository rather
 than in the server. `ItemDeletionTests` refuses the naming of the library's

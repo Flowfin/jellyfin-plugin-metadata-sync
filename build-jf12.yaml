@@ -41,5 +41,10 @@ category: "Metadata"
 owner: "Flowfin"
 artifacts:
 - "Jellyfin.Plugin.MetadataSync.dll"
+# Copied into the sidecar a release publishes and shown by the catalogue as the
+# entry for that version, so it says where the note is rather than a state that
+# stops being true on the day the line first publishes. Nothing has been released
+# on this line; `docs/RELEASING.md` says which package the release route publishes.
 changelog: >
-  Not yet released.
+  The release note for each version is on its GitHub release page, at
+  https://github.com/Flowfin/jellyfin-plugin-metadata-sync/releases
