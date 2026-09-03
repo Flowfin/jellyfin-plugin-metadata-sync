@@ -10,7 +10,7 @@ imageUrl: "https://raw.githubusercontent.com/Flowfin/jellyfin-plugin-metadata-sy
 # `docs/supported-servers.md` carries the band table and the reason a band is
 # needed, which is that a 12.0 server keeps both catalogue entries through the ABI
 # filter and then takes the highest version.
-version: "0.1.0.0"
+version: "0.1.1.0"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Move chosen metadata fields between two paired Jellyfin servers."
@@ -32,5 +32,8 @@ artifacts:
 # 0.1.0.0 release shipped the sentence "Not yet released." here, which the
 # catalogue now carries for a version that is released; #88 holds the reading.
 changelog: >
+  Fixed: compiled the 10.11 package against the floor it promises, so this
+  version loads on every 10.11 server from 10.11.0 up; 0.1.0.0 bound the server
+  assemblies at 10.11.11.0 and was refused below 10.11.11 (#340).
   The release note for each version is on its GitHub release page, at
   https://github.com/Flowfin/jellyfin-plugin-metadata-sync/releases
