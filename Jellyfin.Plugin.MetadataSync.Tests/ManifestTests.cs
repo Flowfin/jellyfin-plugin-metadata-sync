@@ -127,16 +127,33 @@ public class ManifestTests
     }
 
     /// <summary>
-    /// The target ABI is the oldest server line the package claims to install
-    /// on, and it is only meaningful next to the server packages the plugin
-    /// compiles against for that package's runtime. An ABI newer than those is
-    /// a claim the build cannot support; an ABI older is a promise made to
-    /// servers whose API the build never saw.
+    /// The target ABI is the oldest server the package claims to install on,
+    /// and it is only meaningful next to the server packages the plugin
+    /// compiles against for that package's runtime. Two things have to hold.
+    /// The packages and the ABI are on one server line, or the ABI is a promise
+    /// made to servers whose API the build never saw. And the ABI is not below
+    /// the version the packages bind the assembly at, or the promise is made to
+    /// servers that refuse the assembly before a single type is read.
     /// </summary>
     /// <remarks>
-    /// The server package is read for its line rather than parsed as a version,
+    /// The second half is the one that was missing, and it was found by an
+    /// install rather than by a reading. The 0.1.0.0 release compiled against
+    /// the 10.11.11 packages and declared <c>10.11.0.0</c>; a 10.11.8 server
+    /// admitted it on the ABI, then refused every type in it with
+    /// <c>Could not load file or assembly 'MediaBrowser.Controller,
+    /// Version=10.11.11.0'</c> and marked it <c>NotSupported</c>, because the
+    /// runtime binds a reference at the version the assembly names and takes no
+    /// server assembly below it. A server at or above the bound version loads
+    /// it, which is why the check is a floor and not an equality: compiling
+    /// against the line's first release makes every server on the line a
+    /// server the ABI may promise.
+    /// <para>
+    /// The line is read from the package version's text rather than parsed,
     /// because the 12.0 line ships as a release candidate and
-    /// <see cref="Version"/> refuses a prerelease suffix.
+    /// <see cref="Version"/> refuses a prerelease suffix. The binding version is
+    /// the numeric part of the same text, which is what the server package
+    /// stamps into the assembly the plugin binds against.
+    /// </para>
     /// </remarks>
     [Fact]
     public void EveryManifestsTargetAbiAgreesWithTheServerPackagesForItsFramework()
@@ -150,7 +167,36 @@ public class ManifestTests
 
             Assert.Equal(LineOf(controller), LineOf(model));
             Assert.Equal(LineOf(controller), declaredAbi.Major + "." + declaredAbi.Minor);
+
+            foreach (var package in new[] { controller, model })
+            {
+                var bindsAt = BindingVersionOf(package);
+
+                Assert.True(
+                    bindsAt <= declaredAbi,
+                    manifest + " declares targetAbi " + declaredAbi + " and the " + packaged + " build binds at "
+                        + bindsAt + " (package " + package + "). A server between the two admits the package on the ABI"
+                        + " and then refuses the assembly, so the ABI is a promise the build breaks. Compile against the"
+                        + " version the ABI names, or raise the ABI to the version compiled against.");
+            }
         }
+    }
+
+    /// <summary>
+    /// The version an assembly compiled against a server package binds its
+    /// references at: the numeric part of the package version, padded to the
+    /// four parts a <c>targetAbi</c> is written with, so the two compare.
+    /// </summary>
+    /// <param name="packageVersion">The package version as the project file writes it.</param>
+    /// <returns>The binding version.</returns>
+    private static Version BindingVersionOf(string packageVersion)
+    {
+        var numeric = packageVersion.Split('-')[0];
+        var parts = numeric.Split('.').Length;
+
+        Assert.True(parts >= 2 && parts <= 4, "The version " + packageVersion + " is not two to four numbers.");
+
+        return new Version(numeric + string.Concat(Enumerable.Repeat(".0", 4 - parts)));
     }
 
     /// <summary>

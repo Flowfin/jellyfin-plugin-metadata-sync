@@ -11,7 +11,7 @@ was compiled for.
 
 | Server line | Runtime | Package built here | Target ABI | Package compiled against |
 | --- | --- | --- | --- | --- |
-| 10.11 | net9.0 | yes | 10.11.0.0 | Jellyfin.Controller 10.11.11 |
+| 10.11 | net9.0 | yes | 10.11.0.0 | Jellyfin.Controller 10.11.0 |
 | 12.0 | net10.0 | yes | 12.0.0.0 | Jellyfin.Controller 12.0.0-rc4 |
 
 Both rows say yes. A package is built for each line, from a manifest of its own,
@@ -129,12 +129,35 @@ carry is where it stops:
 
     git grep -n "references an incompatible version of one of the shared libraries" v10.11.11 v12.0-rc4 -- Emby.Server.Implementations/Plugins/PluginManager.cs
 
-The plugin is then marked `NotSupported` and no part of it runs. The bound worth
-knowing is that this gate fires on a missing type and on nothing else. An
-assembly built against one server line whose every referenced type still exists
-on the other passes both gates and runs against a surface it was never compiled
-against, and the failure that produces arrives later, at whichever call first
-meets a member that moved.
+The plugin is then marked `NotSupported` and no part of it runs.
+
+THIS GATE FIRES ON A VERSION AS WELL AS ON A MISSING TYPE, AND THIS PAGE SAID IT
+FIRED ON A MISSING TYPE AND ON NOTHING ELSE. An assembly names the version of
+every server assembly it was compiled against, the runtime binds that reference
+only to a server assembly at that version or above, and a server carrying a
+lower one has, to the runtime, no such file. So the ABI floor a package declares
+is a promise the build breaks the moment the packages it compiles against are
+newer than the floor: the server admits the package on the ABI and then refuses
+every type in it. That was measured rather than read, on the archive the
+0.1.0.0 release published, which was compiled against the 10.11.11 packages and
+declares `10.11.0.0`. On a 10.11.8 server:
+
+    grep -h -A3 "Failed to load assembly" data-10.11.8/log/*.log | grep "Could not load" | sort -u
+    Could not load file or assembly 'MediaBrowser.Common, Version=10.11.11.0, Culture=neutral, PublicKeyToken=null'. The system cannot find the file specified.
+    Could not load file or assembly 'MediaBrowser.Controller, Version=10.11.11.0, Culture=neutral, PublicKeyToken=null'. The system cannot find the file specified.
+    Could not load file or assembly 'MediaBrowser.Model, Version=10.11.11.0, Culture=neutral, PublicKeyToken=null'. The system cannot find the file specified.
+
+and the same archive on a 10.11.11 server loads and reports `Active`. The row
+in the table above compiles the 10.11 package against the line's first release
+for exactly this reason, and `ManifestTests` refuses a manifest whose ABI is
+below the version its packages bind at, so a package bump that leaves the floor
+behind reddens here instead of shipping a package the floor's servers refuse.
+
+What is left of the old sentence is still true and is the bound worth knowing:
+an assembly bound at or below the server's version, whose every referenced type
+still exists there, passes both gates and runs against a surface it was never
+compiled against, and the failure that produces arrives later, at whichever
+call first meets a member that moved.
 
 ## Which of two packages a server installs, which is why the bands exist
 
@@ -225,12 +248,30 @@ drift from what is built; why they are needed at all rests on the version
 selection quoted above, and if that ever stopped being how a server chooses, the
 bands would go on being enforced for a reason that had gone.
 
-I did not install this plugin on a server on either line. There is no release
-to install:
+THIS PAGE SAID NOTHING HAD BEEN INSTALLED ON A SERVER ON EITHER LINE, AND THE
+10.11 LINE HAS BEEN WALKED. The archive the 0.1.0.0 release published, and the
+assembly built at the change that moved the row above to 10.11.0, were each
+copied into `plugins/Metadata Sync_0.1.0.0/` of a fresh data directory of a
+server started from the vendor's own build of the line, and the plugin list was
+read back after the startup wizard:
 
-    gh release list --repo Flowfin/jellyfin-plugin-metadata-sync --limit 3
-    # no output
+    curl -sS -H "Authorization: MediaBrowser Token=\"$TOKEN\"" http://127.0.0.1:$PORT/Plugins
 
+    server 10.11.8,  assembly bound at 10.11.11.0 (the 0.1.0.0 release)  -> Metadata Sync 0.1.0.0 NotSupported
+    server 10.11.11, assembly bound at 10.11.11.0 (the 0.1.0.0 release)  -> Metadata Sync 0.1.0.0 Active
+    server 10.11.8,  assembly bound at 10.11.0.0  (built at this change)  -> Metadata Sync 0.1.0.0 Active
+
+The three lines are not a table on purpose: the suite finds this page's tables
+by their shape, and a third one would be read as a claim about a line.
+
+The server started with no web client and no library, so what the walk
+establishes is the load and nothing past it: the assembly is accepted, the
+plugin is listed as active, and no pass was run. 10.11.8 is the oldest build of
+the line the vendor's file server still carries, so `10.11.0` itself was not
+started; what stands between it and 10.11.8 is the binding rule quoted above
+and not a measurement.
+
+Nothing was installed on the 12.0 line, and there is nothing released for it.
 So what a 12.0 server does with the artefact this repository builds is read from
 the server's source and not measured. The sentence that it would be admitted by
 the manifest gate rests on the comparison quoted above; whether its types all
