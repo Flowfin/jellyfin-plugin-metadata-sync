@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 
 namespace Jellyfin.Plugin.MetadataSync.Store;
 
@@ -80,6 +81,25 @@ public sealed class StoreFormat : IPairingStore
     /// </remarks>
     internal static readonly IReadOnlyList<FormatStep> Chain = Array.Empty<FormatStep>();
 
+    /// <summary>
+    /// What every migration in this process runs under, whichever directory it
+    /// is over and whichever store asked for it.
+    /// </summary>
+    /// <remarks>
+    /// Every store runs the migration from its own constructor before it reads
+    /// the directory, and the stores open over one directory, so two of them
+    /// opening at once would be two walks over one directory, each copying
+    /// and moving what the other is in the middle of. The gate is one object
+    /// for the process rather than one per directory: what that costs is that a
+    /// migration over a directory nothing else is touching waits for a walk of
+    /// length zero somewhere else, and what a gate per path would cost is a
+    /// table to keep. It is private because the multithreading analyzer refuses
+    /// a lock on a member anything else could take, and a proof asks whether a
+    /// step is running under it through <see cref="MigrationGateIsHeld"/>
+    /// rather than by reaching the object.
+    /// </remarks>
+    private static readonly object _migrationGate = new();
+
     private static readonly JsonSerializerOptions _json = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -128,6 +148,18 @@ public sealed class StoreFormat : IPairingStore
         _current = current;
         _chain = chain;
     }
+
+    /// <summary>
+    /// Gets a value indicating whether the thread asking holds the gate every
+    /// migration in this process runs under.
+    /// </summary>
+    /// <remarks>
+    /// A seam for a proof and not an API for anybody else to call, in the sense
+    /// `Properties/AssemblyInfo.cs` sets out. A step asks it from inside the
+    /// walk, which is the one place the answer says anything: the gate is
+    /// meant to be held there and nowhere else.
+    /// </remarks>
+    internal static bool MigrationGateIsHeld => Monitor.IsEntered(_migrationGate);
 
     /// <summary>
     /// Gets the stamp file this format is read from and written to.
@@ -227,20 +259,35 @@ public sealed class StoreFormat : IPairingStore
     /// move is the one step that has to be all or nothing.
     /// </para>
     /// <para>
-    /// Nothing calls this today, and that is disclosed rather than repaired: the
-    /// chain is empty, so a call would be a no-op on every installation, and the
-    /// moment it belongs at is the moment the first step exists. #59 is where
-    /// that is argued, and it is the half of it this member does not close.
+    /// Every store runs this from its own constructor, before a line of its
+    /// file is read, so the first step somebody writes runs on the first start
+    /// after the upgrade with nothing wired for it. On every installation today
+    /// the walk has length zero, because the chain is empty; the route is proved
+    /// against a chain a fixture declares, through the seam each store carries
+    /// for it. #59 is where the route is argued.
     /// </para>
     /// <para>
-    /// It is not safe against a second process holding a file in either
-    /// directory open, because the move is what fails then. A migration runs
-    /// before anything reads the store, and no route here starts one while a
-    /// pass is running, but that is an arrangement rather than a lock and it is
-    /// named as one.
+    /// Every walk in this process runs under one gate, so two stores opening at
+    /// once over one directory walk it in turn rather than at once. What the
+    /// gate does not hold off is a second process holding a file in either
+    /// directory open, because the move is what fails then; no route here
+    /// starts a migration while a pass is running, and that stays an
+    /// arrangement rather than a lock.
     /// </para>
     /// </remarks>
     public int Migrate()
+    {
+        lock (_migrationGate)
+        {
+            return StepForward();
+        }
+    }
+
+    /// <summary>
+    /// The walk itself, run under the gate <see cref="Migrate()"/> takes.
+    /// </summary>
+    /// <returns>The number of steps applied.</returns>
+    private int StepForward()
     {
         var declared = Declared();
 
