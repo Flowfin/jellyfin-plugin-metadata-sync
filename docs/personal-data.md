@@ -99,8 +99,8 @@ beside a list is a second answer that goes stale on its own.
 
 <!-- run against Jellyfin.Plugin.MetadataSync.csproj: package references -->
     git show origin/master:Jellyfin.Plugin.MetadataSync/Jellyfin.Plugin.MetadataSync.csproj | grep -n 'PackageReference Include'
-    16:    <PackageReference Include="Jellyfin.Controller" Version="10.11.11" >
-    19:    <PackageReference Include="Jellyfin.Model" Version="10.11.11">
+    16:    <PackageReference Include="Jellyfin.Controller" Version="10.11.0" >
+    19:    <PackageReference Include="Jellyfin.Model" Version="10.11.0">
     25:    <PackageReference Include="Jellyfin.Controller" Version="12.0.0-rc4" >
     28:    <PackageReference Include="Jellyfin.Model" Version="12.0.0-rc4">
     34:    <PackageReference Include="SerilogAnalyzer" Version="0.15.0" PrivateAssets="All" />
