@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using Jellyfin.Plugin.MetadataSync.Store;
 using Xunit;
@@ -25,6 +27,14 @@ namespace Jellyfin.Plugin.MetadataSync.Tests;
 /// stamp says which shape a directory is in; it does not move the directory to
 /// another shape, and a build that meets an older shape and reads it anyway is
 /// the same silent loss a downgrade produces, arriving from the other side.
+/// </para>
+/// <para>
+/// The route is the other half. Every store runs the migration from its own
+/// constructor before it reads a line, so the first step somebody writes runs
+/// on the first start after the upgrade with nothing wired for it. That is
+/// asserted below on every store the plugin declares rather than on a list,
+/// through the seam each store carries for it, and the gate every walk in the
+/// process runs under is asked about from inside a step rather than raced.
 /// </para>
 /// </remarks>
 public class StoreMigrationTests
@@ -278,6 +288,197 @@ public class StoreMigrationTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(
             () => new StoreFormat("directory", StoreFormat.Earliest - 1, Array.Empty<FormatStep>()));
+    }
+
+    /// <summary>
+    /// Every store steps the directory forward to the format it reads before it
+    /// reads a line of it. The stores are found rather than listed, and each is
+    /// opened through the seam that hands it a stamp whose chain has a step in
+    /// it, because from the public constructor the walk has length zero and a
+    /// store that skipped it would open exactly like one that ran it.
+    /// </summary>
+    /// <remarks>
+    /// The stamp the fixture writes is one format behind the fixture's current,
+    /// so a store that opened without running the migration leaves it there.
+    /// Before is read rather than assumed: the step writes one line this build
+    /// cannot read into the store's own file, and a store that read the file
+    /// before the step ran reports no such line, because the file was not there
+    /// yet. So the count of unreadable lines afterwards is the order the two
+    /// happened in.
+    /// </remarks>
+    [Fact]
+    public void EveryStoreStepsTheDirectoryForwardBeforeItReads()
+    {
+        var stores = StoresThatOpenOverADirectory();
+
+        Assert.NotEmpty(stores);
+
+        foreach (var store in stores)
+        {
+            using var directory = new TemporaryDirectory();
+            Stamped(directory, 1);
+
+            var ran = 0;
+            var file = FileNameOf(store);
+
+            var chain = new[]
+            {
+                new FormatStep(1, working =>
+                {
+                    ran++;
+                    File.WriteAllText(Path.Combine(working, file), "not a line this build reads\n", new UTF8Encoding(false));
+                }),
+            };
+
+            var opened = Open(store, directory, new StoreFormat(directory.Path, 2, chain));
+
+            Assert.True(ran == 1, $"{store.Name} opened over a directory one format behind and the step ran {ran} time(s).");
+            Assert.Equal(Said(2), Read(directory, StoreFormat.FileName));
+            Assert.True(Unreadable(opened) == 1, $"{store.Name} did not read the line the step wrote, so it read the file before the step ran.");
+            Assert.Empty(Beside(directory));
+        }
+    }
+
+    /// <summary>
+    /// A store over a directory the chain cannot carry forward is not opened,
+    /// and the directory is left exactly as it was. This is the refusal
+    /// <see cref="StoreFormatTests"/> holds for a stamp from the future, held
+    /// here for a stamp the chain has no step from, on the route a store
+    /// actually opens by.
+    /// </summary>
+    [Fact]
+    public void NoStoreOpensOverADirectoryTheChainCannotCarryForward()
+    {
+        var stores = StoresThatOpenOverADirectory();
+
+        Assert.NotEmpty(stores);
+
+        foreach (var store in stores)
+        {
+            using var directory = new TemporaryDirectory();
+            Stamped(directory, 1);
+            Wrote(directory, "written-values.jsonl", "one row");
+
+            var before = Snapshot(directory);
+
+            Assert.Throws<StoreFormatRefusedException>(
+                () => Open(store, directory, new StoreFormat(directory.Path, 3, new[] { Step(1, new List<int>(), "one") })));
+
+            Assert.Equal(before, Snapshot(directory));
+            Assert.Empty(Beside(directory));
+        }
+    }
+
+    /// <summary>
+    /// A step runs while the gate every migration in this process takes is
+    /// held, so two stores opening at once over one directory walk it in turn
+    /// rather than at once, each copying and moving what the other is in the
+    /// middle of. It is asked from inside the step rather than raced, because a
+    /// race is a proof that bites on some runs and this one bites on every run:
+    /// without the gate the step finds it not held.
+    /// </summary>
+    [Fact]
+    public void AStepRunsWhileTheGateEveryMigrationTakesIsHeld()
+    {
+        using var directory = new TemporaryDirectory();
+        Stamped(directory, 1);
+
+        var held = new List<bool>();
+
+        new StoreFormat(directory.Path, 2, new[] { new FormatStep(1, _ => held.Add(StoreFormat.MigrationGateIsHeld)) }).Migrate();
+
+        Assert.Equal(new List<bool> { true }, held);
+        Assert.False(StoreFormat.MigrationGateIsHeld);
+    }
+
+    /// <summary>
+    /// A walk that refused lets go of the gate, so a directory this build
+    /// cannot place does not leave every later store in the process waiting on
+    /// a lock the refusal took with it.
+    /// </summary>
+    [Fact]
+    public void AWalkThatRefusedLetsGoOfTheGate()
+    {
+        using var directory = new TemporaryDirectory();
+        Stamped(directory, 1);
+
+        Assert.Throws<InvalidOperationException>(
+            () => new StoreFormat(directory.Path, 2, new[] { new FormatStep(1, _ => throw new InvalidOperationException("the step could not finish")) }).Migrate());
+
+        Assert.False(StoreFormat.MigrationGateIsHeld);
+    }
+
+    /// <summary>
+    /// The stores that open over the plugin's directory, found rather than
+    /// listed, which is the same reading <see cref="PairingStoresTests"/> makes
+    /// for the report. The stamp is left out because it is the thing the others
+    /// read the directory through rather than a store that opens over it.
+    /// </summary>
+    /// <returns>The concrete store types.</returns>
+    private static List<Type> StoresThatOpenOverADirectory() =>
+        typeof(Plugin).Assembly
+            .GetTypes()
+            .Where(type => type.IsClass && !type.IsAbstract && typeof(IPairingStore).IsAssignableFrom(type))
+            .Where(type => type != typeof(StoreFormat))
+            .OrderBy(type => type.Name, StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>
+    /// The file a store keeps, read off the constant every store that keeps one
+    /// declares, which <see cref="StorageStatementTests"/> already requires.
+    /// </summary>
+    /// <param name="store">The store type.</param>
+    /// <returns>The file name.</returns>
+    private static string FileNameOf(Type store)
+    {
+        var name = store.GetField("FileName", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?.GetRawConstantValue() as string;
+
+        Assert.True(name is not null, $"{store.Name} declares no file name, so nothing can be written into the file it reads.");
+
+        return name!;
+    }
+
+    /// <summary>
+    /// How many lines a store could not read back, which every store reports
+    /// rather than swallows.
+    /// </summary>
+    /// <param name="store">The store.</param>
+    /// <returns>The count.</returns>
+    private static int Unreadable(object store)
+    {
+        var unreadable = store.GetType().GetProperty("Unreadable", BindingFlags.Instance | BindingFlags.Public);
+
+        Assert.True(unreadable is not null, $"{store.GetType().Name} does not report the lines it could not read back.");
+
+        return (int)unreadable!.GetValue(store)!;
+    }
+
+    /// <summary>
+    /// Opens a store over a directory through the seam that hands it the stamp
+    /// it reads the directory through. A store with no such seam is refused
+    /// here, because the route it opens by could then not be proved at all.
+    /// </summary>
+    /// <param name="store">The store type.</param>
+    /// <param name="directory">The directory.</param>
+    /// <param name="format">The stamp, whose chain the fixture declares.</param>
+    /// <returns>The store.</returns>
+    private static object Open(Type store, TemporaryDirectory directory, StoreFormat format)
+    {
+        var seam = store.GetConstructor(
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+            new[] { typeof(string), typeof(StoreFormat) });
+
+        Assert.True(seam is not null, $"{store.Name} has no seam taking the stamp it reads the directory through, so the route it opens by cannot be proved.");
+
+        try
+        {
+            return seam!.Invoke(new object[] { directory.Path, format });
+        }
+        catch (TargetInvocationException caught) when (caught.InnerException is not null)
+        {
+            ExceptionDispatchInfo.Capture(caught.InnerException).Throw();
+            throw;
+        }
     }
 
     /// <summary>

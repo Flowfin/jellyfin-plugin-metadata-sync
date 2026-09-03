@@ -108,17 +108,41 @@ public sealed class PassProgress : IPassProgress, IPairingStore
     /// leaves no file.
     /// </remarks>
     public PassProgress(string directory)
+        : this(directory, null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PassProgress"/> class over a
+    /// directory, reading its format through a stamp handed in rather than one
+    /// built over the directory.
+    /// </summary>
+    /// <param name="directory">The directory this plugin keeps its own data in.</param>
+    /// <param name="format">The stamp to read the directory through, or null to build one over it.</param>
+    /// <exception cref="ArgumentNullException">There is no directory to keep the store in.</exception>
+    /// <exception cref="ArgumentException">The directory is named by nothing but space.</exception>
+    /// <remarks>
+    /// A seam for a proof and not an API for anybody else to call, in the sense
+    /// `Properties/AssemblyInfo.cs` sets out. The chain this build carries is
+    /// empty, so the migration this store runs on opening has nothing to do
+    /// from the public constructor, and the only way to watch it open over a
+    /// directory the chain steps forward is to hand it a stamp whose chain has
+    /// a step in it.
+    /// </remarks>
+    internal PassProgress(string directory, StoreFormat? format)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
 
         _directory = directory;
         _path = Path.Combine(directory, FileName);
 
-        // Read before a line of the store is, for the reason WrittenValues reads
-        // it first: a file written by a newer build would otherwise be dropped to
-        // what this build understands and written back that way.
-        _format = new StoreFormat(directory);
-        _format.Declared();
+        // Stepped forward and read before a line of the store is, for the
+        // reason WrittenValues does both first: a file written by a newer build
+        // would otherwise be dropped to what this build understands and written
+        // back that way, and a step nothing ran would leave a file in a shape
+        // this build does not read.
+        _format = format ?? new StoreFormat(directory);
+        _format.Migrate();
 
         Load();
     }

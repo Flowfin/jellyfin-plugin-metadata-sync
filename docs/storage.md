@@ -370,14 +370,22 @@ left it. A store that is half of one shape and half of the next is a store no
 reader can place, and no build after it could tell that from the shape it was
 written in.
 
-**Nothing calls it.** The chain is empty, so a call would be a no-op on every
-installation, and the moment it belongs at is the moment the first step exists.
-That is a disclosure and not a claim that the absence is harmless: what is
-proved today is the mechanism against a chain a fixture declares, and the route
-that runs it on an upgrade is the half of #59 this does not close. It is also
-not safe against a second process holding a file in either directory open,
-because the move is what fails then. No route here starts a migration while a
-pass is running, but that is an arrangement rather than a lock.
+**Every store runs it before it reads.** Each store steps the directory
+forward to the format this build reads from its own constructor, before a line
+of its file is opened, so the first step somebody writes runs on the first
+start after the upgrade with nothing wired for it. On every installation today
+that walk has length zero, because the chain is empty. The
+route is proved against a chain a fixture declares, through a seam each store
+carries for it, and `StoreMigrationTests` asks it of every store the plugin
+declares rather than of a list, so a store that opened without running the
+migration reds the suite whether or not anybody remembered to look. Two stores
+opening at once over one directory would be two walks over one directory, each
+copying and moving what the other is in the middle of, so every migration in
+this process runs under one gate, and a step is asserted to run while that gate
+is held. What the gate does not hold off is a second process with a file in
+either directory open, because the move is what fails then; no route here
+starts a migration while a pass is running, and that stays an arrangement
+rather than a lock.
 
 ## What an operator can ask for, and what a removal is not
 

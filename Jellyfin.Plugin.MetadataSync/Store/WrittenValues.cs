@@ -139,19 +139,44 @@ public sealed class WrittenValues : IWrittenValues, IPairingStore
     /// holding nothing rather than an empty file.
     /// </remarks>
     public WrittenValues(string directory)
+        : this(directory, null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="WrittenValues"/> class over a
+    /// directory, reading its format through a stamp handed in rather than one
+    /// built over the directory.
+    /// </summary>
+    /// <param name="directory">The directory this plugin keeps its own data in.</param>
+    /// <param name="format">The stamp to read the directory through, or null to build one over it.</param>
+    /// <exception cref="ArgumentNullException">There is no directory to keep the store in.</exception>
+    /// <exception cref="ArgumentException">The directory is named by nothing but space.</exception>
+    /// <remarks>
+    /// A seam for a proof and not an API for anybody else to call, in the sense
+    /// `Properties/AssemblyInfo.cs` sets out. The chain this build carries is
+    /// empty, so the migration this store runs on opening has nothing to do
+    /// from the public constructor, and the only way to watch it open over a
+    /// directory the chain steps forward is to hand it a stamp whose chain has
+    /// a step in it.
+    /// </remarks>
+    internal WrittenValues(string directory, StoreFormat? format)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
 
         _directory = directory;
         _path = Path.Combine(directory, FileName);
 
-        // The format the directory declares is read before a line of it is,
-        // because a file written by a newer build is dropped to what this build
-        // understands the moment it is loaded and written back that way at the
-        // next compaction. Refusing here is the only place that loss can still
-        // be prevented rather than reported.
-        _format = new StoreFormat(directory);
-        _format.Declared();
+        // The directory is stepped forward to the format this build reads
+        // before a line of it is, and a directory this build cannot place is
+        // refused on the same call, because a file written by a newer build is
+        // dropped to what this build understands the moment it is loaded and
+        // written back that way at the next compaction. Refusing here is the
+        // only place that loss can still be prevented rather than reported, and
+        // stepping here is what lets the first step run with nothing wired for
+        // it.
+        _format = format ?? new StoreFormat(directory);
+        _format.Migrate();
 
         Load();
     }
