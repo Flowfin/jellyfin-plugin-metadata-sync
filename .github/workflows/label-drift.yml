@@ -1,13 +1,15 @@
 # Reads `.github/labels.yaml` against the labels this board actually carries and
 # reports both directions. It repairs nothing.
 #
-# Why the two can disagree at all: `sync-labels.yaml` applies the file with
-# `delete-other-labels: true`, so the file is the whole board rather than a list
-# of labels the board should have among others. A label the board carries and
-# the file does not declare is deleted by the next sync run. A label the file
-# declares and the board does not carry is offered by the hygiene gate in the
-# message a refused change reads, so the repair it suggests does not exist.
-# Both directions were live on 2026-08-23 and both were found by hand.
+# Why the two can disagree at all: the file declares this board's whole label
+# set and nothing applies it. A monthly run used to, deleting every label the
+# file did not name; #351 removed it on 2026-09-04 and no route writes labels
+# from the file now. So a label the board carries and the file does not declare
+# stays until somebody removes it by hand, and this report is the only thing
+# that says it is there. A label the file declares and the board does not carry
+# is offered by the hygiene gate in the message a refused change reads, so the
+# repair it suggests does not exist. Both directions were live on 2026-08-23
+# and both were found by hand.
 #
 # Why it lives here rather than in the suite. The comparison needs the board,
 # and the suite runs with no network by policy - `docs/testing.md` holds that
@@ -28,8 +30,15 @@
 name: Label drift
 
 on:
-  # Weekly, which bounds how long a hand-added label can sit undeclared before
-  # the monthly sync deletes it. `sync-labels.yaml` carries that monthly cron.
+  # Weekly, and the week is now the whole bound rather than a fraction of
+  # another one. Nothing repairs either direction on a schedule of its own, so
+  # a difference stands until a run of this workflow reports it and somebody
+  # acts on that report. Weekly rather than daily because the declared side
+  # moves rarely - five changes between 2026-08-06 and 2026-08-31, read with
+  # `git log --oneline -- .github/labels.yaml | wc -l` at 0d004cb3 - while the
+  # carried side moves whenever somebody labels by hand, which no reading
+  # bounds. Whether a week is the right trade is a judgement and is not
+  # measured here.
   schedule:
     - cron: '23 6 * * 2'
   workflow_dispatch:
