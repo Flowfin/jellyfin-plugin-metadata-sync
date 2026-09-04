@@ -29,6 +29,28 @@
 #     --jq '[.rules[] | select(.type == "required_status_checks")
 #            | .parameters.required_status_checks[].context]'
 #
+# ## How a change says what it finishes
+#
+# The tracker reads `<keyword> #<number>` in a body as an instruction, and it
+# does not read the sentence around it. Three times on this board a body has
+# said in plain words that a change leaves an issue open, and the merge closed
+# it anyway; each cost a reopen and a comment saying the closure was not a
+# judgement. A rule broken by writing a true sentence in the obvious order is a
+# spelling trap rather than a rule anybody keeps, so check 7 refuses the pattern
+# outright and the relation is declared instead, on a line of its own:
+#
+#   Finishes: #123
+#
+# at column zero, so a body can show the shape inside an indented block without
+# declaring anything. That line is the only place this workflow reads the
+# relation from. A body
+# therefore says once what it finishes and may write any sentence it likes
+# everywhere else, including a sentence about an issue it is not finishing.
+#
+# Nothing closes the issue on merge afterwards. Closing it stays a judgement
+# somebody makes, with the merge commit beside it, which is what all three of
+# the reopens above were spent restoring by hand.
+#
 # ## What this gate does not check
 #
 # The changelog has three classes that mark a change an operator has to read
@@ -187,7 +209,7 @@ jobs:
             if (refusingTierApplies && named.length === 0) {
               refusals.push(
                 referenced.length === 0
-                  ? "The body names no issue. Name the issue this change is from, as `Closes #123` or `Refs #123`."
+                  ? "The body names no issue. Name the issue this change is from, as `Refs #123`, and where it finishes one, declare that as `Finishes: #123` on a line of its own."
                   : `The body names #${referenced.join(", #")}, and no number among them is an issue on this board.`,
               );
             }
@@ -250,6 +272,175 @@ jobs:
               }
             }
 
+            // Check 7. Refuses a body that instructs the tracker to close an
+            // issue. The number is the next unused one rather than its position
+            // in the file: it sits beside the other refusals, and a number
+            // quoted in a red run keeps meaning one check for the life of the
+            // file.
+            //
+            // What it is for is in the header above under "How a change says
+            // what it finishes", where somebody meeting a red run is sent. The
+            // short of it: the pattern is an instruction and the sentence around
+            // it is not read, so a body saying a change leaves an issue open
+            // closes it on merge anyway, and every author of the three that did
+            // so here intended the opposite of what the merge did.
+            //
+            // The keywords and the spellings around them are GitHub's rather
+            // than this board's, read at
+            // https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue
+            // on 2026-09-04: nine keywords, matched without regard to case, an
+            // optional colon after the keyword, and three shapes of reference -
+            // `#N`, `OWNER/REPO#N`, and a full issue URL. A keyword the tracker
+            // adds later is a keyword this list does not hold, and nothing here
+            // would notice; that is the bound, and re-reading the page is what
+            // moves it.
+            //
+            // WHAT IT DOES NOT REACH, stated rather than left to be assumed. A
+            // bot is outside the refusing tier, here as at every other check, so
+            // a bot body carrying the pattern still closes the issue and this
+            // run says nothing about it. And what is judged is the body as the
+            // run read it, so a body edited after the last run is judged by the
+            // next one, which is what the `edited` trigger above buys.
+            const CLOSING_KEYWORDS = [
+              "close", "closes", "closed",
+              "fix", "fixes", "fixed",
+              "resolve", "resolves", "resolved",
+            ];
+            const CLOSING_REFERENCE =
+              /(?:https?:\/\/github\.com\/[\w.-]+\/[\w.-]+\/issues\/\d+|[\w.-]+\/[\w.-]+#\d+|#\d+)/;
+            const CLOSING_PHRASE = new RegExp(
+              "\\b(?:" + CLOSING_KEYWORDS.join("|") + ")\\b[ \\t]*:?[ \\t]*" + CLOSING_REFERENCE.source,
+              "gi",
+            );
+            // Line by line, so the refusal can say where the phrase is and the
+            // author repairs it without reading the whole body again.
+            const closingPhrases = (text) =>
+              (text || "").split(/\r?\n/).flatMap((line, index) =>
+                [...line.matchAll(CLOSING_PHRASE)].map((m) => ({ line: index + 1, phrase: m[0] })),
+              );
+            const phraseLabels = (found) => found.map((f) => `${f.line}: ${f.phrase}`);
+
+            // The declaration, and the whole of it. It is a line and not a
+            // phrase in a sentence, because a relation read out of prose is the
+            // failure this check is against, and reading the replacement out of
+            // prose would rebuild it one word over.
+            //
+            // At column zero, which is not decoration. The first body written
+            // against this check showed the form inside an indented block, and
+            // an earlier reading that allowed leading whitespace took the
+            // example for a declaration. A body may therefore quote the shape
+            // while declaring nothing, and a declaration is never something a
+            // list or a block quote carried in by accident.
+            const FINISHES_LINE = /^Finishes:[ \t]*#(\d+)[ \t]*$/;
+            const declaredFinishes = (text) => {
+              const found = (text || "")
+                .split(/\r?\n/)
+                .map((line) => FINISHES_LINE.exec(line))
+                .filter((m) => m !== null)
+                .map((m) => Number(m[1]));
+              return [...new Set(found)].sort((a, b) => a - b);
+            };
+
+            // The near-misses this check owes, executed on every pull request
+            // rather than pasted once into a body nobody re-reads. A workflow is
+            // the class of change the suite cannot exercise at all - it runs
+            // with nothing checked out and there is no C# to reach this from -
+            // and the whole table costs milliseconds and no new apparatus.
+            //
+            // The first row is the one the issue asks for by name: a body naming
+            // an issue with no keyword beside it passes, and it would fail under
+            // a rule that matched the number alone. The rows after it are the
+            // spellings, one per keyword, plus case, the colon, the two
+            // non-local reference shapes, the line number, and the words that
+            // merely contain a keyword or a number.
+            //
+            // A disagreement here fails the job OUTSIDE the audience narrowing
+            // above. That narrowing is about whose obligation a convention is; a
+            // self-test that disagrees means this check no longer decides what
+            // it says it decides, and nothing should merge past that whoever
+            // opened the pull request.
+            const SELF_TEST = [
+              ["a plain reference and prose naming the same issue",
+                "Refs #347\n\nThis is the change #347 asked for.", [], []],
+              ["the sentence that shut an issue on this board",
+                "## What this is\n\nThis does not close #122; that issue stays open.",
+                ["3: close #122"], []],
+              ["an uppercase spelling", "CLOSES #12", ["1: CLOSES #12"], []],
+              ["a colon spelling", "Fixes: #12", ["1: Fixes: #12"], []],
+              ["a colon and no space", "Resolved:#12", ["1: Resolved:#12"], []],
+              ["a cross-repository reference",
+                "Resolves Flowfin/jellyfin-plugin-metadata-sync#12",
+                ["1: Resolves Flowfin/jellyfin-plugin-metadata-sync#12"], []],
+              ["a full issue URL",
+                "Closed https://github.com/Flowfin/jellyfin-plugin-metadata-sync/issues/12",
+                ["1: Closed https://github.com/Flowfin/jellyfin-plugin-metadata-sync/issues/12"], []],
+              ["the declared relation", "Refs #347\n\nFinishes: #347\n", [], [347]],
+              ["a word that ends in a keyword", "Prefixes #12 with a heading.", [], []],
+              // The two word boundaries, one row each, and neither is
+              // decoration. Dropping the leading one refuses the row above;
+              // dropping the trailing one refuses this one, because the
+              // cross-repository reference shape begins with a word character
+              // and will otherwise swallow the rest of the word.
+              ["a keyword that runs into a repository name", "Closest/repo#12 is the nearest.", [], []],
+              ["a keyword with no reference beside it", "This closes the register.", [], []],
+              ["a reference with no keyword beside it", "The register at #12 is the subject.", [], []],
+              ["the line the phrase is on",
+                "one\ntwo\nthree fixes #12 four\nfive", ["3: fixes #12"], []],
+              ["two phrases on two lines",
+                "close #1\nand resolve #2", ["1: close #1", "2: resolve #2"], []],
+              ["a declaration carrying prose is not one", "Finishes: #12 and #13", [], []],
+              ["an indented declaration is not one, so the shape can be quoted",
+                "The form is:\n\n    Finishes: #12\n\non a line of its own.", [], []],
+              ["a declaration repeated", "Finishes: #12\nFinishes: #12", [], [12]],
+              ["two declarations", "Finishes: #12\nFinishes: #13", [], [12, 13]],
+            ];
+            for (const keyword of CLOSING_KEYWORDS) {
+              SELF_TEST.push([
+                `the keyword "${keyword}"`,
+                `A body that says ${keyword} #12 in passing.`,
+                [`1: ${keyword} #12`],
+                [],
+              ]);
+            }
+            for (const [name, text, phrases, finishes] of SELF_TEST) {
+              const gotPhrases = phraseLabels(closingPhrases(text));
+              const gotFinishes = declaredFinishes(text);
+              if (
+                gotPhrases.join(" | ") !== phrases.join(" | ") ||
+                gotFinishes.join(",") !== finishes.join(",")
+              ) {
+                refusals.push(
+                  `Check 7 self-test "${name}" disagreed: expected phrases ` +
+                    `[${phrases.join(" | ")}] and declarations [${finishes.join(", ")}], got ` +
+                    `[${gotPhrases.join(" | ")}] and [${gotFinishes.join(", ")}]. The closing-keyword ` +
+                    "check at check 7 in .github/workflows/pr-hygiene.yml no longer decides what it " +
+                    "says it decides; repair it before merging anything.",
+                );
+              }
+            }
+
+            const closing = closingPhrases(body);
+            if (refusingTierApplies && closing.length > 0) {
+              refusals.push(
+                "The body carries " +
+                  closing.map((c) => `\`${c.phrase}\` on line ${c.line}`).join(", ") +
+                  ". The tracker reads that as an instruction to close the issue on merge, whatever " +
+                  "the sentence around it says, and it has closed three issues on this board that " +
+                  "way. Write the bare `#123`, which links without closing, and where this change " +
+                  "does finish an issue declare it as `Finishes: #123` on a line of its own.",
+              );
+            }
+
+            const finished = declaredFinishes(body);
+            const finishedUnknown = finished.filter((n) => !named.includes(n));
+            if (refusingTierApplies && finishedUnknown.length > 0) {
+              refusals.push(
+                "The body declares that it finishes " +
+                  finishedUnknown.map((n) => "#" + n).join(", ") +
+                  ", and no number among them is an issue on this board.",
+              );
+            }
+
             // Check 5, advisory. The number is 400 changed lines, and it is the
             // one the parity target states, which is where this repository's gate
             // is measured from:
@@ -310,6 +501,9 @@ jobs:
                 `; of those, an issue on this board: ${named.length === 0 ? "none" : named.map((n) => "#" + n).join(", ")}`,
               `commits read: ${commits.length}`,
               `changelog class labels carried: ${carried.length === 0 ? "none" : carried.join(", ")}`,
+              `closing phrases in the body: ${closing.length === 0 ? "none" : phraseLabels(closing).join("; ")}`,
+              `issues this body declares it finishes: ${finished.length === 0 ? "none declared" : finished.map((n) => "#" + n).join(", ")}`,
+              `check 7 self-test rows run: ${SELF_TEST.length}`,
               `changed files: ${changed.length}, counted lines: ${churn}`,
             ]);
 
