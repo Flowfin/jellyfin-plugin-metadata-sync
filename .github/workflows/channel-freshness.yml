@@ -1,0 +1,208 @@
+# Reads the catalogue an operator's server installs from against the releases
+# this repository has published, and reports both directions. It repairs
+# nothing.
+#
+# Why the two can disagree at all: the catalogue is another board's tree. It is
+# rebuilt from the releases of the repositories it declares as sources, and that
+# run does not publish what it built - it proposes it as a pull request there.
+# So a release published here reaches an operator when somebody merges that
+# pull request, and until then the served file advertises the version before it.
+# Both directions are real. A version published here and not advertised is a
+# release nothing installable points at; a version advertised and not published
+# is an entry offering a download that is not there.
+#
+# Why the reading is taken from the served file rather than from a run. A
+# publish run reporting success says the release exists and says nothing about
+# what the catalogue offers, which is the substitution #88 is written against.
+# Reading the run instead of the file would reproduce it here.
+#
+# Why it lives here rather than in the suite. The comparison needs the network
+# on both sides, and the suite runs with no display and no network by policy -
+# `docs/testing.md` holds that policy.
+#
+# Why it reports and does not repair. The catalogue is another board's tree and
+# nothing here may write to it. What this can do is say the channel is behind,
+# which is what nobody was told on 2026-09-04. The job fails on a difference,
+# because a scheduled report that always succeeds is one nobody opens.
+#
+# Hardened per the workflow policy in `zizmor.yml`: the action is SHA-pinned,
+# checkout runs with persist-credentials:false, and the one permission granted
+# is a read.
+name: Channel freshness
+
+on:
+  # Daily, because the catalogue is rebuilt daily and a difference can only
+  # appear when it is. This bounds how long a release can sit unadvertised
+  # before somebody is told, and nothing else in either tree bounds it.
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+# One comparison at a time, and a superseded one is not cancelled: each run is a
+# reading of a served file that moves, and a cancelled reading reports nothing.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+env:
+  # The address an operator adds to their server. The readme gives them the same
+  # one in prose, and the step below refuses a run where the two have drifted
+  # apart, so this is not a second copy that can quietly stop agreeing.
+  CHANNEL_URL: https://flowfin.dev/manifest.json
+
+jobs:
+  compare:
+    name: Compare the catalogue with the releases
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read # check out the comparison, and read this repository's releases
+    steps:
+      - name: Check out the comparison and the plugin manifest
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: The address read here is the address the readme gives an operator
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! grep -qF "$CHANNEL_URL" README.md; then
+            echo "::error::The readme does not carry $CHANNEL_URL. One of the two moved, and a run against an address no operator is given proves nothing."
+            exit 1
+          fi
+          echo "the readme and this workflow name the same address"
+
+      - name: Prove the comparison bites, in each direction
+        # The live comparison below is a reading of two files that move, so a run
+        # in which it reports nothing is not by itself evidence that it would
+        # have reported something. These six cases are, and they run first so the
+        # report underneath is read against a comparison that has just been shown
+        # to work on this runner. The stale case is the one #88 asks for by name.
+        shell: bash
+        run: |
+          set -euo pipefail
+          work=$(mktemp -d)
+          guid=00000000-0000-0000-0000-0000000000ff
+
+          cat > "$work/agreeing.json" <<JSON
+          [{"guid": "$guid", "name": "Fixture", "versions": [{"version": "0.1.0.0"}, {"version": "0.1.1.0"}]},
+           {"guid": "00000000-0000-0000-0000-000000000001", "name": "Another", "versions": [{"version": "9.9.9.9"}]}]
+          JSON
+
+          cat > "$work/stale.json" <<JSON
+          [{"guid": "$guid", "name": "Fixture", "versions": [{"version": "0.1.0.0"}]}]
+          JSON
+
+          cat > "$work/ahead.json" <<JSON
+          [{"guid": "$guid", "name": "Fixture", "versions": [{"version": "0.1.0.0"}, {"version": "0.1.1.0"}, {"version": "0.2.0.0"}]}]
+          JSON
+
+          cat > "$work/absent.json" <<'JSON'
+          [{"guid": "00000000-0000-0000-0000-000000000001", "name": "Another", "versions": [{"version": "9.9.9.9"}]}]
+          JSON
+
+          echo 'not json at all' > "$work/broken.json"
+
+          cat > "$work/releases.json" <<'JSON'
+          [{"tag_name": "0.1.1.0-stable", "draft": false, "prerelease": false},
+           {"tag_name": "0.1.1.0-jf12-stable", "draft": false, "prerelease": false},
+           {"tag_name": "0.1.0.0-stable", "draft": false, "prerelease": false},
+           {"tag_name": "0.2.0.0-stable", "draft": true, "prerelease": false},
+           {"tag_name": "0.9.0.0-stable", "draft": false, "prerelease": true}]
+          JSON
+
+          echo '[]' > "$work/none.json"
+
+          out=""
+          run_case() {
+            local expected=$1 manifest=$2 releases=$3 code=0
+            out=$(.github/scripts/channel-freshness.sh "$work/$manifest" "$work/$releases" "$guid" 2>&1) || code=$?
+            echo "--- $manifest against $releases -> exit $code, expected $expected"
+            echo "$out"
+            echo
+            if [ "$code" -ne "$expected" ]; then
+              echo "the comparison answered $code where $expected is what this case is about" >&2
+              exit 1
+            fi
+          }
+
+          named_under() {
+            local heading=$1 name=$2
+            # The line after the heading, rather than the name anywhere in the
+            # output: the mistake this is against is the two directions swapped,
+            # and a search of the whole report passes that unchanged.
+            if ! echo "$out" | grep -A 1 "^$heading" | grep -qx "  $name"; then
+              echo "'$name' is not named under '$heading'" >&2
+              exit 1
+            fi
+          }
+
+          run_case 0 agreeing.json releases.json
+          named_under 'Published and not advertised' 'none'
+          named_under 'Advertised and not published' 'none'
+
+          # A release published and left unadvertised: the deliberately stale
+          # catalogue that #88's third condition asks this to be proved against.
+          run_case 1 stale.json releases.json
+          named_under 'Published and not advertised' '0.1.1.0'
+          named_under 'Advertised and not published' 'none'
+
+          run_case 1 ahead.json releases.json
+          named_under 'Published and not advertised' 'none'
+          named_under 'Advertised and not published' '0.2.0.0'
+
+          # A catalogue carrying no entry for this plugin is refused rather than
+          # read as agreement: an empty advertised set compares clean against a
+          # repository whose releases it names none of.
+          run_case 2 absent.json releases.json
+
+          # A file that is not a JSON array at all is refused for the same reason
+          # in the same direction.
+          run_case 2 broken.json releases.json
+
+          # And a repository that has published no release, in the other one.
+          run_case 2 agreeing.json none.json
+
+          # The draft and the prerelease in the release fixture are the near
+          # miss: neither is advertised in the agreeing case, so counting either
+          # would have reddened the first case rather than the last.
+          echo "The comparison answered all six cases as each is about."
+
+      - name: Read the releases this repository has published
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --slurp --jq 'add' > releases.json
+          echo "this repository reports $(jq 'length' releases.json) release(s)"
+
+      - name: Read the catalogue as an operator's server reads it
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sSfL --retry 3 --max-time 30 "$CHANNEL_URL" -o manifest.json
+          echo "the catalogue reports $(jq 'length' manifest.json) plugin entries"
+
+      - name: Compare the catalogue with the releases
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          # The identifier is read out of the plugin manifest rather than written
+          # here, so this compares the entry for the plugin this repository
+          # builds and not for one that merely shares a name.
+          guid=$(sed -n 's/^guid: *"\(.*\)"$/\1/p' build.yaml | head -1)
+          {
+            echo '### The catalogue against the releases of this repository'
+            echo
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          .github/scripts/channel-freshness.sh manifest.json releases.json "$guid" 2>&1 \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+          status=${PIPESTATUS[0]}
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
