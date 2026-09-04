@@ -2,13 +2,14 @@
 # Compare the labels a label file declares with the labels a board carries, in
 # both directions. This reads and reports; it changes nothing on either side.
 #
-# The rule this belongs to is written at the top of `.github/labels.yaml`: the
-# sync applies that file with every other label deleted, so the file is the
-# whole board rather than a list of labels the board should have among others.
-# A label the board carries and the file does not is deleted by the next sync
-# run. A label the file declares and the board does not carry is offered by the
-# hygiene gate in the message a refused change reads, so the repair it suggests
-# does not exist. Neither direction is visible from inside the file.
+# The rule this belongs to is written at the top of `.github/labels.yaml`: that
+# file is the authority for which labels exist on this board, so it is the whole
+# board rather than a list of labels the board should have among others. Nothing
+# applies it, so a label the board carries and the file does not is deleted by
+# nothing and stays until somebody removes it by hand. A label the file declares
+# and the board does not carry is offered by the hygiene gate in the message a
+# refused change reads, so the repair it suggests does not exist. Neither
+# direction is visible from inside the file.
 #
 # Usage: label-drift.sh <label-file> <live-name-file>
 #
