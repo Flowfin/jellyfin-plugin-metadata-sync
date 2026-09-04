@@ -177,7 +177,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --slurp --jq 'add' > releases.json
+          # `--slurp` and `--jq` are refused together by `gh api`, so the
+          # pages are flattened after the call rather than inside it. A
+          # repository with no release slurps to one empty page, which `add`
+          # answers as null, and the comparison is owed an array either way.
+          gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --slurp | jq 'add // []' > releases.json
           echo "this repository reports $(jq 'length' releases.json) release(s)"
 
       - name: Read the catalogue as an operator's server reads it
