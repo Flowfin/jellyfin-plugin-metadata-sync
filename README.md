@@ -30,18 +30,30 @@ a type. `docs/supported-servers.md` carries the measurement on two servers. The
 tree compiles against the line's first release since #340, and the release that
 carries that to an operator is the next one, which #122 waits on.
 
-The catalogue is served, and this plugin was not in it when this was read, on
-2026-09-03, before the first rebuild after the release:
+The catalogue is served, and this plugin is not in it. Read on 2026-09-04, after
+the first rebuild that followed the release:
 
     curl -sS https://flowfin.dev/manifest.json | grep -c '"name": "Metadata Sync"'
     0
 
 `https://flowfin.dev/manifest.json` is the address an operator adds to their
-server under Dashboard, Plugins, Repositories, and it is where this plugin
-appears. That file is rebuilt once a day from the releases of the repositories
-it declares as sources, and this repository is one of them, so the entry arrives
-with the rebuild that follows a release rather than on the day somebody edits
-the catalogue by hand. When it lists 0.1.0.0, the paragraph above still holds:
+server under Dashboard, Plugins, Repositories, and it is where this plugin will
+appear. **This paragraph said the entry arrives with the rebuild that follows a
+release, and the rebuild that followed this one changed nothing an operator can
+read.** That file is built once a day from the releases of the repositories the
+catalogue declares as sources, and this repository is one of them, but the run
+that builds it does not publish it: it proposes what it built as a pull request
+against the catalogue's own tree. So a rebuild that reports success is not a
+catalogue that lists this plugin, which is the failure #88 is written against and
+is now measured rather than anticipated. The rebuild of 2026-09-04 built an entry
+for 0.1.0.0 and opened `Flowfin/hub#164` carrying it, and the catalogue's
+freshness watch went red in the same hour, naming this repository as one the
+served file lists nothing from.
+
+The entry therefore arrives when that pull request is merged, on a board this one
+does not write to. Until it does, a server that adds the address sees no plugin
+here rather than an old one, and installing means unpacking the release archive
+by hand. When the entry does arrive for 0.1.0.0, the paragraph above still holds:
 a server below 10.11.11 will install the package and refuse to load it.
 
 What is built today is a set of parts a pass would be made of, one area of the
