@@ -28,26 +28,39 @@ last section of this page.
 
 So the version carries the server line, in its major:
 
-| Server line | Version band | Manifest |
-| --- | --- | --- |
-| 10.11 | 1 | build.yaml |
-| 12.0 | 2 | build-jf12.yaml |
+| Server line | Version band | Manifest | Where its version sits |
+| --- | --- | --- | --- |
+| 10.11 | 1 | build.yaml | below the band |
+| 12.0 | 2 | build-jf12.yaml | at the foot of the band |
 
 The band is a major version number, and a release of this plugin is one release
 number per line inside its own band: `1.4.0.0` on the 10.11 line is the same work
 as `2.4.0.0` on the 12.0 line. A breaking change moves the minor rather than the
 major, because the major is spent on the line.
 
-The two manifests sit at different distances from their bands. `build.yaml`
-carries `0.1.0.0`, below its band, because the first release on the 10.11 line
-was 0.1.0.0, cut on 2026-09-03 as `0.1.0.0-stable` under the decision on #122
-that a first release starts there and 1.0.0.0 waits until a release has been
-observed in the field; the sentence that stood here named the 1.0.0.0 of issue
-#1 as the first release, and that decision superseded it. `build-jf12.yaml`
-carries `2.0.0.0`, at the foot of its own, and nothing has been released on the
-12.0 line. What is held either way is the property an operator depends on: the
-12.0 package's version is above the 10.11 package's, so a 12.0 server that keeps
-both entries takes the one built for it.
+The two manifests sit at different distances from their bands, and the last
+column above says which. It is derived rather than typed: `SupportedServersTests`
+reads each manifest's version and refuses a cell that describes it wrongly, in a
+closed set of three - below the band, at the foot of the band, inside the band.
+
+This paragraph carried both version numbers as literals and one of them had
+moved. It said `build.yaml` carried `0.1.0.0`; that file has carried `0.1.1.0`
+since the second release on the 10.11 line, and nothing here reddened for it,
+because a number typed into a document is a second copy of a field the manifest
+declares. The numbers are deleted rather than corrected, which is the repair this
+tree already takes for a count, and the column above answers the question they
+were there for.
+
+The 10.11 line's manifest sits below its band because the first release on that
+line was 0.1.0.0, under the decision on #122 that a first release starts there
+and 1.0.0.0 waits until a release has been observed in the field; the sentence
+that stood here named the 1.0.0.0 of issue #1 as the first release, and that
+decision superseded it. The 12.0 line's sits at the foot of its own because
+nothing has been released on that line.
+
+What is held either way is the property an operator depends on: the 12.0
+package's version is above the 10.11 package's, so a 12.0 server that keeps both
+entries takes the one built for it.
 
 `ManifestTests` holds the two manifests against this table, against each other
 and against that ordering, so a band edited in one place and not the other
@@ -82,11 +95,23 @@ first packages the committed `build.yaml`, and the second copies
 file is not edited by either.
 
 What neither job produces is a release. The release route is a third thing,
-`docs/RELEASING.md` describes it, and it reads `build.yaml` and nothing else: the
-10.11 package has been released, as `0.1.0.0-stable` on 2026-09-03, and the 12.0
-package has not. A second release leg is not written, so what exists for the
-12.0 line today is a build artefact rather than something an operator can
-install.
+`docs/RELEASING.md` describes it, and it reads `build.yaml` and nothing else, so
+every release this repository carries is on the 10.11 line. This sentence named
+one of them and there are two:
+
+    gh release list --repo Flowfin/jellyfin-plugin-metadata-sync \
+      --json tagName,createdAt --jq '.[] | "\(.tagName)\t\(.createdAt)"'
+    0.1.1.0-stable  2026-09-04T11:15:42Z
+    0.1.0.0-stable  2026-09-03T10:24:30Z
+
+The 12.0 package has none. A second release leg is not written, so what exists
+for the 12.0 line today is a build artefact rather than something an operator
+can install.
+
+Nothing in this tree re-derives that reading. The suite runs with no network, so
+a release cut after this line was written leaves it stale and no leg here
+notices; what a run does judge is the band column above, which is a fact of the
+manifests rather than of the tracker.
 
 The first thing compiling the second line found was in this repository rather
 than in the server. `ItemDeletionTests` refuses the naming of the library's
