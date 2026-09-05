@@ -262,13 +262,15 @@ the commit it was built from:
 A failure from any of the three means the file is not the one this repository
 built, and the answer to that is to stop rather than to install it and watch.
 
-There is nothing to run them against today. No release exists, which the section
-at the top of this file says and this prints nothing for:
+**This paragraph said there is nothing to run them against, and cited the
+section at the top of this file as saying so.** That section says the opposite,
+and has since the first release. There are two archives to run them against, and
+`Where this is today` above names them with the command that reads them rather
+than this paragraph carrying a second copy of it.
 
-    gh release list --repo Flowfin/jellyfin-plugin-metadata-sync
-
-So the commands above are what a release will be checkable with, and nothing
-here claims that anybody has checked one.
+Nothing here claims that anybody has checked one. That is what the paragraph was
+right about and it is unchanged: the commands above are what an archive is
+checkable with, and this file records no run of them.
 [docs/RELEASING.md](docs/RELEASING.md) is the other end of the same route and
 says what a run produces and what makes it fail.
 
