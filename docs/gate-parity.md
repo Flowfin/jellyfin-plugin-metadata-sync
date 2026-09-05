@@ -92,20 +92,28 @@ The target lints `**/*.{js,html,md,css,scss}`:
 
     gh api repos/iderex/jellyfin-plugin-sso/contents/.github/workflows/prettier.yml --jq '.content' | base64 -d | grep prettier_options
 
-This repository has eight tracked files inside that glob:
+How many tracked files this repository has inside that glob is a fact of the
+tree, so the command is handed over rather than its output:
 
     git ls-files | grep -Eic '\.(js|html|md|css|scss)$'
-    8
 
-That number includes this document, which is the reason it was first written
-here as seven: the count was taken before the file holding it was added, which is
-a measurement of the tree the writer had rather than the tree the reader gets.
-Run it against the commit under review.
+This paragraph carried the number, and the number had tripled. It said eight,
+which was right at `03dd447` on 2026-08-06 and had not been touched since, while
+the tree it counts grew under it and nothing reddened, because nothing here reads
+a figure in a document. The count is deleted rather than corrected, which is the
+repair the mutation section below already took for the same class of literal.
+
+The paragraph's own argument is what the number was there to illustrate and it
+survives without it. The count includes this document, which is why it was first
+written as seven: it was taken before the file holding it was added, which is a
+measurement of the tree the writer had rather than the tree the reader gets. Run
+it against the commit under review.
 
 So the condition the row named as unmet is already met, and the honest state of
 this row is that the formatter is not adopted yet and has no issue on this board
-adopting it. That is a gap this document records rather than closes. The count
-moves as documents are added, so re-run it.
+adopting it. That is a gap this document records rather than closes. Whatever the
+command prints, it prints more than none, which is the whole of what the row
+turns on.
 
 ## The mutation testing answer
 
