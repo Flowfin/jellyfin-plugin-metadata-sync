@@ -193,11 +193,31 @@ reader.
 
 ## Supported versions
 
-There is no released version:
+**This section said there is no released version, and pasted both commands below
+as producing nothing.** Two releases exist, and every sentence that stood here
+rested on their absence:
 
-    gh release list --limit 5      # no output
-    git ls-remote --tags origin    # no output
+    gh release list --limit 5
+    0.1.1.0-stable  Latest  0.1.1.0-stable  2026-09-04T11:17:20Z
+    0.1.0.0-stable          0.1.0.0-stable  2026-09-03T10:26:03Z
 
-Until there is one, the default branch is the only thing there is to fix, and
-no version support window is offered because no version exists to offer one
-for.
+    git ls-remote --tags origin | head -4
+    92e9c856d98845f5216d9e605d5afcb4e2968b56        refs/tags/0.1.0.0-stable
+    dcf53dad20d368275606f2ddcafca449f7409f4e        refs/tags/0.1.0.0-stable^{}
+    749285953b47c28a352ba4efbf97fa72e164421d        refs/tags/0.1.1.0-stable
+    14557477dd8429ffa1170f22d8a844290a44ec72        refs/tags/0.1.1.0-stable^{}
+
+Report against either of them, or against the default branch. A fix lands on the
+default branch, which is the only place anything is fixed here.
+
+No version support window is offered. That is now a thing nobody has decided
+rather than a thing entailed by there being no version, and it is written as the
+first and not the second. Nothing here says a released version will get a fix
+carried back to it, and nothing here says it will not. This section will name
+which versions are supported on the day that is decided, and until then the
+absence of a window is the whole of what it says.
+
+Nothing in this repository re-derives the block above. The suite runs with no
+network, so a release cut after these lines were written leaves them stale and
+no check here notices, which is how the sentence they replace survived two
+releases without reddening anything. Run the two commands.
