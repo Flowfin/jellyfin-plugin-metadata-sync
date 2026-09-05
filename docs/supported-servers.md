@@ -117,11 +117,22 @@ The first thing compiling the second line found was in this repository rather
 than in the server. `ItemDeletionTests` refuses the naming of the library's
 item removal members, and one of the five names it holds,
 `MediaBrowser.Controller.Persistence.IItemRepository.DeleteItem`, is not
-declared on the 12.0 line:
+declared on the 12.0 line.
 
-    git grep -c "DeleteItem" v10.11.11 v12.0-rc4 -- MediaBrowser.Controller/Persistence/IItemRepository.cs
-    v10.11.11:...:1
-    v12.0-rc4:...:0
+This paragraph pasted that as two rows of one `git grep -c`, and the second row
+is a line that command cannot produce: the verb prints nothing at all for a file
+it counted no match in, so a row ending in `:0` is not output it emits. That row
+was written rather than read, in the paragraph whose whole subject is a claim
+about a second server made without asking it. Read one revision at a time, where
+a zero is a number the command does print:
+
+    git show v10.11.11:MediaBrowser.Controller/Persistence/IItemRepository.cs | grep -c DeleteItem
+    1
+    git show v12.0-rc4:MediaBrowser.Controller/Persistence/IItemRepository.cs | grep -c DeleteItem
+    0
+
+The claim does not move and neither does the argument built on it. What moves is
+that the reading behind it reproduces, which the reading that stood here did not.
 
 The leg that asks whether a guard's vocabulary is real had only ever asked one
 server, so a name that had gone stale for one line read exactly like one that
