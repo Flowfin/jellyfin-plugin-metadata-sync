@@ -132,10 +132,16 @@ further is owed here for it. The sentence that was here would have had a reader
 of this page conclude that a release changes nothing outside this repository,
 which is the opposite of what happens.
 
-What this tree still has no route to is the catalogue's own state. Whether the
-served file caught up with a release is read where the catalogue is built rather
-than here, and a green publish run in this repository is not evidence that it
-did.
+THIS PARAGRAPH SAID THIS TREE HAD NO ROUTE TO THE CATALOGUE'S OWN STATE, AND IT
+HAS ONE. `.github/workflows/channel-freshness.yml` reads the served file against
+the releases this repository has published, daily, and fails on a difference in
+either direction. It landed under #88 and the reading is on that issue.
+
+The half of the sentence that stands is the half a release author needs: a green
+publish run in this repository is still not evidence that the catalogue caught
+up, because it is another board's tree and the run that rebuilds it there
+proposes rather than publishes. What changed is who notices - a scheduled
+comparison rather than whoever next reads a page.
 
 ## What fails the run
 

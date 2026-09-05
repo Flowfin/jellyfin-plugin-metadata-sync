@@ -316,3 +316,72 @@ So what a 12.0 server does with the artefact this repository builds is read from
 the server's source and not measured. The sentence that it would be admitted by
 the manifest gate rests on the comparison quoted above; whether its types all
 survive on that line is not something this document claims either way.
+
+## Installing from the catalogue is a second walk, and the one above is not it
+
+The walk above copies an assembly into `plugins/`. That proves the two gates
+accept it, and it proves nothing about the catalogue, the entry an operator's
+server reads, the archive it is handed or the checksum it holds that archive to.
+Those are the steps between a release and a load, and a copy exercises none of
+them, which is easy to read past because both walks end at the same plugin list.
+
+They have been walked once, on 2026-09-05, on a fresh data directory of a server
+started from the vendor's own build of 10.11.11, with `https://flowfin.dev/manifest.json`
+added as the only repository and nothing copied in by hand.
+
+What each step read. The catalogue offered this plugin with both released
+versions, both admitted by the ABI floor:
+
+    curl -sS -H "$AUTH" http://127.0.0.1:$PORT/Packages
+
+    Metadata Sync  guid 5c37c4489d944fdda6214238b859165b  owner Flowfin
+      0.1.1.0  targetAbi 10.11.0.0  checksum ec56a026ff999b32f9a965c2fa9d7cfd
+      0.1.0.0  targetAbi 10.11.0.0  checksum b392689dcaf5809418340a820208fd38
+
+The install was asked for by name and version, and the server reported it
+installed rather than reporting a failure it had swallowed:
+
+    curl -sS -X POST -H "$AUTH" "http://127.0.0.1:$PORT/Packages/Installed/Metadata%20Sync?version=0.1.1.0&repositoryUrl=https%3A%2F%2Fflowfin.dev%2Fmanifest.json"
+    -> 204
+
+    Emby.Server.Implementations.Updates.InstallationManager: Plugin "installed": "Metadata Sync" "0.1.1.0"
+
+and after a restart the server loaded it and listed it as active, which is the
+same reading the section above takes and is the only step the two walks share:
+
+    Emby.Server.Implementations.Plugins.PluginManager: Loaded plugin: "Metadata Sync" "0.1.1.0"
+
+    curl -sS -H "$AUTH" http://127.0.0.1:$PORT/Plugins
+    Metadata Sync 0.1.1.0 Active 5c37c4489d944fdda6214238b859165b CanUninstall=True
+
+The bytes are the same bytes at every hop, which is the part a copy cannot say
+anything about. The checksum the catalogue advertises is the checksum of the
+archive the release published, and the assembly the server unpacked is the
+assembly inside that archive:
+
+    md5sum metadata-sync_0.1.1.0.zip
+    ec56a026ff999b32f9a965c2fa9d7cfd
+
+    md5sum zipcheck/Jellyfin.Plugin.MetadataSync.dll
+    f8a54bd0f6d924b72cc6c3fcc3cab33e
+    md5sum "$DATA/plugins/Metadata Sync_0.1.1.0/Jellyfin.Plugin.MetadataSync.dll"
+    f8a54bd0f6d924b72cc6c3fcc3cab33e
+
+### What this walk did not establish
+
+Two things, and neither is small enough to leave to a reader to notice.
+
+Whether the checksum is load-bearing was not measured. The three values agree,
+so nothing was ever handed an archive that did not match its entry, and an
+install of a corrupted archive was not attempted. That the server compares them
+at all is read from its source and not from this walk.
+
+Whether a server chooses correctly between the two entries was not measured
+either. The install named `0.1.1.0` explicitly, so the ordering quoted above -
+the ABI floor, then the highest version - decided nothing here. What that
+selection does on a server below 10.11.11, where both entries still clear a
+floor declared as 10.11.0.0 and only one of the two archives loads, is the
+reading in the section above and remains a reading.
+
+The server started with no web client and no library, and no pass was run. The
+walk stops at the load, exactly where the earlier one does.
