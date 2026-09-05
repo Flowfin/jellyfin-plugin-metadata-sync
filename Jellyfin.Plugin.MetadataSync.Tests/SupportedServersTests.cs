@@ -50,7 +50,25 @@ public class SupportedServersTests
     /// <param name="Line">The server line, as major and minor.</param>
     /// <param name="Major">The major version number that line's packages carry.</param>
     /// <param name="Manifest">The manifest that declares that line's package.</param>
-    private sealed record Band(string Line, int Major, string Manifest);
+    /// <param name="Distance">Where that manifest's version sits in the band.</param>
+    private sealed record Band(string Line, int Major, string Manifest, string Distance);
+
+    /// <summary>
+    /// A manifest whose version is under its band's major, which is where a line
+    /// sits before its first release reaches the band it was given.
+    /// </summary>
+    private const string BelowTheBand = "below the band";
+
+    /// <summary>
+    /// A manifest carrying its band's major and nothing else, which is the first
+    /// version that line can publish inside its band.
+    /// </summary>
+    private const string AtTheFootOfTheBand = "at the foot of the band";
+
+    /// <summary>
+    /// A manifest carrying its band's major and something after it.
+    /// </summary>
+    private const string InsideTheBand = "inside the band";
 
     /// <summary>
     /// Each manifest declares one <c>targetAbi</c> and one <c>framework</c>, so
@@ -213,8 +231,12 @@ public class SupportedServersTests
     /// </summary>
     /// <remarks>
     /// Below its own is allowed and is the state the 10.11 line is in, because
-    /// nothing has been released and its first release is the major its band
-    /// names. At or below a lower line's is never allowed, and that is the half
+    /// that line's releases start at 0.1.0.0 under the decision on #122 and
+    /// 1.0.0.0 waits until a release has been observed in the field. This
+    /// paragraph said instead that nothing had been released, which stopped
+    /// being true on 2026-09-03 and left the reason for a permitted state
+    /// resting on a fact the tracker contradicts. At or below a lower line's is
+    /// never allowed, and that is the half
     /// that protects an operator: it is what keeps the newer line's package
     /// from sorting under the older line's on a server that keeps both.
     /// <para>
@@ -245,6 +267,50 @@ public class SupportedServersTests
                     version.Major > lower.Major,
                     band.Manifest + " declares version " + version + ", at or below the band of the " + lower.Line + " line, which is major " + lower.Major + ". A server keeping both entries would take the wrong package.");
             }
+        }
+    }
+
+    /// <summary>
+    /// Each band's last cell says where that manifest's version sits, and it is
+    /// derived from the manifest rather than compared with a number typed beside
+    /// it.
+    /// </summary>
+    /// <remarks>
+    /// The paragraph under this table used to answer the same question by
+    /// restating both versions as literals, and one of them had moved: it said
+    /// <c>build.yaml</c> carried 0.1.0.0 while that file carried 0.1.1.0, and
+    /// nothing read the sentence. A version is exactly the kind of number a
+    /// document should not hold a second copy of, so the number is gone from the
+    /// prose and the characterisation is what the document states.
+    /// <para>
+    /// The set is closed at three, and the leg below holds it so, because a cell
+    /// spelled anything else would fall through this comparison as a phrase
+    /// nothing derives.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void EveryBandSaysWhereItsManifestsVersionActuallySits()
+    {
+        foreach (var band in Bands())
+        {
+            Assert.Equal(DistanceOf(band), band.Distance);
+        }
+    }
+
+    /// <summary>
+    /// The near miss for the cell rather than for the rule. A phrase outside the
+    /// closed set describes nothing this file can derive, and the leg above
+    /// would refuse it only by accident of which of the three it was compared
+    /// against.
+    /// </summary>
+    [Fact]
+    public void EveryBandsDistanceIsOneOfTheThreeThisFileCanDerive()
+    {
+        var known = new[] { BelowTheBand, AtTheFootOfTheBand, InsideTheBand };
+
+        foreach (var band in Bands())
+        {
+            Assert.Contains(band.Distance, known, StringComparer.Ordinal);
         }
     }
 
@@ -338,7 +404,7 @@ public class SupportedServersTests
     }
 
     /// <summary>
-    /// Reads the version band table, which is three cells wide where the table
+    /// Reads the version band table, which is four cells wide where the table
     /// above is five, so the reader above skips it and this one skips that.
     /// </summary>
     /// <returns>The bands, in the order the document carries them.</returns>
@@ -346,17 +412,35 @@ public class SupportedServersTests
     {
         var bands = new List<Band>();
 
-        foreach (var cells in Rows(3))
+        foreach (var cells in Rows(4))
         {
             Assert.True(
                 int.TryParse(cells[1], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var major),
                 "The version band table in docs/supported-servers.md gives the " + cells[0] + " line the band '" + cells[1] + "', which is not a major version number.");
 
-            bands.Add(new Band(cells[0], major, cells[2]));
+            bands.Add(new Band(cells[0], major, cells[2], cells[3]));
         }
 
         Assert.NotEmpty(bands);
         return bands;
+    }
+
+    /// <summary>
+    /// Where a band's manifest actually carries its version, in the words the
+    /// document uses.
+    /// </summary>
+    /// <param name="band">The band, for its major and its manifest.</param>
+    /// <returns>One of the three phrases this file derives.</returns>
+    private static string DistanceOf(Band band)
+    {
+        var version = Version.Parse(ManifestFile.Field(band.Manifest, "version"));
+
+        if (version.Major < band.Major)
+        {
+            return BelowTheBand;
+        }
+
+        return version == new Version(band.Major, 0, 0, 0) ? AtTheFootOfTheBand : InsideTheBand;
     }
 
     private static IReadOnlyList<Row> BuiltRows()
