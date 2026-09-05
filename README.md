@@ -33,22 +33,23 @@ is 0.1.1.0, cut on 2026-09-04: that package is compiled against the line's first
 release, so it loads on a 10.11 server from 10.11.0 up rather than on 10.11.11
 alone.
 
-The catalogue is served, this plugin is in it, and what it offers is the older
-of the two. **This paragraph said the plugin was not listed at all.** Read after
-`Flowfin/hub#164` was merged on 2026-09-04:
+The catalogue is served and it offers both releases. **This paragraph said it
+offered the older of the two and that 0.1.1.0 had to be taken from its release
+page by hand.** Read on 2026-09-05:
 
     curl -sS https://flowfin.dev/manifest.json | grep -c '"name": "Metadata Sync"'
     1
 
     curl -sS https://flowfin.dev/manifest.json | python -c "import sys,json;e=[x for x in json.load(sys.stdin) if x['name']=='Metadata Sync'][0];print([(v['version'],v['targetAbi']) for v in e['versions']])"
-    [('0.1.0.0', '10.11.0.0')]
+    [('0.1.1.0', '10.11.0.0'), ('0.1.0.0', '10.11.0.0')]
 
 `https://flowfin.dev/manifest.json` is the address an operator adds to their
-server under Dashboard, Plugins, Repositories. Adding it today offers 0.1.0.0,
-which is the archive the paragraph above is about, so an install from the
-catalogue onto a 10.11 server below 10.11.11 succeeds and the plugin then
-refuses to load. Installing 0.1.1.0 means taking the archive from its release
-page by hand until the catalogue advertises it.
+server under Dashboard, Plugins, Repositories. A server takes the highest
+version whose target the server clears, so adding it today offers 0.1.1.0, and
+the sentence about taking an archive by hand no longer applies. That install has
+been walked once end to end on a clean 10.11.11 server rather than reasoned
+about, and `docs/supported-servers.md` carries what it read at each step,
+including the two things it did not establish.
 
 That file is built once a day from the releases of the repositories the
 catalogue declares as sources, and this repository is one of them, but the run
