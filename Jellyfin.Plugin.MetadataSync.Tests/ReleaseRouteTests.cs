@@ -33,6 +33,14 @@ public class ReleaseRouteTests
     private const string ReleaseJob = "release";
 
     /// <summary>
+    /// The job that reads the tag against the manifest and refuses the two of
+    /// them disagreeing. Its verdict reaches the release only through the jobs
+    /// that wait on it, and <see cref="ReleaseVersionAgreementTests"/> reads
+    /// what it refuses.
+    /// </summary>
+    private const string GateJob = "gate";
+
+    /// <summary>
     /// Every job that produces something a release carries. Each one is a
     /// separate job because each needs a different permission, and that is the
     /// same reason none of them can be folded into the job that publishes.
@@ -59,6 +67,28 @@ jobs:
       - build
       - attest
       - inventory
+""";
+
+    /// <summary>
+    /// A route whose gate nothing waits on. The gate still runs, because a tag
+    /// starts every job that declares no dependency, and it still goes red on a
+    /// version disagreement - and the release is published anyway, because
+    /// nothing on the path to it ever asked. It is a deleted `needs` line, and
+    /// the run it produces is green in four jobs and red in one nobody waited
+    /// for.
+    /// </summary>
+    private const string NothingWaitsOnTheGate = """
+jobs:
+  gate:
+    name: Release metadata gate
+  build:
+    name: Build package
+  attest:
+    needs: build
+  inventory:
+    name: Write the package inventory
+  release:
+    needs: [build, attest, inventory]
 """;
 
     /// <summary>
@@ -159,8 +189,61 @@ jobs:
         Assert.Equal(AssetJobs.OrderBy(j => j, StringComparer.Ordinal), waitsOn.OrderBy(j => j, StringComparer.Ordinal));
     }
 
+    /// <summary>
+    /// The gate's verdict is a precondition of the release rather than a
+    /// report beside it. A job that waits on nothing runs anyway when a tag is
+    /// pushed, so a gate no path to the release passes through refuses a
+    /// version disagreement into a log while the release is published from the
+    /// same run.
+    /// </summary>
+    [Fact]
+    public void NothingIsPublishedWithoutTheGate()
+    {
+        Assert.Contains(GateJob, WaitedOnBy(Jobs(Route()), ReleaseJob));
+    }
+
+    /// <summary>
+    /// The bite. Without it the leg above is proved only against a route whose
+    /// gate is already waited on, and the one line whose deletion breaks it is
+    /// the line nothing else here reads.
+    /// </summary>
+    [Fact]
+    public void ARouteWhoseGateNothingWaitsOnIsReadAsOne()
+    {
+        Assert.DoesNotContain(GateJob, WaitedOnBy(Jobs(NothingWaitsOnTheGate), ReleaseJob));
+    }
+
     private static string Route()
         => File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "publish.yaml"));
+
+    /// <summary>
+    /// Every job that has to succeed before one job runs, however many
+    /// dependencies away it is.
+    /// </summary>
+    /// <param name="jobs">The route's jobs, each against the jobs it waits on.</param>
+    /// <param name="job">The job whose preconditions are asked for.</param>
+    /// <returns>The jobs it waits on, directly or through another.</returns>
+    private static IReadOnlySet<string> WaitedOnBy(Dictionary<string, List<string>> jobs, string job)
+    {
+        var reached = new HashSet<string>(StringComparer.Ordinal);
+        var pending = new Queue<string>(jobs.TryGetValue(job, out var direct) ? direct : []);
+
+        while (pending.Count > 0)
+        {
+            var next = pending.Dequeue();
+            if (!reached.Add(next) || !jobs.TryGetValue(next, out var further))
+            {
+                continue;
+            }
+
+            foreach (var name in further)
+            {
+                pending.Enqueue(name);
+            }
+        }
+
+        return reached;
+    }
 
     /// <summary>
     /// Every job the route declares, with the jobs each one waits on. It reads
