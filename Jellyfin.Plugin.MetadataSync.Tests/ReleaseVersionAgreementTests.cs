@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using Xunit;
 
@@ -721,7 +722,7 @@ jobs:
     private static IReadOnlyList<string> Script(string run)
     {
         var joined = new List<string>();
-        var pending = string.Empty;
+        var pending = new StringBuilder();
 
         // The projection and the filter sit in the sequence rather than at the
         // top of the body, so the loop holds only the join. A body that begins
@@ -734,17 +735,17 @@ jobs:
         {
             if (line.EndsWith('\\'))
             {
-                pending += line[..^1].TrimEnd() + " ";
+                pending.Append(line[..^1].TrimEnd()).Append(' ');
                 continue;
             }
 
-            joined.Add(pending + line);
-            pending = string.Empty;
+            joined.Add(pending.Append(line).ToString());
+            pending.Clear();
         }
 
         if (pending.Length > 0)
         {
-            joined.Add(pending.TrimEnd());
+            joined.Add(pending.ToString().TrimEnd());
         }
 
         return joined;
