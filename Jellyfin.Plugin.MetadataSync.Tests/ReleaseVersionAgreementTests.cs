@@ -182,6 +182,33 @@ jobs:
 """;
 
     /// <summary>
+    /// The control again, with a comment that would reassign the compared
+    /// variable to a literal if it were read. The refusal patterns are anchored
+    /// to the start of a line and never match a comment; the assignment pattern
+    /// is not, because an assignment may follow a semicolon or a case pattern,
+    /// so it is the one reading a dropped comment filter would change. Without
+    /// the filter the origin of <c>want</c> becomes the literal, the join is
+    /// read as broken, and the route is refused for a comment.
+    /// </summary>
+    private const string OriginReassignedInAComment = """
+jobs:
+  build:
+    steps:
+      - name: Check the assembly version matches the manifest
+        env:
+          MANIFEST_VERSION: ${{ needs.gate.outputs.version }}
+        run: |
+          assembly="$(dotnet msbuild -getProperty:AssemblyVersion -nologo)"
+          want="${MANIFEST_VERSION}"
+          # want="0.1.1.0"
+          got="${assembly}"
+          if [ "${want}" != "${got}" ]; then
+            echo "::error::The assembly is stamped ${assembly}."
+            exit 1
+          fi
+""";
+
+    /// <summary>
     /// The same, comparing for equality. It refuses every release whose
     /// versions agree and publishes every release whose versions do not, which
     /// is the check inverted rather than absent, and the first tag is where it
@@ -380,6 +407,20 @@ jobs:
     public void ARefusalInsideACommentIsNotARefusal()
     {
         Assert.Empty(Compared(StepNamed(RefusalCommentedOut, BuildJob, AssemblyStep), ApprovedVersion, AssemblyRead));
+    }
+
+    /// <summary>
+    /// The other direction of the comment filter. The leg above holds the
+    /// filter to nothing, because every refusal pattern is anchored and a
+    /// comment never starts with <c>exit</c>; the assignment pattern is not
+    /// anchored, so a reading that kept comments would take an assignment out
+    /// of one and refuse the route's join for it. This is the leg that goes
+    /// red when the filter is dropped.
+    /// </summary>
+    [Fact]
+    public void AnAssignmentInsideACommentIsNotAnOrigin()
+    {
+        Assert.Single(Compared(StepNamed(OriginReassignedInAComment, BuildJob, AssemblyStep), ApprovedVersion, AssemblyRead));
     }
 
     /// <summary>
@@ -613,9 +654,8 @@ jobs:
         var inJobs = false;
         var inJob = false;
 
-        foreach (var raw in workflow.Split('\n'))
+        foreach (var line in workflow.Split('\n').Select(raw => raw.TrimEnd('\r').TrimEnd()))
         {
-            var line = raw.TrimEnd('\r').TrimEnd();
             var indent = line.Length - line.TrimStart(' ').Length;
 
             if (line.Length == 0)
@@ -683,14 +723,15 @@ jobs:
         var joined = new List<string>();
         var pending = string.Empty;
 
-        foreach (var raw in run.Split('\n'))
+        // The projection and the filter sit in the sequence rather than at the
+        // top of the body, so the loop holds only the join. A body that begins
+        // with one test and a `continue` is the shape the analysis reads as a
+        // missed `Where`, and the two rewrites are one change rather than one
+        // and then its correction a scan later.
+        foreach (var line in run.Split('\n')
+            .Select(raw => raw.TrimEnd('\r').Trim())
+            .Where(text => text.Length > 0 && !text.StartsWith('#')))
         {
-            var line = raw.TrimEnd('\r').Trim();
-            if (line.Length == 0 || line.StartsWith('#'))
-            {
-                continue;
-            }
-
             if (line.EndsWith('\\'))
             {
                 pending += line[..^1].TrimEnd() + " ";
